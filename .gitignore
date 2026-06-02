@@ -1,0 +1,19 @@
+# Dependencies (kept out of OneDrive sync + git)
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+**/.next/
+out/
+**/out/
+
+# QA screenshots (large binaries; reports themselves are kept)
+.gstack/qa-reports/screenshots/
+
+# Env / secrets
+.env*.local
+**/.env*.local
+
+# OS
+.DS_Store
