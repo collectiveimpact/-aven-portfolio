@@ -1,24 +1,15 @@
-import type { Survey } from "@/lib/types";
+import { getSurveys, type SurveyRow } from "@/lib/queries";
 
-// Resident surveys (typed `Survey`).
-const ORG = "woodgreen-demo";
+const statusBadge: Record<SurveyRow["status"], string> = { live: "ok", closed: "warn", draft: "bad" };
+const statusLabel: Record<SurveyRow["status"], string> = { live: "Live", closed: "Closed", draft: "Draft" };
 
-const surveys: Survey[] = [
-  { id: "sv1", org_id: ORG, title: "Annual Resident Satisfaction 2026", status: "live", responses: 412, sent: 1284 },
-  { id: "sv2", org_id: ORG, title: "Maintenance Response Feedback", status: "live", responses: 188, sent: 305 },
-  { id: "sv3", org_id: ORG, title: "Community Room Renovation Input", status: "closed", responses: 96, sent: 318 },
-  { id: "sv4", org_id: ORG, title: "Building Safety Check-in", status: "closed", responses: 540, sent: 640 },
-  { id: "sv5", org_id: ORG, title: "Summer Programming Interest", status: "draft", responses: 0, sent: 0 },
-];
-
-const statusBadge: Record<Survey["status"], string> = { live: "ok", closed: "warn", draft: "bad" };
-const statusLabel: Record<Survey["status"], string> = { live: "Live", closed: "Closed", draft: "Draft" };
-
-function rate(s: Survey): number {
+function rate(s: SurveyRow): number {
   return s.sent > 0 ? Math.round((s.responses / s.sent) * 100) : 0;
 }
 
 export default async function SurveysPage() {
+  const surveys = await getSurveys();
+
   const live = surveys.filter((s) => s.status === "live").length;
   const measurable = surveys.filter((s) => s.sent > 0);
   const avgRate = measurable.length

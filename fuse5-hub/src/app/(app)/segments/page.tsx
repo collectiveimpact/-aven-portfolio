@@ -1,18 +1,8 @@
-import type { Segment } from "@/lib/types";
-
-// Saved audience segments (typed `Segment`).
-const ORG = "woodgreen-demo";
-
-const segments: Segment[] = [
-  { id: "s1", org_id: ORG, name: "All Residents", rule: "Everyone with an active tenancy", size: 1284 },
-  { id: "s2", org_id: ORG, name: "Arrears > 30 days", rule: "Balance owing past 30 days", size: 47 },
-  { id: "s3", org_id: ORG, name: "French speakers", rule: "Preferred language is French", size: 162 },
-  { id: "s4", org_id: ORG, name: "Building A", rule: "Property is WoodGreen — Danforth", size: 318 },
-  { id: "s5", org_id: ORG, name: "New Move-ins", rule: "Tenancy started in the last 60 days", size: 29 },
-  { id: "s6", org_id: ORG, name: "Seniors", rule: "Age 65 and over", size: 211 },
-];
+import { getSegments } from "@/lib/queries";
 
 export default async function SegmentsPage() {
+  const segments = await getSegments();
+
   return (
     <main className="f5-content">
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
