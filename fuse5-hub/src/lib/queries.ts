@@ -21,7 +21,7 @@ export async function getWoFieldConfig(noticeType = "general"): Promise<Resolved
 // embedding their own data. Row types are flat + page-ready.
 
 export interface ResidentRow { id: string; unit: string; name: string; propertyName: string; language: string; status: "active" | "moved_out" }
-export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved"; channels: string[]; noticeStatus: "none"|"draft"|"published" }
+export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved"; channels: string[]; noticeStatus: "none"|"draft"|"pending_review"|"approved"|"published" }
 export interface PropertyOption { id: string; name: string }
 
 export async function getProperties(): Promise<PropertyOption[]> {
@@ -332,7 +332,7 @@ export interface NoticeDraft { channel: string; subject: string; body: string }
 export interface NoticeSchedule { start: string; end: string; mode: string; sameAll: boolean }
 export interface WorkOrderDetail {
   id: string; title: string; category: string; status: string; propertyId: string | null; propertyName: string;
-  channels: string[]; noticeStatus: "none" | "draft" | "published";
+  channels: string[]; noticeStatus: "none" | "draft" | "pending_review" | "approved" | "published";
   notice: NoticeFactsRow; drafts: NoticeDraft[]; schedule: NoticeSchedule;
 }
 export interface RecipientSummary { total: number; email: number; sms: number; sample: { name: string; channel: "email" | "sms" }[] }

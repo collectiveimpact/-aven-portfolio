@@ -5,6 +5,35 @@ import { getCurrentUser } from "@/lib/auth";
 import { generateDrafts, type NoticeFacts, type Draft } from "@/lib/ai";
 import { sendEmail } from "@/lib/email";
 import { isSystemField } from "@/lib/wo-fields";
+import { canBroadcast } from "@/lib/rbac";
+
+// Approval workflow: Draft → Review → Approved → Sent.
+export async function submitForReview(woId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient(); if (!supabase) return { ok: false, error: "No backend." };
+  const me = await getCurrentUser(); if (!me?.orgId) return { ok: false, error: "No organization." };
+  const { error } = await supabase.from("work_orders").update({ notice_status: "pending_review", submitted_by: me.id }).eq("id", woId);
+  if (error) return { ok: false, error: error.message };
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Notice Submitted for Review", detail: `Work order ${woId}` });
+  return { ok: true };
+}
+export async function approveNotice(woId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient(); if (!supabase) return { ok: false, error: "No backend." };
+  const me = await getCurrentUser(); if (!me?.orgId) return { ok: false, error: "No organization." };
+  if (!me.role || !canBroadcast(me.role)) return { ok: false, error: "Your role cannot approve notices." };
+  const { error } = await supabase.from("work_orders").update({ notice_status: "approved", approved_by: me.id }).eq("id", woId);
+  if (error) return { ok: false, error: error.message };
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Notice Approved", detail: `Work order ${woId}` });
+  return { ok: true };
+}
+export async function rejectNotice(woId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient(); if (!supabase) return { ok: false, error: "No backend." };
+  const me = await getCurrentUser(); if (!me?.orgId) return { ok: false, error: "No organization." };
+  if (!me.role || !canBroadcast(me.role)) return { ok: false, error: "Your role cannot review notices." };
+  const { error } = await supabase.from("work_orders").update({ notice_status: "draft" }).eq("id", woId);
+  if (error) return { ok: false, error: error.message };
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Notice Returned to Draft", detail: `Work order ${woId}` });
+  return { ok: true };
+}
 
 // Admin: set a field Required/Optional/Hidden for this client. System
 // (minimum-mandatory) fields are locked and rejected here.
@@ -105,8 +134,9 @@ export async function publishNotice(woId: string): Promise<{ ok: boolean; sent?:
   const me = await getCurrentUser();
   if (!me?.orgId) return { ok: false, error: "No organization." };
 
-  const { data: wo } = await supabase.from("work_orders").select("title,property_id,channels,drafts").eq("id", woId).single();
+  const { data: wo } = await supabase.from("work_orders").select("title,property_id,channels,drafts,notice_status").eq("id", woId).single();
   if (!wo) return { ok: false, error: "Work order not found." };
+  if (wo.notice_status !== "approved") return { ok: false, error: "Notice must be Approved before publishing." };
 
   const emailDraft = ((wo.drafts ?? []) as Draft[]).find((d) => d.channel === "email");
   let sent = 0;

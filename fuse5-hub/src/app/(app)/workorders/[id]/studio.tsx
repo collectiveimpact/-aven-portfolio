@@ -3,8 +3,16 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { saveNotice, publishNotice } from "../actions";
+import { saveNotice, publishNotice, submitForReview, approveNotice, rejectNotice } from "../actions";
 import type { WorkOrderDetail, RecipientSummary, NoticeDraft } from "@/lib/queries";
+
+const STEPS: { key: string; label: string }[] = [
+  { key: "draft", label: "Draft" },
+  { key: "pending_review", label: "Review" },
+  { key: "approved", label: "Approved" },
+  { key: "published", label: "Sent" },
+];
+const stepIndex = (s: string) => Math.max(0, STEPS.findIndex((x) => x.key === (s === "none" ? "draft" : s)));
 
 const IMAGE_THEME: Record<string, { emoji: string; color: string }> = {
   water: { emoji: "💧", color: "#2563EB" },
@@ -16,7 +24,7 @@ const IMAGE_THEME: Record<string, { emoji: string; color: string }> = {
 };
 const CATEGORIES = ["default", "water", "fire", "elevator", "heat", "pest"];
 
-export function NoticeStudio({ wo, recipients }: { wo: WorkOrderDetail; recipients: RecipientSummary }) {
+export function NoticeStudio({ wo, recipients, canApprove }: { wo: WorkOrderDetail; recipients: RecipientSummary; canApprove: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState("");
@@ -41,25 +49,58 @@ export function NoticeStudio({ wo, recipients }: { wo: WorkOrderDetail; recipien
       else setMsg(r.error ?? "Error");
     });
   }
-  function publish() {
+  function runStep(fn: () => Promise<{ ok: boolean; error?: string; sent?: number }>, next: typeof status, okMsg: string) {
     startTransition(async () => {
-      const r = await publishNotice(wo.id);
-      if (r.ok) { setStatus("published"); setMsg(`Published — ${r.sent ?? 0} email recipients.`); router.refresh(); }
+      const r = await fn();
+      if (r.ok) { setStatus(next); setMsg(typeof r.sent === "number" ? `${okMsg} — ${r.sent} email recipients.` : okMsg); router.refresh(); }
       else setMsg(r.error ?? "Error");
     });
   }
+  const submit = () => runStep(() => submitForReview(wo.id), "pending_review", "Submitted for review");
+  const approve = () => runStep(() => approveNotice(wo.id), "approved", "Approved");
+  const reject = () => runStep(() => rejectNotice(wo.id), "draft", "Returned to draft");
+  const publish = () => runStep(() => publishNotice(wo.id), "published", "Published");
 
   return (
     <main className="f5-content">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div className="f5-page-title">WO &amp; Notices</div>
-          <div className="f5-page-sub">{wo.propertyName} · <span className={`f5-badge ${status === "published" ? "ok" : "warn"}`}>{status === "published" ? "Published" : "Draft"}</span></div>
+          <div className="f5-page-sub">{wo.propertyName}</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <Link href="/workorders" className="f5-btn">Cancel</Link>
-          <button className="f5-btn primary" disabled={pending} onClick={publish}>{pending ? "Working…" : "Publish"}</button>
+          {(status === "none" || status === "draft") && (
+            <button className="f5-btn primary" disabled={pending} onClick={submit}>{pending ? "…" : "Submit for Review →"}</button>
+          )}
+          {status === "pending_review" && canApprove && (
+            <>
+              <button className="f5-btn" disabled={pending} onClick={reject}>Return to Draft</button>
+              <button className="f5-btn primary" disabled={pending} onClick={approve}>{pending ? "…" : "Approve →"}</button>
+            </>
+          )}
+          {status === "pending_review" && !canApprove && <span className="f5-badge warn">Awaiting approval</span>}
+          {status === "approved" && (
+            <button className="f5-btn primary" disabled={pending} onClick={publish} style={{ background: "var(--f5-green)", color: "#04201f" }}>{pending ? "…" : "Publish & Send"}</button>
+          )}
+          {status === "published" && <span className="f5-badge ok">Sent ✓</span>}
         </div>
+      </div>
+
+      {/* Approval stepper: Draft → Review → Approved → Sent */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14 }}>
+        {STEPS.map((s, i) => {
+          const cur = stepIndex(status);
+          const state = i < cur ? "done" : i === cur ? "active" : "todo";
+          const color = state === "todo" ? "var(--f5-text-dim)" : state === "active" ? "var(--f5-teal)" : "var(--f5-green)";
+          return (
+            <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${color}`, color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{state === "done" ? "✓" : i + 1}</span>
+              <span style={{ color, fontSize: 12, fontWeight: 600 }}>{s.label}</span>
+              {i < STEPS.length - 1 && <span style={{ width: 28, height: 2, background: i < cur ? "var(--f5-green)" : "var(--f5-border)" }} />}
+            </div>
+          );
+        })}
       </div>
 
       {msg && <div className="f5-badge ok" style={{ display: "inline-block", marginTop: 12 }}>{msg}</div>}

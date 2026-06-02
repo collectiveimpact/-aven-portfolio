@@ -27,6 +27,25 @@ targeting to the notice studio + recipient resolution.
 
 ---
 
+## 5. BLENDED BUILD (locked) — best-of-both on every axis
+The product blends our prototype (message-first) and the Fuse5 demo (operations-first).
+- **Front door:** Dashboard = landing. **Work Orders & Notices = primary create door**
+  (event → notice). **Compose = secondary ad-hoc broadcast door.** Both feed ONE notice pipeline.
+- **Authoring:** manual + templates **on top of** AI-generated drafts (all three available).
+- **Approval:** full **Draft → Review → Approved → Sent** workflow (role-gated).
+- **Recipients:** audience **segments** + **property tenants by preferred channel** + **saved groups** (combinable).
+- **Analytics:** delivery/engagement **dashboards** + formal **audit reports (proof-of-play)**.
+- **Signage:** both — Displays/Content sections **and** per-notice rendered signage.
+- **Breadth:** our 20 sections **plus** Fuse5's 6 (adds **Properties** + **Settings** as new sections).
+
+### Gaps to reach the blend (build order)
+1. **Approval workflow** Draft→Review→Approved→Sent on the notice pipeline (studio + Compose). ← building now
+2. **Properties** section + **Settings** section (breadth = 20 + 6).
+3. **Compose authoring blend:** "Load template" + "Generate with AI" buttons in Compose.
+4. **Unified recipients:** segments + property tenants + saved groups in both Compose and the studio.
+5. **Audit reports** (proof-of-play) alongside Analytics dashboards.
+6. SMS/voice send adapter.
+
 ## Resulting next builds (priority)
 1. **Notice types + per-type field config** (decision #3) — notice_type on settings,
    type picker in Add/Studio + field-config page, seed default types.

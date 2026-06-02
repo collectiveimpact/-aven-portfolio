@@ -4,8 +4,8 @@ import { NOTICE_TYPES } from "@/lib/wo-fields";
 import { NewWorkOrder } from "./new-work-order";
 
 const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
-const NOTICE_BADGE: Record<WorkOrderRow["noticeStatus"], string> = { none: "", draft: "f5-badge warn", published: "f5-badge ok" };
-const NOTICE_LABEL: Record<WorkOrderRow["noticeStatus"], string> = { none: "—", draft: "Draft", published: "Published" };
+const NOTICE_BADGE: Record<WorkOrderRow["noticeStatus"], string> = { none: "", draft: "f5-badge warn", pending_review: "f5-badge", approved: "f5-badge", published: "f5-badge ok" };
+const NOTICE_LABEL: Record<WorkOrderRow["noticeStatus"], string> = { none: "—", draft: "Draft", pending_review: "In Review", approved: "Approved", published: "Sent" };
 
 // Work Orders — KPI strip + filter chips + work-order table. Live data.
 type Filter = "all" | "open" | "urgent";
