@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { hasBackend } from "@/lib/env";
 import { DEMO_ORG } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,6 +26,7 @@ export default async function AppLayout({
           <span className="f5-pill">{orgName}</span>
           <span className="f5-pill">All Properties (31)</span>
           <span className="f5-live" style={{ marginLeft: "auto" }}>LIVE</span>
+          <ThemeToggle />
           {user ? (
             <>
               <span className="f5-pill">{user.fullName || user.email}{user.role ? ` · ${ROLE_LABELS[user.role]}` : ""}</span>
