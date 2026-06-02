@@ -8,7 +8,17 @@ import type { F5Role } from "@/lib/rbac";
 // embedding their own data. Row types are flat + page-ready.
 
 export interface ResidentRow { id: string; unit: string; name: string; propertyName: string; language: string; status: "active" | "moved_out" }
-export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved" }
+export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved"; channels: string[]; noticeStatus: "none"|"draft"|"published" }
+export interface PropertyOption { id: string; name: string }
+
+export async function getProperties(): Promise<PropertyOption[]> {
+  const s = await db();
+  if (!s) return [{ id: "p1", name: "WoodGreen — Danforth" }, { id: "p2", name: "WoodGreen — East York" }, { id: "p3", name: "WoodGreen — Riverdale" }];
+  try {
+    const { data } = await s.from("properties").select("id,name").order("name");
+    return data?.length ? data.map((p) => ({ id: p.id, name: p.name })) : [];
+  } catch { return []; }
+}
 export interface TemplateRow { id: string; name: string; category: string; channels: string[]; mandatory: boolean; version: string }
 export interface DisplayRow { id: string; name: string; location: string; propertyName: string; status: "online"|"offline"|"warning" }
 export interface SurveyRow { id: string; title: string; status: "draft"|"live"|"closed"; sent: number; responses: number }
@@ -36,9 +46,9 @@ export async function getWorkOrders(): Promise<WorkOrderRow[]> {
   const s = await db();
   if (!s) return DEMO.workOrders;
   try {
-    const { data } = await s.from("work_orders").select("id,title,unit,category,priority,status,properties(name)").order("created_at", { ascending: false });
+    const { data } = await s.from("work_orders").select("id,title,unit,category,priority,status,channels,notice_status,properties(name)").order("created_at", { ascending: false });
     if (!data?.length) return DEMO.workOrders;
-    return data.map((w) => ({ id: w.id, title: w.title, propertyName: propName(w.properties as PropRef), unit: w.unit ?? "—", category: w.category ?? "—", priority: w.priority as WorkOrderRow["priority"], status: w.status as WorkOrderRow["status"] }));
+    return data.map((w) => ({ id: w.id, title: w.title, propertyName: propName(w.properties as PropRef), unit: w.unit ?? "—", category: w.category ?? "—", priority: w.priority as WorkOrderRow["priority"], status: w.status as WorkOrderRow["status"], channels: w.channels ?? [], noticeStatus: (w.notice_status ?? "none") as WorkOrderRow["noticeStatus"] }));
   } catch { return DEMO.workOrders; }
 }
 
@@ -121,8 +131,8 @@ const DEMO = {
     { id: "r4", unit: "120", name: "David Thompson", propertyName: "WoodGreen — East York", language: "English", status: "moved_out" },
   ] as ResidentRow[],
   workOrders: [
-    { id: "w1", title: "Leaking faucet — unit 204", propertyName: "WoodGreen — Danforth", unit: "204", category: "Plumbing", priority: "high", status: "open" },
-    { id: "w2", title: "Hallway light out", propertyName: "WoodGreen — East York", unit: "—", category: "Electrical", priority: "medium", status: "in_progress" },
+    { id: "w1", title: "Leaking faucet — unit 204", propertyName: "WoodGreen — Danforth", unit: "204", category: "Plumbing", priority: "high", status: "open", channels: ["email","sms"], noticeStatus: "published" },
+    { id: "w2", title: "Hallway light out", propertyName: "WoodGreen — East York", unit: "—", category: "Electrical", priority: "medium", status: "in_progress", channels: [], noticeStatus: "none" },
   ] as WorkOrderRow[],
   templates: [
     { id: "t1", name: "Water Shutoff", category: "Maintenance", channels: ["display","sms","email"], mandatory: true, version: "1.8" },

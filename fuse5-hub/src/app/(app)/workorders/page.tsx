@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { getWorkOrders, type WorkOrderRow } from "@/lib/queries";
+import { getWorkOrders, getProperties, type WorkOrderRow } from "@/lib/queries";
+import { NewWorkOrder } from "./new-work-order";
+
+const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
+const NOTICE_BADGE: Record<WorkOrderRow["noticeStatus"], string> = { none: "", draft: "f5-badge warn", published: "f5-badge ok" };
+const NOTICE_LABEL: Record<WorkOrderRow["noticeStatus"], string> = { none: "—", draft: "Draft", published: "Published" };
 
 // Work Orders — KPI strip + filter chips + work-order table. Live data.
 type Filter = "all" | "open" | "urgent";
@@ -38,7 +43,7 @@ export default async function WorkOrdersPage({
   const rawFilter = sp.filter;
   const active: Filter = rawFilter === "open" || rawFilter === "urgent" ? rawFilter : "all";
 
-  const workOrders = await getWorkOrders();
+  const [workOrders, properties] = await Promise.all([getWorkOrders(), getProperties()]);
 
   const open = workOrders.filter((w) => w.status === "open").length;
   const inProgress = workOrders.filter((w) => w.status === "in_progress").length;
@@ -53,8 +58,13 @@ export default async function WorkOrdersPage({
 
   return (
     <main className="f5-content">
-      <div className="f5-page-title">Work Orders</div>
-      <div className="f5-page-sub">Maintenance requests across all properties.</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div className="f5-page-title">Work Orders &amp; Notices</div>
+          <div className="f5-page-sub">Maintenance requests and AI-generated tenant notices.</div>
+        </div>
+        <NewWorkOrder properties={properties} />
+      </div>
 
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>
         <div className="f5-card"><div className="f5-kpi-label">Open</div><div className="f5-kpi-value f5-warn">{open}</div><div className="f5-kpi-sub">awaiting assignment</div></div>
@@ -83,6 +93,8 @@ export default async function WorkOrdersPage({
               <th>Title</th>
               <th>Property / Unit</th>
               <th>Category</th>
+              <th>Channels</th>
+              <th>Notice</th>
               <th>Priority</th>
               <th>Status</th>
             </tr>
@@ -93,6 +105,8 @@ export default async function WorkOrdersPage({
                 <td style={{ color: "var(--f5-text)" }}>{w.title}</td>
                 <td>{w.propertyName} · {w.unit}</td>
                 <td>{w.category}</td>
+                <td style={{ fontSize: 15, letterSpacing: 2 }}>{w.channels.map((c) => CHANNEL_ICON[c] ?? "•").join(" ") || "—"}</td>
+                <td>{w.noticeStatus === "none" ? <span style={{ color: "var(--f5-text-dim)" }}>—</span> : <span className={NOTICE_BADGE[w.noticeStatus]}>{NOTICE_LABEL[w.noticeStatus]}</span>}</td>
                 <td><span className={PRIORITY_BADGE[w.priority]}>{w.priority}</span></td>
                 <td><span className={STATUS_BADGE[w.status]}>{STATUS_LABEL[w.status]}</span></td>
               </tr>
