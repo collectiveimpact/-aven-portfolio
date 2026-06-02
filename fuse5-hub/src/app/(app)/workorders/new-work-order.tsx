@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createWorkOrderWithDrafts, type CreateWOResult } from "./actions";
 import type { PropertyOption } from "@/lib/queries";
 
@@ -120,7 +121,10 @@ export function NewWorkOrder({ properties }: { properties: PropertyOption[] }) {
               {pending ? "Generating…" : "Create & Generate Drafts"}
             </button>
           ) : (
-            <button className="f5-btn primary" onClick={close}>Done</button>
+            <>
+              {result.woId && <Link href={`/workorders/${result.woId}`} className="f5-btn primary">Open in Studio →</Link>}
+              <button className="f5-btn" onClick={close}>Done</button>
+            </>
           )}
           <button className="f5-btn" onClick={close}>Cancel</button>
         </div>

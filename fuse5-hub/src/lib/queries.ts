@@ -314,6 +314,53 @@ export async function getEmergencyLog(): Promise<EmergencyLogRow[]> {
   } catch { return DEMO2.emergencyLog; }
 }
 
+export interface NoticeFactsRow { operationTitle: string; contactInfo: string; dateText: string; affected: string; cta: string; imageCategory: string }
+export interface NoticeDraft { channel: string; subject: string; body: string }
+export interface NoticeSchedule { start: string; end: string; mode: string; sameAll: boolean }
+export interface WorkOrderDetail {
+  id: string; title: string; category: string; status: string; propertyId: string | null; propertyName: string;
+  channels: string[]; noticeStatus: "none" | "draft" | "published";
+  notice: NoticeFactsRow; drafts: NoticeDraft[]; schedule: NoticeSchedule;
+}
+export interface RecipientSummary { total: number; email: number; sms: number; sample: { name: string; channel: "email" | "sms" }[] }
+
+const EMPTY_NOTICE: NoticeFactsRow = { operationTitle: "", contactInfo: "", dateText: "", affected: "", cta: "", imageCategory: "default" };
+const EMPTY_SCHEDULE: NoticeSchedule = { start: "", end: "", mode: "once", sameAll: true };
+
+export async function getWorkOrder(id: string): Promise<WorkOrderDetail | null> {
+  const s = await db();
+  if (!s) return null;
+  try {
+    const { data } = await s.from("work_orders").select("id,title,category,status,property_id,channels,notice_status,notice,drafts,schedule,properties(name)").eq("id", id).maybeSingle();
+    if (!data) return null;
+    return {
+      id: data.id, title: data.title, category: data.category ?? "Notice", status: data.status,
+      propertyId: data.property_id, propertyName: propName(data.properties as PropRef),
+      channels: data.channels ?? [], noticeStatus: (data.notice_status ?? "none") as WorkOrderDetail["noticeStatus"],
+      notice: { ...EMPTY_NOTICE, ...(data.notice ?? {}) },
+      drafts: (data.drafts ?? []) as NoticeDraft[],
+      schedule: { ...EMPTY_SCHEDULE, ...(data.schedule ?? {}) },
+    };
+  } catch { return null; }
+}
+
+export async function getRecipientSummary(propertyId: string | null): Promise<RecipientSummary> {
+  const s = await db();
+  if (!s || !propertyId) return { total: 0, email: 0, sms: 0, sample: [] };
+  try {
+    const { data } = await s.from("residents").select("name,email,phone").eq("property_id", propertyId).eq("status", "active");
+    const rows = data ?? [];
+    let email = 0, sms = 0;
+    const sample: RecipientSummary["sample"] = [];
+    for (const r of rows) {
+      const ch: "email" | "sms" = r.email ? "email" : "sms";
+      if (ch === "email") email++; else sms++;
+      if (sample.length < 5) sample.push({ name: r.name, channel: ch });
+    }
+    return { total: rows.length, email, sms, sample };
+  } catch { return { total: 0, email: 0, sms: 0, sample: [] }; }
+}
+
 const DEMO2 = {
   members: [
     { id: "m1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },

@@ -97,6 +97,7 @@ export default async function WorkOrdersPage({
               <th>Notice</th>
               <th>Priority</th>
               <th>Status</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -109,6 +110,7 @@ export default async function WorkOrdersPage({
                 <td>{w.noticeStatus === "none" ? <span style={{ color: "var(--f5-text-dim)" }}>—</span> : <span className={NOTICE_BADGE[w.noticeStatus]}>{NOTICE_LABEL[w.noticeStatus]}</span>}</td>
                 <td><span className={PRIORITY_BADGE[w.priority]}>{w.priority}</span></td>
                 <td><span className={STATUS_BADGE[w.status]}>{STATUS_LABEL[w.status]}</span></td>
+                <td><Link href={`/workorders/${w.id}`} className="f5-btn" style={{ padding: "5px 12px", fontSize: 12 }}>Open</Link></td>
               </tr>
             ))}
           </tbody>
