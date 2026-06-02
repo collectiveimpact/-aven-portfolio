@@ -262,6 +262,30 @@ export async function getMessageStats(): Promise<MessageStats> {
   } catch { return DEMO2.messageStats; }
 }
 
+export interface InboundRow { id: string; sender: string; unit: string; channel: string; snippet: string; when: string; status: "unread" | "awaiting" | "resolved" }
+
+export async function getInbox(): Promise<InboundRow[]> {
+  const s = await db();
+  if (!s) return DEMO2.inbox;
+  try {
+    const { data } = await s.from("inbound_messages").select("id,channel,body,status,received_at,residents(name,unit)").order("received_at", { ascending: false });
+    if (!data?.length) return DEMO2.inbox;
+    return data.map((m) => {
+      const r = m.residents as { name: string; unit: string } | { name: string; unit: string }[] | null;
+      const res = Array.isArray(r) ? r[0] : r;
+      return {
+        id: m.id,
+        sender: res?.name ?? "Unknown resident",
+        unit: res?.unit ?? "—",
+        channel: m.channel,
+        snippet: m.body,
+        when: relTime(m.received_at),
+        status: (m.status === "open" ? "unread" : m.status) as InboundRow["status"],
+      };
+    });
+  } catch { return DEMO2.inbox; }
+}
+
 const DEMO2 = {
   members: [
     { id: "m1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },
@@ -286,4 +310,9 @@ const DEMO2 = {
     sent: 1, recipients: 24, delivered: 24, deliveryRatePct: 100,
     byChannel: [{ channel: "email", sent: 24, delivered: 24 }], source: "demo",
   } as MessageStats,
+  inbox: [
+    { id: "i1", sender: "Amara Johnson", unit: "204", channel: "sms", snippet: "Is the water back on yet? Unit 204.", when: "3m ago", status: "unread" },
+    { id: "i2", sender: "Liam Chen", unit: "207", channel: "email", snippet: "Will the laundry room be affected?", when: "11m ago", status: "awaiting" },
+    { id: "i3", sender: "Sofia Rossi", unit: "112", channel: "whatsapp", snippet: "My fob stopped working at the Danforth entrance.", when: "26m ago", status: "unread" },
+  ] as InboundRow[],
 };
