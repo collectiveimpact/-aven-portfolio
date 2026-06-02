@@ -3,12 +3,12 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { updateWoFieldSetting } from "../actions";
-import type { ResolvedField } from "@/lib/wo-fields";
+import { NOTICE_TYPES, type ResolvedField } from "@/lib/wo-fields";
 
 type Mode = "required" | "optional" | "hidden";
 const modeOf = (f: ResolvedField): Mode => (!f.enabled ? "hidden" : f.required ? "required" : "optional");
 
-export function FieldConfig({ fields: initial }: { fields: ResolvedField[] }) {
+export function FieldConfig({ fields: initial, noticeType }: { fields: ResolvedField[]; noticeType: string }) {
   const [fields, setFields] = useState(initial);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState("");
@@ -18,7 +18,7 @@ export function FieldConfig({ fields: initial }: { fields: ResolvedField[] }) {
     const required = mode === "required";
     setFields((fs) => fs.map((f) => (f.key === key ? { ...f, enabled, required } : f)));
     startTransition(async () => {
-      const r = await updateWoFieldSetting(key, enabled, required);
+      const r = await updateWoFieldSetting(noticeType, key, enabled, required);
       setMsg(r.ok ? "Saved." : r.error ?? "Error");
     });
   }
@@ -31,6 +31,13 @@ export function FieldConfig({ fields: initial }: { fields: ResolvedField[] }) {
           <div className="f5-page-sub">Tailor the work-order / notice form for this client. Mandatory fields are locked on.</div>
         </div>
         <Link href="/workorders" className="f5-btn">← Back</Link>
+      </div>
+
+      <div className="f5-section-title">Notice type</div>
+      <div className="f5-chips">
+        {NOTICE_TYPES.map((t) => (
+          <Link key={t.key} href={`/workorders/fields?type=${t.key}`} className={`f5-chip${noticeType === t.key ? " active" : ""}`}>{t.label}</Link>
+        ))}
       </div>
 
       {msg && <div className="f5-badge ok" style={{ display: "inline-block", marginTop: 12 }}>{msg}{pending ? "…" : ""}</div>}

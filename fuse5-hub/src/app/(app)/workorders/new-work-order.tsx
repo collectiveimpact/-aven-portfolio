@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createWorkOrderWithDrafts, type CreateWOResult } from "./actions";
 import type { PropertyOption } from "@/lib/queries";
-import type { ResolvedField } from "@/lib/wo-fields";
+import { NOTICE_TYPES, type ResolvedField } from "@/lib/wo-fields";
 
 const IMAGE_CATEGORIES = ["default", "water", "fire", "elevator", "heat", "pest"];
 
-export function NewWorkOrder({ properties, fields }: { properties: PropertyOption[]; fields: ResolvedField[] }) {
+export function NewWorkOrder({ properties, fieldsByType, segments }: {
+  properties: PropertyOption[];
+  fieldsByType: Record<string, ResolvedField[]>;
+  segments: { id: string; name: string; size: number }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -20,8 +24,12 @@ export function NewWorkOrder({ properties, fields }: { properties: PropertyOptio
   const [category, setCategory] = useState("Maintenance");
   const [channels, setChannels] = useState<string[]>(["email", "sms", "display"]);
   const [vals, setVals] = useState<Record<string, string>>({ imageCategory: "default" });
+  const [noticeType, setNoticeType] = useState("general");
+  const [segIds, setSegIds] = useState<string[]>([]);
 
+  const fields = fieldsByType[noticeType] ?? fieldsByType["general"] ?? [];
   const noticeFields = fields.filter((f) => f.group === "notice" && f.enabled);
+  const toggleSeg = (id: string) => setSegIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const categoryField = fields.find((f) => f.key === "category");
   const setVal = (k: string, v: string) => setVals((p) => ({ ...p, [k]: v }));
   const toggle = (c: string) => setChannels((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]));
@@ -35,7 +43,7 @@ export function NewWorkOrder({ properties, fields }: { properties: PropertyOptio
 
     startTransition(async () => {
       const r = await createWorkOrderWithDrafts({
-        propertyId, title, category, channels,
+        propertyId, title, category, channels, noticeType, targetSegmentIds: segIds,
         facts: {
           operationTitle: vals.operationTitle || title,
           dateTime: vals.dateText ?? "",
@@ -58,6 +66,11 @@ export function NewWorkOrder({ properties, fields }: { properties: PropertyOptio
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={close}>
       <div className="f5-card" style={{ width: 620, maxWidth: "96vw" }} onClick={(e) => e.stopPropagation()}>
         <div className="f5-section-title" style={{ margin: 0 }}>New Work Order</div>
+
+        <label className="f5-label">Notice Type</label>
+        <select className="f5-select" value={noticeType} onChange={(e) => setNoticeType(e.target.value)}>
+          {NOTICE_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+        </select>
 
         <div className="f5-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}>
           <div>
@@ -99,6 +112,14 @@ export function NewWorkOrder({ properties, fields }: { properties: PropertyOptio
         <div className="f5-chips">
           {[["email", "Email"], ["sms", "SMS"], ["display", "Signage"]].map(([k, l]) => (
             <span key={k} className={`f5-chip${channels.includes(k) ? " active" : ""}`} onClick={() => toggle(k)}>{l}</span>
+          ))}
+        </div>
+
+        <label className="f5-label">Audience — property tenants{segIds.length ? ` + ${segIds.length} segment(s)` : ""}</label>
+        <div className="f5-chips">
+          {segments.length === 0 && <span style={{ fontSize: 12, color: "var(--f5-text-muted)" }}>No saved segments.</span>}
+          {segments.map((s) => (
+            <span key={s.id} className={`f5-chip${segIds.includes(s.id) ? " active" : ""}`} onClick={() => toggleSeg(s.id)}>{s.name} · {s.size}</span>
           ))}
         </div>
 

@@ -3,12 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import type { F5Role } from "@/lib/rbac";
 import { resolveFields, type ResolvedField, type FieldOverride } from "@/lib/wo-fields";
 
-/** Per-client work-order field config (registry merged with the org's overrides). */
-export async function getWoFieldConfig(): Promise<ResolvedField[]> {
+/** Per-client, per-notice-type field config (registry merged with the org's overrides). */
+export async function getWoFieldConfig(noticeType = "general"): Promise<ResolvedField[]> {
   const s = await db();
   if (!s) return resolveFields({});
   try {
-    const { data } = await s.from("wo_field_settings").select("field_key,enabled,required");
+    const { data } = await s.from("wo_field_settings").select("field_key,enabled,required").eq("notice_type", noticeType);
     const ov: Record<string, FieldOverride> = {};
     for (const r of data ?? []) ov[r.field_key] = { enabled: r.enabled, required: r.required };
     return resolveFields(ov);
@@ -361,12 +361,14 @@ export async function getRecipientSummary(propertyId: string | null): Promise<Re
   const s = await db();
   if (!s || !propertyId) return { total: 0, email: 0, sms: 0, sample: [] };
   try {
-    const { data } = await s.from("residents").select("name,email,phone").eq("property_id", propertyId).eq("status", "active");
+    const { data } = await s.from("residents").select("name,email,phone,preferred_channel").eq("property_id", propertyId).eq("status", "active");
     const rows = data ?? [];
     let email = 0, sms = 0;
     const sample: RecipientSummary["sample"] = [];
     for (const r of rows) {
-      const ch: "email" | "sms" = r.email ? "email" : "sms";
+      // honor explicit preferred channel; else derive (email if present, else sms)
+      const pref = r.preferred_channel as string | null;
+      const ch: "email" | "sms" = pref === "email" ? "email" : pref === "sms" || pref === "whatsapp" ? "sms" : r.email ? "email" : "sms";
       if (ch === "email") email++; else sms++;
       if (sample.length < 5) sample.push({ name: r.name, channel: ch });
     }

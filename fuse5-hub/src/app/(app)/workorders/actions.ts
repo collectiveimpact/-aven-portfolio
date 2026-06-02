@@ -8,18 +8,18 @@ import { isSystemField } from "@/lib/wo-fields";
 
 // Admin: set a field Required/Optional/Hidden for this client. System
 // (minimum-mandatory) fields are locked and rejected here.
-export async function updateWoFieldSetting(key: string, enabled: boolean, required: boolean): Promise<{ ok: boolean; error?: string }> {
+export async function updateWoFieldSetting(noticeType: string, key: string, enabled: boolean, required: boolean): Promise<{ ok: boolean; error?: string }> {
   if (isSystemField(key)) return { ok: false, error: "Mandatory system field — cannot change." };
   const supabase = await createClient();
   if (!supabase) return { ok: false, error: "No backend." };
   const me = await getCurrentUser();
   if (!me?.orgId) return { ok: false, error: "No organization." };
   const { error } = await supabase.from("wo_field_settings").upsert(
-    { org_id: me.orgId, field_key: key, enabled, required: enabled && required },
-    { onConflict: "org_id,field_key" },
+    { org_id: me.orgId, notice_type: noticeType, field_key: key, enabled, required: enabled && required },
+    { onConflict: "org_id,notice_type,field_key" },
   );
   if (error) return { ok: false, error: error.message };
-  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "WO Field Config", detail: `${key}: ${enabled ? (required ? "required" : "optional") : "hidden"}` });
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "WO Field Config", detail: `${noticeType}/${key}: ${enabled ? (required ? "required" : "optional") : "hidden"}` });
   return { ok: true };
 }
 
@@ -29,6 +29,8 @@ export interface CreateWOInput {
   category: string;
   channels: string[];
   facts: NoticeFacts;
+  noticeType?: string;
+  targetSegmentIds?: string[];
 }
 export interface CreateWOResult { ok: boolean; woId?: string; drafts?: Draft[]; mode?: "live" | "stub"; error?: string }
 
@@ -50,6 +52,8 @@ export async function createWorkOrderWithDrafts(input: CreateWOInput): Promise<C
     org_id: me.orgId, property_id: input.propertyId || null, unit: input.facts.affected || null,
     title: input.title, category: input.category || "Notice", priority: "medium", status: "open",
     channels: input.channels, drafts, notice_status: "draft",
+    notice_type: input.noticeType ?? "general",
+    target: { scope: (input.targetSegmentIds?.length ? "both" : "property"), segmentIds: input.targetSegmentIds ?? [] },
     notice: { operationTitle: input.facts.operationTitle, contactInfo: input.facts.contactInfo, dateText: input.facts.dateTime, affected: input.facts.affected, cta: input.facts.callToAction, imageCategory: "default" } satisfies NoticeFactsRow,
   }).select("id").single();
   if (error || !data) return { ok: false, error: error?.message ?? "Could not create work order." };

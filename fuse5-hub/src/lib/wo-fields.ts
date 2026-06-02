@@ -3,6 +3,16 @@
 // always shown, always required, cannot be disabled. Every other field is
 // configurable per client (org): Required / Optional / Hidden.
 
+// Notice types — field config and the Add form vary by type.
+export const NOTICE_TYPES: { key: string; label: string }[] = [
+  { key: "general", label: "General Notice" },
+  { key: "emergency", label: "Emergency" },
+  { key: "maintenance", label: "Maintenance" },
+  { key: "newsletter", label: "Newsletter" },
+  { key: "inspection", label: "Inspection" },
+];
+export const noticeTypeLabel = (k: string) => NOTICE_TYPES.find((t) => t.key === k)?.label ?? k;
+
 export type WoFieldType = "text" | "textarea" | "date" | "select";
 
 export interface WoFieldDef {

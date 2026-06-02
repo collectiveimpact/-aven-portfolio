@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getWorkOrders, getProperties, getWoFieldConfig, type WorkOrderRow } from "@/lib/queries";
+import { getWorkOrders, getProperties, getWoFieldConfig, getSegments, type WorkOrderRow } from "@/lib/queries";
+import { NOTICE_TYPES } from "@/lib/wo-fields";
 import { NewWorkOrder } from "./new-work-order";
 
 const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
@@ -43,7 +44,10 @@ export default async function WorkOrdersPage({
   const rawFilter = sp.filter;
   const active: Filter = rawFilter === "open" || rawFilter === "urgent" ? rawFilter : "all";
 
-  const [workOrders, properties, fields] = await Promise.all([getWorkOrders(), getProperties(), getWoFieldConfig()]);
+  const [workOrders, properties, segments] = await Promise.all([getWorkOrders(), getProperties(), getSegments()]);
+  const typeConfigs = await Promise.all(NOTICE_TYPES.map((t) => getWoFieldConfig(t.key)));
+  const fieldsByType = Object.fromEntries(NOTICE_TYPES.map((t, i) => [t.key, typeConfigs[i]]));
+  const segOptions = segments.map((s) => ({ id: s.id, name: s.name, size: s.size }));
 
   const open = workOrders.filter((w) => w.status === "open").length;
   const inProgress = workOrders.filter((w) => w.status === "in_progress").length;
@@ -65,7 +69,7 @@ export default async function WorkOrdersPage({
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/workorders/fields" className="f5-btn">⚙ Configure fields</Link>
-          <NewWorkOrder properties={properties} fields={fields} />
+          <NewWorkOrder properties={properties} fieldsByType={fieldsByType} segments={segOptions} />
         </div>
       </div>
 
