@@ -1,10 +1,16 @@
 import { Sidebar } from "@/components/sidebar";
 import { hasBackend } from "@/lib/env";
 import { DEMO_ORG } from "@/lib/data";
+import { getCurrentUser } from "@/lib/auth";
+import { ROLE_LABELS } from "@/lib/rbac";
+import { signOut } from "@/app/(auth)/login/actions";
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const user = hasBackend ? await getCurrentUser() : null;
+  const orgName = user?.orgName ?? DEMO_ORG;
+
   return (
     <div className="f5-shell">
       <Sidebar />
@@ -16,9 +22,17 @@ export default function AppLayout({
         )}
         <header className="f5-topbar">
           <h1>fuse<b>5</b> Hub</h1>
-          <span className="f5-pill">{DEMO_ORG}</span>
+          <span className="f5-pill">{orgName}</span>
           <span className="f5-pill">All Properties (31)</span>
           <span className="f5-live" style={{ marginLeft: "auto" }}>LIVE</span>
+          {user ? (
+            <>
+              <span className="f5-pill">{user.fullName || user.email}{user.role ? ` · ${ROLE_LABELS[user.role]}` : ""}</span>
+              <form action={signOut}>
+                <button type="submit" className="f5-btn" style={{ padding: "6px 12px" }}>Logout</button>
+              </form>
+            </>
+          ) : null}
         </header>
         {children}
       </div>
