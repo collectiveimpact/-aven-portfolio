@@ -1,9 +1,5 @@
-// Operations Dashboard — live ops KPIs, weekly trend, activity feed. Demo data.
-interface OpsEvent {
-  tone: "ok" | "warn" | "alert";
-  text: string;
-  when: string;
-}
+// Operations Dashboard — live ops KPIs, weekly trend, activity feed.
+import { getDashboardStats } from "@/lib/queries";
 
 const TREND: { label: string; value: number }[] = [
   { label: "Mon", value: 1240 },
@@ -15,23 +11,14 @@ const TREND: { label: string; value: number }[] = [
   { label: "Sun", value: 760 },
 ];
 
-const FEED: OpsEvent[] = [
-  { tone: "ok", text: "June Rent Reminder delivered to 2,790 residents (98.0% delivery).", when: "08:12 AM" },
-  { tone: "alert", text: "Display “East Lobby” went offline at WoodGreen East York.", when: "07:48 AM" },
-  { tone: "warn", text: "SMS delivery rate dipped to 87% — carrier flagged.", when: "07:30 AM" },
-  { tone: "ok", text: "Work order WO-1033 resolved — bathroom exhaust fan repaired.", when: "Yesterday" },
-  { tone: "ok", text: "Resident Satisfaction Survey scheduled for Fri Jun 6.", when: "Yesterday" },
-  { tone: "warn", text: "Compliance inspection due in 6 days — Hamilton Kiwanis Building B.", when: "Yesterday" },
-  { tone: "ok", text: "Welcome Loop content refreshed across 9 lobby displays.", when: "2 days ago" },
-];
-
-const TONE_COLOR: Record<OpsEvent["tone"], string> = {
+const TONE_COLOR: Record<"ok" | "warn" | "alert", string> = {
   ok: "var(--f5-green)",
   warn: "var(--f5-amber)",
   alert: "var(--f5-red)",
 };
 
 export default async function DashboardPage() {
+  const stats = await getDashboardStats();
   const maxTrend = Math.max(...TREND.map((t) => t.value), 1);
 
   return (
@@ -45,10 +32,10 @@ export default async function DashboardPage() {
       </div>
 
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>
-        <div className="f5-card"><div className="f5-kpi-label">Messages Today</div><div className="f5-kpi-value">9,840</div><div className="f5-kpi-sub"><span className="f5-up">▲ 12%</span> vs yesterday</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Active Broadcasts</div><div className="f5-kpi-value">3</div><div className="f5-kpi-sub">2 scheduled, 1 sending</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Messages Today</div><div className="f5-kpi-value">{stats.messagesSent.toLocaleString()}</div><div className="f5-kpi-sub"><span className="f5-up">▲ 12%</span> vs yesterday</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Active Broadcasts</div><div className="f5-kpi-value">{stats.activeBroadcasts}</div><div className="f5-kpi-sub">scheduled &amp; sending</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Response Rate</div><div className="f5-kpi-value">62.4%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 4.1%</span> 7-day avg</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Open Work Orders</div><div className="f5-kpi-value f5-warn">47</div><div className="f5-kpi-sub"><span className="f5-down">7</span> overdue</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Open Work Orders</div><div className="f5-kpi-value f5-warn">{stats.openWorkOrders}</div><div className="f5-kpi-sub"><span className="f5-down">7</span> overdue</div></div>
       </div>
 
       <div className="f5-grid" style={{ gridTemplateColumns: "1fr", marginTop: 18 }}>
@@ -66,17 +53,21 @@ export default async function DashboardPage() {
 
       <div className="f5-section-title">Activity Feed</div>
       <div className="f5-card">
-        {FEED.map((e, i) => (
+        {stats.feed.map((e, i) => (
           <div key={i} className="f5-feed-row">
             <span className="f5-dot" style={{ background: TONE_COLOR[e.tone] }} />
-            <div style={{ flex: 1 }}>{e.text}</div>
+            <div style={{ flex: 1 }}>
+              <span style={{ color: "var(--f5-text)", fontWeight: 600 }}>{e.action}</span>
+              {e.detail ? ` — ${e.detail}` : ""}
+              <span style={{ color: "var(--f5-text-dim)" }}> · {e.actor}</span>
+            </div>
             <div style={{ color: "var(--f5-text-dim)", fontSize: 12 }}>{e.when}</div>
           </div>
         ))}
       </div>
 
       <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>
-        Data source: demo seed
+        Data source: {stats.source === "live" ? "live" : "demo seed"}
       </div>
     </main>
   );

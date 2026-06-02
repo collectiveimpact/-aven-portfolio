@@ -74,13 +74,15 @@ export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroa
 
     const html = `<div>${input.body.replace(/\n/g, "<br/>")}</div>`;
     for (const r of residents ?? []) {
-      await supabase.from("message_recipients").insert({
-        org_id: orgId, message_id: msg.id, resident_id: r.id, channel: "email", status: "queued",
-      });
+      let status: "queued" | "delivered" | "bounced" = "queued";
       if (r.email) {
         const res = await sendEmail({ to: r.email, subject: input.subject, html });
+        status = res.ok ? "delivered" : "bounced";
         if (res.ok) sent += 1;
       }
+      await supabase.from("message_recipients").insert({
+        org_id: orgId, message_id: msg.id, resident_id: r.id, channel: "email", status,
+      });
     }
   } else {
     sent = input.audienceCount;

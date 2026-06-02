@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { F5Role } from "@/lib/rbac";
 
 // Shared server query layer. Each getter reads LIVE from Supabase (RLS-scoped to
 // the signed-in user's org) when the backend is configured, else returns a demo
@@ -148,4 +149,141 @@ const DEMO = {
   calendar: [
     { id: "e1", title: "June Newsletter", day: "2026-06-05", channel: "email", status: "scheduled" },
   ] as CalendarRow[],
+};
+
+// ===========================================================================
+// Admin / analytics / dashboard aggregates
+// ===========================================================================
+
+export interface MemberRow { id: string; fullName: string; email: string; role: F5Role; status: "active" | "invited" | "suspended" }
+export interface AuditRow { id: string; actor: string; action: string; detail: string; when: string }
+export interface SubscriptionInfo { plan: string; seats: number; usedSeats: number; status: string; cycleSpend: string }
+export interface DashboardStats {
+  messagesSent: number; activeBroadcasts: number; openWorkOrders: number; residents: number; displaysOnline: number;
+  feed: { actor: string; action: string; detail: string; when: string; tone: "ok" | "warn" | "alert" }[];
+  source: "live" | "demo";
+}
+export interface MessageStats {
+  sent: number; recipients: number; delivered: number; deliveryRatePct: number;
+  byChannel: { channel: string; sent: number; delivered: number }[]; source: "live" | "demo";
+}
+
+function relTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
+export async function getMembers(): Promise<MemberRow[]> {
+  const s = await db();
+  if (!s) return DEMO2.members;
+  try {
+    const { data: members } = await s.from("org_members").select("id,user_id,role");
+    if (!members?.length) return DEMO2.members;
+    const ids = members.map((m) => m.user_id);
+    const { data: profiles } = await s.from("profiles").select("id,full_name,email").in("id", ids);
+    const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    return members.map((m) => {
+      const p = pmap.get(m.user_id);
+      return { id: m.id, fullName: p?.full_name || "—", email: p?.email || "—", role: m.role as F5Role, status: "active" as const };
+    });
+  } catch { return DEMO2.members; }
+}
+
+export async function getAuditLog(): Promise<AuditRow[]> {
+  const s = await db();
+  if (!s) return DEMO2.audit;
+  try {
+    const { data } = await s.from("audit_log").select("id,actor_id,action,detail,created_at").order("created_at", { ascending: false }).limit(20);
+    if (!data?.length) return DEMO2.audit;
+    const ids = [...new Set(data.map((a) => a.actor_id).filter(Boolean))] as string[];
+    const { data: profiles } = ids.length ? await s.from("profiles").select("id,full_name").in("id", ids) : { data: [] };
+    const pmap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+    return data.map((a) => ({ id: String(a.id), actor: (a.actor_id && pmap.get(a.actor_id)) || "System", action: a.action, detail: a.detail ?? "", when: relTime(a.created_at) }));
+  } catch { return DEMO2.audit; }
+}
+
+export async function getSubscription(): Promise<SubscriptionInfo> {
+  const s = await db();
+  if (!s) return DEMO2.subscription;
+  try {
+    const { data } = await s.from("subscriptions").select("plan,seats,status").maybeSingle();
+    if (!data) return DEMO2.subscription;
+    return { plan: data.plan, seats: data.seats, usedSeats: DEMO2.subscription.usedSeats, status: data.status, cycleSpend: DEMO2.subscription.cycleSpend };
+  } catch { return DEMO2.subscription; }
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const s = await db();
+  if (!s) return DEMO2.dashboard;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [{ count: msgSent }, { count: active }, { count: openWO }, { count: residents }, { count: displaysOnline }] = await Promise.all([
+      s.from("messages").select("id", { count: "exact", head: true }).eq("status", "sent"),
+      s.from("messages").select("id", { count: "exact", head: true }).in("status", ["scheduled", "sending"]),
+      s.from("work_orders").select("id", { count: "exact", head: true }).neq("status", "resolved"),
+      s.from("residents").select("id", { count: "exact", head: true }).eq("status", "active"),
+      s.from("displays").select("id", { count: "exact", head: true }).eq("status", "online"),
+    ]);
+    const { data: audit } = await s.from("audit_log").select("actor_id,action,detail,created_at").order("created_at", { ascending: false }).limit(5);
+    const ids = [...new Set((audit ?? []).map((a) => a.actor_id).filter(Boolean))] as string[];
+    const { data: profiles } = ids.length ? await s.from("profiles").select("id,full_name").in("id", ids) : { data: [] };
+    const pmap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+    const feed = (audit ?? []).map((a) => ({
+      actor: (a.actor_id && pmap.get(a.actor_id)) || "System", action: a.action, detail: a.detail ?? "",
+      when: relTime(a.created_at), tone: a.action.includes("Emergency") ? ("alert" as const) : a.action.includes("Broadcast") ? ("ok" as const) : ("warn" as const),
+    }));
+    void today;
+    return { messagesSent: msgSent ?? 0, activeBroadcasts: active ?? 0, openWorkOrders: openWO ?? 0, residents: residents ?? 0, displaysOnline: displaysOnline ?? 0, feed: feed.length ? feed : DEMO2.dashboard.feed, source: "live" };
+  } catch { return DEMO2.dashboard; }
+}
+
+export async function getMessageStats(): Promise<MessageStats> {
+  const s = await db();
+  if (!s) return DEMO2.messageStats;
+  try {
+    const { count: sent } = await s.from("messages").select("id", { count: "exact", head: true }).eq("status", "sent");
+    const { data: recips } = await s.from("message_recipients").select("channel,status");
+    const total = recips?.length ?? 0;
+    const delivered = (recips ?? []).filter((r) => r.status === "delivered" || r.status === "opened").length;
+    const byChannelMap = new Map<string, { sent: number; delivered: number }>();
+    for (const r of recips ?? []) {
+      const e = byChannelMap.get(r.channel) ?? { sent: 0, delivered: 0 };
+      e.sent += 1; if (r.status === "delivered" || r.status === "opened") e.delivered += 1;
+      byChannelMap.set(r.channel, e);
+    }
+    const byChannel = [...byChannelMap.entries()].map(([channel, v]) => ({ channel, ...v }));
+    if (!total && !sent) return DEMO2.messageStats;
+    return { sent: sent ?? 0, recipients: total, delivered, deliveryRatePct: total ? Math.round((delivered / total) * 1000) / 10 : 0, byChannel: byChannel.length ? byChannel : DEMO2.messageStats.byChannel, source: "live" };
+  } catch { return DEMO2.messageStats; }
+}
+
+const DEMO2 = {
+  members: [
+    { id: "m1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },
+    { id: "m2", fullName: "Tom Bradley", email: "t.bradley@woodgreen.org", role: "property_manager", status: "active" },
+    { id: "m3", fullName: "Maria Rodriguez", email: "m.rodriguez@woodgreen.org", role: "comms_manager", status: "active" },
+    { id: "m4", fullName: "Dana Lee", email: "d.lee@woodgreen.org", role: "viewer", status: "invited" },
+  ] as MemberRow[],
+  audit: [
+    { id: "a1", actor: "Clinton Reid", action: "Broadcast", detail: "Water shutoff via email — 24 recipients", when: "2m ago" },
+    { id: "a2", actor: "Clinton Reid", action: "Login", detail: "Signed in as Org Admin", when: "5m ago" },
+  ] as AuditRow[],
+  subscription: { plan: "Growth", seats: 25, usedSeats: 18, status: "Active", cycleSpend: "$1,240" } as SubscriptionInfo,
+  dashboard: {
+    messagesSent: 1, activeBroadcasts: 2, openWorkOrders: 10, residents: 21, displaysOnline: 10,
+    feed: [
+      { actor: "Clinton Reid", action: "Broadcast", detail: "Water shutoff — 24 recipients", when: "2m ago", tone: "ok" },
+      { actor: "System", action: "Display offline", detail: "Lobby Display 8", when: "1h ago", tone: "alert" },
+    ],
+    source: "demo",
+  } as DashboardStats,
+  messageStats: {
+    sent: 1, recipients: 24, delivered: 24, deliveryRatePct: 100,
+    byChannel: [{ channel: "email", sent: 24, delivered: 24 }], source: "demo",
+  } as MessageStats,
 };
