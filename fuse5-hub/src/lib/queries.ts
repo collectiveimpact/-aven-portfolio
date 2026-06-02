@@ -1,6 +1,19 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { F5Role } from "@/lib/rbac";
+import { resolveFields, type ResolvedField, type FieldOverride } from "@/lib/wo-fields";
+
+/** Per-client work-order field config (registry merged with the org's overrides). */
+export async function getWoFieldConfig(): Promise<ResolvedField[]> {
+  const s = await db();
+  if (!s) return resolveFields({});
+  try {
+    const { data } = await s.from("wo_field_settings").select("field_key,enabled,required");
+    const ov: Record<string, FieldOverride> = {};
+    for (const r of data ?? []) ov[r.field_key] = { enabled: r.enabled, required: r.required };
+    return resolveFields(ov);
+  } catch { return resolveFields({}); }
+}
 
 // Shared server query layer. Each getter reads LIVE from Supabase (RLS-scoped to
 // the signed-in user's org) when the backend is configured, else returns a demo

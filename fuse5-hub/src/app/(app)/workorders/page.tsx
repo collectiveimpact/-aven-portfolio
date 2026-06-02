@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getWorkOrders, getProperties, type WorkOrderRow } from "@/lib/queries";
+import { getWorkOrders, getProperties, getWoFieldConfig, type WorkOrderRow } from "@/lib/queries";
 import { NewWorkOrder } from "./new-work-order";
 
 const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
@@ -43,7 +43,7 @@ export default async function WorkOrdersPage({
   const rawFilter = sp.filter;
   const active: Filter = rawFilter === "open" || rawFilter === "urgent" ? rawFilter : "all";
 
-  const [workOrders, properties] = await Promise.all([getWorkOrders(), getProperties()]);
+  const [workOrders, properties, fields] = await Promise.all([getWorkOrders(), getProperties(), getWoFieldConfig()]);
 
   const open = workOrders.filter((w) => w.status === "open").length;
   const inProgress = workOrders.filter((w) => w.status === "in_progress").length;
@@ -63,7 +63,10 @@ export default async function WorkOrdersPage({
           <div className="f5-page-title">Work Orders &amp; Notices</div>
           <div className="f5-page-sub">Maintenance requests and AI-generated tenant notices.</div>
         </div>
-        <NewWorkOrder properties={properties} />
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href="/workorders/fields" className="f5-btn">⚙ Configure fields</Link>
+          <NewWorkOrder properties={properties} fields={fields} />
+        </div>
       </div>
 
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>

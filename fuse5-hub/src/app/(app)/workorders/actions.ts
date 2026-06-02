@@ -4,6 +4,24 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { generateDrafts, type NoticeFacts, type Draft } from "@/lib/ai";
 import { sendEmail } from "@/lib/email";
+import { isSystemField } from "@/lib/wo-fields";
+
+// Admin: set a field Required/Optional/Hidden for this client. System
+// (minimum-mandatory) fields are locked and rejected here.
+export async function updateWoFieldSetting(key: string, enabled: boolean, required: boolean): Promise<{ ok: boolean; error?: string }> {
+  if (isSystemField(key)) return { ok: false, error: "Mandatory system field — cannot change." };
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "No backend." };
+  const me = await getCurrentUser();
+  if (!me?.orgId) return { ok: false, error: "No organization." };
+  const { error } = await supabase.from("wo_field_settings").upsert(
+    { org_id: me.orgId, field_key: key, enabled, required: enabled && required },
+    { onConflict: "org_id,field_key" },
+  );
+  if (error) return { ok: false, error: error.message };
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "WO Field Config", detail: `${key}: ${enabled ? (required ? "required" : "optional") : "hidden"}` });
+  return { ok: true };
+}
 
 export interface CreateWOInput {
   propertyId: string;
