@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useActionState } from "react";
 import { signIn, type LoginState } from "./actions";
 
@@ -9,11 +10,11 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
       <div className="f5-card" style={{ width: 360, maxWidth: "90vw", padding: "32px 28px" }}>
-        <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: "-0.5px" }}>
-          fuse<span style={{ color: "var(--f5-teal)" }}>5</span> Hub
+        <div className="f5-logo-chip" style={{ marginBottom: 14 }}>
+          <Image src="/fuse5-logo.png" alt="Fuse5" width={170} height={129} priority style={{ width: "100%", maxWidth: 170, height: "auto" }} />
         </div>
-        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--f5-text-muted)", marginBottom: 18 }}>
-          Tenant Communications
+        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--f5-text-muted)", marginBottom: 18, textAlign: "center" }}>
+          Tenant Communications Hub
         </div>
         <form action={formAction}>
           <label className="f5-label" htmlFor="email">Work email</label>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 type Item = { href: string; label: string; ico: string; badge?: string };
@@ -56,8 +57,10 @@ export function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="f5-sidebar">
-      <div className="f5-brand">fuse<b>5</b> Hub</div>
-      <div className="f5-brand-sub">Tenant Communications</div>
+      <div className="f5-logo-chip" style={{ margin: "2px 4px 6px" }}>
+        <Image src="/fuse5-logo.png" alt="Fuse5" width={150} height={114} priority style={{ width: "100%", maxWidth: 150, height: "auto" }} />
+      </div>
+      <div className="f5-brand-sub" style={{ textAlign: "center" }}>Tenant Communications</div>
       {GROUPS.map((g) => (
         <div key={g.group}>
           <div className="f5-navgroup">{g.group}</div>
