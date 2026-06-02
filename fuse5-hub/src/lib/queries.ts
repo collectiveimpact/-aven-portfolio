@@ -286,6 +286,24 @@ export async function getInbox(): Promise<InboundRow[]> {
   } catch { return DEMO2.inbox; }
 }
 
+export interface EmergencyLogRow { id: string; date: string; type: string; reach: string; status: "sent" | "resolved" | "active" }
+
+export async function getEmergencyLog(): Promise<EmergencyLogRow[]> {
+  const s = await db();
+  if (!s) return DEMO2.emergencyLog;
+  try {
+    const { data } = await s.from("messages").select("id,subject,audience_count,status,created_at").eq("priority", "emergency").order("created_at", { ascending: false }).limit(20);
+    if (!data?.length) return DEMO2.emergencyLog;
+    return data.map((m) => ({
+      id: m.id,
+      date: new Date(m.created_at).toLocaleString("en-CA", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+      type: m.subject,
+      reach: `${(m.audience_count ?? 0).toLocaleString()} residents`,
+      status: (m.status === "sent" ? "sent" : "active") as EmergencyLogRow["status"],
+    }));
+  } catch { return DEMO2.emergencyLog; }
+}
+
 const DEMO2 = {
   members: [
     { id: "m1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },
@@ -315,4 +333,9 @@ const DEMO2 = {
     { id: "i2", sender: "Liam Chen", unit: "207", channel: "email", snippet: "Will the laundry room be affected?", when: "11m ago", status: "awaiting" },
     { id: "i3", sender: "Sofia Rossi", unit: "112", channel: "whatsapp", snippet: "My fob stopped working at the Danforth entrance.", when: "26m ago", status: "unread" },
   ] as InboundRow[],
+  emergencyLog: [
+    { id: "eb-3", date: "May 28, 14:02", type: "Fire Alarm — Tower A", reach: "612 residents", status: "resolved" },
+    { id: "eb-2", date: "May 14, 19:44", type: "Severe Weather Warning", reach: "2,847 residents", status: "sent" },
+    { id: "eb-1", date: "Apr 27, 22:10", type: "Gas Leak Evacuation", reach: "210 residents", status: "resolved" },
+  ] as EmergencyLogRow[],
 };
