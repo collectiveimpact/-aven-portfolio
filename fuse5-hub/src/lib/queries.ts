@@ -327,6 +327,36 @@ export async function getEmergencyLog(): Promise<EmergencyLogRow[]> {
   } catch { return DEMO2.emergencyLog; }
 }
 
+export interface PropertyFull { id: string; name: string; address: string; type: string; units: number; occupied: number; managerName: string; managerEmail: string; managerPhone: string }
+export async function getPropertiesFull(): Promise<PropertyFull[]> {
+  const s = await db();
+  const demo: PropertyFull[] = [
+    { id: "p1", name: "WoodGreen — Danforth", address: "1004 Danforth Ave", type: "residential", units: 142, occupied: 8, managerName: "Tom Bradley", managerEmail: "t.bradley@woodgreen.org", managerPhone: "416-555-2001" },
+    { id: "p2", name: "WoodGreen — East York", address: "850 Coxwell Ave", type: "residential", units: 98, occupied: 8, managerName: "Maria Rodriguez", managerEmail: "m.rodriguez@woodgreen.org", managerPhone: "416-555-2002" },
+  ];
+  if (!s) return demo;
+  try {
+    const { data: props } = await s.from("properties").select("id,name,address,units,type,manager_name,manager_email,manager_phone").order("name");
+    if (!props?.length) return demo;
+    const { data: res } = await s.from("residents").select("property_id").eq("status", "active");
+    const counts = new Map<string, number>();
+    for (const r of res ?? []) if (r.property_id) counts.set(r.property_id, (counts.get(r.property_id) ?? 0) + 1);
+    return props.map((p) => ({ id: p.id, name: p.name, address: p.address ?? "—", type: p.type ?? "residential", units: p.units ?? 0, occupied: counts.get(p.id) ?? 0, managerName: p.manager_name ?? "—", managerEmail: p.manager_email ?? "", managerPhone: p.manager_phone ?? "" }));
+  } catch { return demo; }
+}
+
+export interface OrgSettings { dataResidency: string; collectDeliveryLogs: boolean; collectProofOfPlay: boolean; collectAcknowledgements: boolean; auditReportCadence: string }
+export async function getOrgSettings(): Promise<OrgSettings> {
+  const def: OrgSettings = { dataResidency: "ca-central-1", collectDeliveryLogs: true, collectProofOfPlay: true, collectAcknowledgements: true, auditReportCadence: "monthly" };
+  const s = await db();
+  if (!s) return def;
+  try {
+    const { data } = await s.from("org_settings").select("*").maybeSingle();
+    if (!data) return def;
+    return { dataResidency: data.data_residency, collectDeliveryLogs: data.collect_delivery_logs, collectProofOfPlay: data.collect_proof_of_play, collectAcknowledgements: data.collect_acknowledgements, auditReportCadence: data.audit_report_cadence };
+  } catch { return def; }
+}
+
 export interface NoticeFactsRow { operationTitle: string; contactInfo: string; dateText: string; affected: string; cta: string; imageCategory: string }
 export interface NoticeDraft { channel: string; subject: string; body: string }
 export interface NoticeSchedule { start: string; end: string; mode: string; sameAll: boolean }

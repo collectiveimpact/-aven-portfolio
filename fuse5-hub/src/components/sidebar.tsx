@@ -37,6 +37,7 @@ const GROUPS: { group: string; items: Item[] }[] = [
   {
     group: "Property Ops",
     items: [
+      { href: "/properties", label: "Properties", ico: "🏢" },
       { href: "/workorders", label: "Work Orders", ico: "🔧", badge: "7" },
       { href: "/displays", label: "Displays", ico: "🖥" },
       { href: "/content", label: "Content on Demand", ico: "▶" },
@@ -48,7 +49,8 @@ const GROUPS: { group: string; items: Item[] }[] = [
     items: [
       { href: "/integrations", label: "Integrations", ico: "🔌" },
       { href: "/ai-agents", label: "AI Agents", ico: "✦" },
-      { href: "/admin", label: "Admin", ico: "⚙" },
+      { href: "/admin", label: "Admin", ico: "👤" },
+      { href: "/settings", label: "Settings", ico: "⚙" },
     ],
   },
 ];
