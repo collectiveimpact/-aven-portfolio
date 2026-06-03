@@ -4,6 +4,14 @@ import type { Channel } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
+import { generateText } from "@/lib/ai";
+
+// AI authoring for the Compose door (Content Composer). Live with ANTHROPIC_API_KEY, stub otherwise.
+export async function aiCompose(prompt: string): Promise<{ ok: boolean; text?: string; mode?: "live" | "stub"; error?: string }> {
+  if (!prompt.trim()) return { ok: false, error: "Describe what the message is about." };
+  const r = await generateText(prompt);
+  return { ok: true, text: r.text, mode: r.mode };
+}
 
 export interface SendBroadcastInput {
   subject: string;

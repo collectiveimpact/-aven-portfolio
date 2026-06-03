@@ -327,6 +327,16 @@ export async function getEmergencyLog(): Promise<EmergencyLogRow[]> {
   } catch { return DEMO2.emergencyLog; }
 }
 
+export interface ComposeTemplate { id: string; name: string; channels: string[]; body: string }
+export async function getComposeTemplates(): Promise<ComposeTemplate[]> {
+  const s = await db();
+  if (!s) return [{ id: "t1", name: "Water Shutoff", channels: ["email", "sms"], body: "Water will be shut off {{date}} {{time}}. Please store water in advance." }];
+  try {
+    const { data } = await s.from("templates").select("id,name,channels,body");
+    return (data ?? []).map((t) => ({ id: t.id, name: t.name, channels: t.channels ?? [], body: t.body ?? "" }));
+  } catch { return []; }
+}
+
 export interface PropertyFull { id: string; name: string; address: string; type: string; units: number; occupied: number; managerName: string; managerEmail: string; managerPhone: string }
 export async function getPropertiesFull(): Promise<PropertyFull[]> {
   const s = await db();

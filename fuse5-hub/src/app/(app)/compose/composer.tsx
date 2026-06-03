@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { Channel } from "@/lib/types";
-import { sendBroadcast } from "./actions";
+import type { ComposeTemplate } from "@/lib/queries";
+import { sendBroadcast, aiCompose } from "./actions";
+
+const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "display"]);
 
 type Priority = "normal" | "high" | "emergency";
 type Delivery = "now" | "schedule";
@@ -29,8 +32,10 @@ const SEGMENT_REACH: Record<string, number> = {
 
 const LANGUAGES = ["English", "French", "Spanish", "Mandarin", "Portuguese", "Arabic", "Somali"];
 
-export default function Composer() {
+export default function Composer({ templates }: { templates: ComposeTemplate[] }) {
   const [channels, setChannels] = useState<Channel[]>(["email"]);
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [segments, setSegments] = useState<string[]>(["All Residents"]);
   const [addingSegment, setAddingSegment] = useState(false);
   const [subject, setSubject] = useState("");
@@ -226,6 +231,54 @@ export default function Composer() {
                 ))}
               </select>
             )}
+          </div>
+
+          {/* Authoring blend: template + AI on top of manual */}
+          <div className="f5-card" style={{ background: "var(--f5-surface-2)", marginBottom: 14, padding: 14 }}>
+            <div className="f5-kpi-label" style={{ marginBottom: 8 }}>Start from</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <select
+                className="f5-select"
+                style={{ maxWidth: 230 }}
+                value=""
+                onChange={(e) => {
+                  const t = templates.find((x) => x.id === e.target.value);
+                  if (t) {
+                    setSubject(t.name);
+                    setBody(t.body);
+                    const ch = (t.channels.filter((c) => VALID_CHANNELS.has(c as Channel)) as Channel[]);
+                    if (ch.length) setChannels(ch);
+                  }
+                }}
+              >
+                <option value="">Load a template…</option>
+                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <span style={{ color: "var(--f5-text-dim)", fontSize: 12 }}>or</span>
+              <input
+                className="f5-input"
+                style={{ flex: 1, minWidth: 170 }}
+                placeholder="✨ Describe the message for AI…"
+                value={aiBrief}
+                onChange={(e) => setAiBrief(e.target.value)}
+              />
+              <button
+                type="button"
+                className="f5-btn primary"
+                disabled={aiBusy}
+                onClick={() => {
+                  setAiBusy(true);
+                  startTransition(async () => {
+                    const r = await aiCompose(aiBrief || subject);
+                    if (r.ok && r.text) { setBody(r.text); if (!subject && aiBrief) setSubject(aiBrief); }
+                    else setWarning(r.error ?? "AI generation failed.");
+                    setAiBusy(false);
+                  });
+                }}
+              >
+                {aiBusy ? "Generating…" : "✨ Generate with AI"}
+              </button>
+            </div>
           </div>
 
           <label className="f5-label" htmlFor="subject">Subject</label>

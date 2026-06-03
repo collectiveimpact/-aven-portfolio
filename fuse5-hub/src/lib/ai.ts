@@ -48,6 +48,24 @@ Email: full + courteous. SMS: <=320 chars, no subject. Display: <=140 chars, hea
   }
 }
 
+// Freeform single-message generation for the Compose broadcast door.
+export async function generateText(prompt: string): Promise<{ text: string; mode: "live" | "stub" }> {
+  const stub = `Dear Resident,\n\nWe're writing to let you know about ${prompt.trim()}.\n\n[Add any specifics here — dates, units affected, what to do.]\n\nThank you,\nProperty Management`;
+  if (!hasAI) return { text: stub, mode: "stub" };
+  try {
+    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-6", max_tokens: 600,
+      system: "You are Fuse5's Content Composer for housing-provider tenant communications. Write a clear, courteous, plain-language broadcast message ready to send. No preamble.",
+      messages: [{ role: "user", content: `Write a tenant broadcast message about: ${prompt}` }],
+    });
+    const text = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim();
+    return { text: text || stub, mode: "live" };
+  } catch {
+    return { text: stub, mode: "stub" };
+  }
+}
+
 function stubDraft(channel: Draft["channel"], f: NoticeFacts): Draft {
   if (channel === "sms") {
     return { channel, subject: "", body: `${f.operationTitle}: ${f.dateTime}. Affected: ${f.affected}. ${f.callToAction} Questions: ${f.contactInfo}` };
