@@ -57,7 +57,10 @@ const GROUPS: { group: string; items: Item[] }[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const closeNav = () => document.documentElement.classList.remove("nav-open");
   return (
+    <>
+    <div className="f5-nav-overlay" onClick={closeNav} aria-hidden />
     <aside className="f5-sidebar">
       <div className="f5-logo-chip" style={{ margin: "2px 4px 6px" }}>
         <Image src="/fuse5-logo.png" alt="Fuse5" width={150} height={114} priority style={{ width: "100%", maxWidth: 150, height: "auto" }} />
@@ -69,7 +72,7 @@ export function Sidebar() {
           {g.items.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
-              <Link key={item.href} href={item.href} className={`f5-navitem${active ? " active" : ""}`}>
+              <Link key={item.href} href={item.href} onClick={closeNav} className={`f5-navitem${active ? " active" : ""}`}>
                 <span className="ico">{item.ico}</span>
                 <span>{item.label}</span>
                 {item.badge ? <span className="f5-pill-badge">{item.badge}</span> : null}
@@ -79,5 +82,6 @@ export function Sidebar() {
         </div>
       ))}
     </aside>
+    </>
   );
 }

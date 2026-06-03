@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { MobileNavToggle } from "@/components/mobile-nav-toggle";
 import { hasBackend } from "@/lib/env";
 import { DEMO_ORG } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
@@ -22,6 +23,7 @@ export default async function AppLayout({
           </div>
         )}
         <header className="f5-topbar">
+          <MobileNavToggle />
           <h1>fuse<b>5</b> Hub</h1>
           <span className="f5-pill">{orgName}</span>
           <span className="f5-pill">All Properties (31)</span>
