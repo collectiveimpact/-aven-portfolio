@@ -7,5 +7,9 @@ export const hasBackend = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 // Server-only provider keys (never exposed to the browser).
 export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
 export const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
+export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? "";
+export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN ?? "";
+export const TWILIO_FROM = process.env.TWILIO_FROM ?? "";
 export const hasAI = Boolean(ANTHROPIC_API_KEY);
 export const hasEmail = Boolean(RESEND_API_KEY);
+export const hasSms = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM);

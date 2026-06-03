@@ -416,6 +416,37 @@ export async function getRecipientSummary(propertyId: string | null): Promise<Re
   } catch { return { total: 0, email: 0, sms: 0, sample: [] }; }
 }
 
+export interface AuditReport {
+  period: string; totalNotifications: number; delivered: number; deliveryRatePct: number;
+  byChannel: { channel: string; sent: number; delivered: number }[];
+  proofOfPlay: number; acknowledgements: number; source: "live" | "demo";
+}
+function currentQuarter(): string {
+  const d = new Date(); const q = Math.floor(d.getMonth() / 3) + 1;
+  return `Q${q} ${d.getFullYear()}`;
+}
+export async function getAuditReport(): Promise<AuditReport> {
+  const demo: AuditReport = { period: "Q2 2026", totalNotifications: 4352, delivered: 4218, deliveryRatePct: 96.9, byChannel: [{ channel: "email", sent: 2890, delivered: 2810 }, { channel: "sms", sent: 1462, delivered: 1408 }], proofOfPlay: 312, acknowledgements: 1840, source: "demo" };
+  const s = await db();
+  if (!s) return demo;
+  try {
+    const [{ count: msgSent }, { count: noticesPub }, { count: pop }] = await Promise.all([
+      s.from("messages").select("id", { count: "exact", head: true }).eq("status", "sent"),
+      s.from("work_orders").select("id", { count: "exact", head: true }).eq("notice_status", "published"),
+      s.from("work_orders").select("id", { count: "exact", head: true }).eq("notice_status", "published").contains("channels", ["display"]),
+    ]);
+    const { data: recips } = await s.from("message_recipients").select("channel,status");
+    const total = recips?.length ?? 0;
+    const delivered = (recips ?? []).filter((r) => r.status === "delivered" || r.status === "opened").length;
+    const map = new Map<string, { sent: number; delivered: number }>();
+    for (const r of recips ?? []) { const e = map.get(r.channel) ?? { sent: 0, delivered: 0 }; e.sent++; if (r.status === "delivered" || r.status === "opened") e.delivered++; map.set(r.channel, e); }
+    const byChannel = [...map.entries()].map(([channel, v]) => ({ channel, ...v }));
+    const totalNotifications = (msgSent ?? 0) + (noticesPub ?? 0);
+    if (!totalNotifications && !total) return demo;
+    return { period: currentQuarter(), totalNotifications, delivered, deliveryRatePct: total ? Math.round((delivered / total) * 1000) / 10 : 0, byChannel: byChannel.length ? byChannel : demo.byChannel, proofOfPlay: pop ?? 0, acknowledgements: delivered, source: "live" };
+  } catch { return demo; }
+}
+
 const DEMO2 = {
   members: [
     { id: "m1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },

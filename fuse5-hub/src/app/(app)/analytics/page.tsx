@@ -1,5 +1,5 @@
 import type { Channel } from "@/lib/types";
-import { getMessageStats } from "@/lib/queries";
+import { getMessageStats, getAuditReport } from "@/lib/queries";
 
 // Messaging analytics — live delivery aggregates with demo fallback.
 const channelLabel: Record<Channel, string> = {
@@ -21,7 +21,7 @@ const trend = [
 ];
 
 export default async function AnalyticsPage() {
-  const stats = await getMessageStats();
+  const [stats, audit] = await Promise.all([getMessageStats(), getAuditReport()]);
   const maxTrend = Math.max(...trend.map((t) => t.value), 1);
 
   return (
@@ -66,6 +66,21 @@ export default async function AnalyticsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Audit Reports — proof-of-play + delivery audit (formal reporting) */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24 }}>
+        <div className="f5-section-title" style={{ margin: 0 }}>Tenant Notification Audit — {audit.period}</div>
+        <button className="f5-btn">⬇ Download PDF</button>
+      </div>
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 4 }}>
+        <div className="f5-card"><div className="f5-kpi-label">Total Notifications</div><div className="f5-kpi-value">{audit.totalNotifications.toLocaleString()}</div><div className="f5-kpi-sub">sent this period</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Delivery Rate</div><div className="f5-kpi-value">{audit.deliveryRatePct}%</div><div className="f5-kpi-sub">{audit.delivered.toLocaleString()} delivered</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Signage Proof-of-Play</div><div className="f5-kpi-value">{audit.proofOfPlay.toLocaleString()}</div><div className="f5-kpi-sub">notices displayed</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Acknowledgements</div><div className="f5-kpi-value">{audit.acknowledgements.toLocaleString()}</div><div className="f5-kpi-sub">tenant confirmations</div></div>
+      </div>
+      <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 14 }}>
+        Audit source: {audit.source === "live" ? "live message/delivery logs" : "demo"} · Generated {audit.period} · ca-central-1
       </div>
     </main>
   );

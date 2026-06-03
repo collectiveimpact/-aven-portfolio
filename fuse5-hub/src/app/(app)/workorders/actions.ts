@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { generateDrafts, type NoticeFacts, type Draft } from "@/lib/ai";
 import { sendEmail } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
 import { isSystemField } from "@/lib/wo-fields";
 import { canBroadcast } from "@/lib/rbac";
 
@@ -138,16 +139,30 @@ export async function publishNotice(woId: string): Promise<{ ok: boolean; sent?:
   if (!wo) return { ok: false, error: "Work order not found." };
   if (wo.notice_status !== "approved") return { ok: false, error: "Notice must be Approved before publishing." };
 
-  const emailDraft = ((wo.drafts ?? []) as Draft[]).find((d) => d.channel === "email");
+  const drafts = (wo.drafts ?? []) as Draft[];
+  const emailDraft = drafts.find((d) => d.channel === "email");
+  const smsDraft = drafts.find((d) => d.channel === "sms");
+  const channels: string[] = wo.channels ?? [];
   let sent = 0;
-  if (wo.property_id && emailDraft) {
-    const { data: recips } = await supabase.from("residents").select("email,name").eq("property_id", wo.property_id).eq("status", "active").not("email", "is", null).limit(100);
-    const html = `<div>${emailDraft.body.replace(/\n/g, "<br/>")}</div>`;
+  if (wo.property_id) {
+    const { data: recips } = await supabase.from("residents").select("email,phone,preferred_channel").eq("property_id", wo.property_id).eq("status", "active").limit(200);
+    const html = emailDraft ? `<div>${emailDraft.body.replace(/\n/g, "<br/>")}</div>` : "";
     for (const r of recips ?? []) {
-      if (r.email) { const res = await sendEmail({ to: r.email, subject: emailDraft.subject || wo.title, html }); if (res.ok) sent++; }
+      const pref = r.preferred_channel as "email" | "sms" | "whatsapp" | null;
+      let ch: "email" | "sms" | null = null;
+      if ((pref === "sms" || pref === "whatsapp") && channels.includes("sms") && r.phone) ch = "sms";
+      else if (pref === "email" && channels.includes("email") && r.email) ch = "email";
+      if (!ch) { if (channels.includes("email") && r.email) ch = "email"; else if (channels.includes("sms") && r.phone) ch = "sms"; }
+      if (!ch) continue;
+      const res = ch === "email" && emailDraft
+        ? await sendEmail({ to: r.email as string, subject: emailDraft.subject || wo.title, html })
+        : ch === "sms" && smsDraft
+          ? await sendSms(r.phone as string, smsDraft.body)
+          : { ok: false };
+      if (res.ok) sent++;
     }
   }
   await supabase.from("work_orders").update({ notice_status: "published" }).eq("id", woId);
-  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Notice Published", detail: `"${wo.title}" — ${sent} email recipients` });
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Notice Published", detail: `"${wo.title}" — ${sent} recipients (email/SMS by preference)` });
   return { ok: true, sent };
 }
