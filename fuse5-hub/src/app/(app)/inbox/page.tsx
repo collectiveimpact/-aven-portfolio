@@ -1,18 +1,11 @@
-import type { Channel } from "@/lib/types";
-import { getInbox, type InboundRow } from "@/lib/queries";
-
-const channelLabel: Record<Channel, string> = {
-  email: "Email", sms: "SMS", whatsapp: "WhatsApp", voice: "Voice", display: "Display",
-};
-
-const statusDot: Record<InboundRow["status"], string> = {
-  unread: "var(--f5-amber)",
-  awaiting: "var(--f5-blue)",
-  resolved: "var(--f5-green)",
-};
+import { getInbox } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { canPublish } from "@/lib/rbac";
+import { InboxList } from "./inbox-list";
 
 export default async function InboxPage() {
-  const replies = await getInbox();
+  const [replies, me] = await Promise.all([getInbox(), getCurrentUser()]);
+  const canEdit = me?.role ? canPublish(me.role) : false;
   const unread = replies.filter((r) => r.status === "unread").length;
   const awaiting = replies.filter((r) => r.status === "awaiting").length;
   const resolved = replies.filter((r) => r.status === "resolved").length;
@@ -28,25 +21,7 @@ export default async function InboxPage() {
         <div className="f5-card"><div className="f5-kpi-label">Resolved</div><div className="f5-kpi-value"><span className="f5-up">{resolved}</span></div><div className="f5-kpi-sub">last 24h</div></div>
       </div>
 
-      <div className="f5-section-title">Recent Replies</div>
-      <div className="f5-card">
-        {replies.length === 0 && <div style={{ color: "var(--f5-text-muted)", fontSize: 13 }}>No inbound messages yet.</div>}
-        {replies.map((r) => (
-          <div key={r.id} className="f5-feed-row">
-            <span className="f5-dot" style={{ background: statusDot[r.status] }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div>
-                <strong>{r.sender}</strong>{" "}
-                <span style={{ color: "var(--f5-text-dim)" }}>· Unit {r.unit}</span>{" "}
-                <span className="f5-pill" style={{ marginLeft: 6 }}>{channelLabel[r.channel as Channel] ?? r.channel}</span>
-                {r.status === "unread" && <span className="f5-badge warn" style={{ marginLeft: 6 }}>Unread</span>}
-              </div>
-              <div style={{ color: "var(--f5-text-secondary)", marginTop: 4 }}>{r.snippet}</div>
-            </div>
-            <div style={{ color: "var(--f5-text-dim)", fontSize: 12, whiteSpace: "nowrap" }}>{r.when}</div>
-          </div>
-        ))}
-      </div>
+      <InboxList replies={replies} canEdit={canEdit} />
     </main>
   );
 }
