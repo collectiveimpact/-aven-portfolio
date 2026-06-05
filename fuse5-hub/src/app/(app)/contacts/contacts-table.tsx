@@ -12,6 +12,10 @@ export function ContactsTable({ contacts, canEdit }: { contacts: ContactRow[]; c
   const [editing, setEditing] = useState<ContactInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+
+  const needle = q.trim().toLowerCase();
+  const filtered = contacts.filter((c) => !needle || [c.name, c.role, c.email, c.phone, c.property].some((v) => (v ?? "").toLowerCase().includes(needle)));
 
   const clean = (v: string) => (v === "—" ? "" : v);
   function openAdd() { setError(null); setEditing(blank()); }
@@ -47,13 +51,19 @@ export function ContactsTable({ contacts, canEdit }: { contacts: ContactRow[]; c
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, role, email, property…" style={{ maxWidth: 320 }} />
+        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {contacts.length}</span>
+      </div>
+
       <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="f5-table">
           <thead>
             <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Property</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
-            {contacts.map((c) => (
+            {filtered.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No contacts match.</td></tr>}
+            {filtered.map((c) => (
               <tr key={c.id}>
                 <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{c.name}</td>
                 <td>{c.role}</td>

@@ -21,6 +21,15 @@ export function ResidentsTable({ residents, properties, canEdit }: {
   const [editing, setEditing] = useState<ResidentInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "moved_out">("all");
+
+  const needle = q.trim().toLowerCase();
+  const filtered = residents.filter((r) => {
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (!needle) return true;
+    return [r.name, r.unit, r.propertyName, r.language, r.email, r.phone].some((v) => (v ?? "").toLowerCase().includes(needle));
+  });
 
   function openAdd() { setError(null); setEditing(blank(properties[0]?.id ?? null)); }
   function openEdit(r: ResidentRow) {
@@ -55,13 +64,24 @@ export function ResidentsTable({ residents, properties, canEdit }: {
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, unit, property, language…" style={{ maxWidth: 320 }} />
+        <div className="f5-chips" style={{ margin: 0 }}>
+          {(["all", "active", "moved_out"] as const).map((s) => (
+            <span key={s} className={`f5-chip${statusFilter === s ? " active" : ""}`} onClick={() => setStatusFilter(s)}>{s === "all" ? "All" : s === "active" ? "Active" : "Moved Out"}</span>
+          ))}
+        </div>
+        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {residents.length}</span>
+      </div>
+
       <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="f5-table">
           <thead>
             <tr><th>Unit</th><th>Name</th><th>Property</th><th>Language</th><th>Preferred</th><th>Status</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
-            {residents.map((r) => (
+            {filtered.length === 0 && <tr><td colSpan={canEdit ? 7 : 6} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No residents match.</td></tr>}
+            {filtered.map((r) => (
               <tr key={r.id}>
                 <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.unit}</td>
                 <td style={{ color: "var(--f5-text)" }}>{r.name}</td>
