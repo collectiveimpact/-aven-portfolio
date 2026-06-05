@@ -32,7 +32,7 @@ export async function getProperties(): Promise<PropertyOption[]> {
     return data?.length ? data.map((p) => ({ id: p.id, name: p.name })) : [];
   } catch { return []; }
 }
-export interface TemplateRow { id: string; name: string; category: string; channels: string[]; mandatory: boolean; version: string }
+export interface TemplateRow { id: string; name: string; category: string; channels: string[]; mandatory: boolean; version: string; body: string }
 export interface DisplayRow { id: string; name: string; location: string; propertyName: string; status: "online"|"offline"|"warning" }
 export interface SurveyRow { id: string; title: string; status: "draft"|"live"|"closed"; sent: number; responses: number }
 export interface ComplianceRow { id: string; propertyName: string; kind: string; due: string; status: "compliant"|"due_soon"|"overdue" }
@@ -69,9 +69,9 @@ export async function getTemplates(): Promise<TemplateRow[]> {
   const s = await db();
   if (!s) return DEMO.templates;
   try {
-    const { data } = await s.from("templates").select("id,name,category,channels,mandatory,version");
+    const { data } = await s.from("templates").select("id,name,category,channels,mandatory,version,body").order("name");
     if (!data?.length) return DEMO.templates;
-    return data.map((t) => ({ id: t.id, name: t.name, category: t.category ?? "—", channels: t.channels ?? [], mandatory: !!t.mandatory, version: t.version ?? "1.0" }));
+    return data.map((t) => ({ id: t.id, name: t.name, category: t.category ?? "—", channels: t.channels ?? [], mandatory: !!t.mandatory, version: t.version ?? "1.0", body: t.body ?? "" }));
   } catch { return DEMO.templates; }
 }
 
@@ -163,8 +163,8 @@ const DEMO = {
     { id: "w2", title: "Hallway light out", propertyName: "WoodGreen — East York", unit: "—", category: "Electrical", priority: "medium", status: "in_progress", channels: [], noticeStatus: "none" },
   ] as WorkOrderRow[],
   templates: [
-    { id: "t1", name: "Water Shutoff", category: "Maintenance", channels: ["display","sms","email"], mandatory: true, version: "1.8" },
-    { id: "t2", name: "Monthly Newsletter", category: "Community", channels: ["email"], mandatory: false, version: "3.0" },
+    { id: "t1", name: "Water Shutoff", category: "Maintenance", channels: ["display","sms","email"], mandatory: true, version: "1.8", body: "Water will be shut off {{date}} {{time}}." },
+    { id: "t2", name: "Monthly Newsletter", category: "Community", channels: ["email"], mandatory: false, version: "3.0", body: "This month at {{property}}…" },
   ] as TemplateRow[],
   displays: [
     { id: "d1", name: "Lobby Display 1", location: "Main Lobby", propertyName: "WoodGreen — Danforth", status: "online" },
