@@ -71,7 +71,7 @@ export default async function AnalyticsPage() {
       {/* Audit Reports — proof-of-play + delivery audit (formal reporting) */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24 }}>
         <div className="f5-section-title" style={{ margin: 0 }}>Tenant Notification Audit — {audit.period}</div>
-        <button className="f5-btn">⬇ Download PDF</button>
+        <a className="f5-btn" href="/analytics/audit-report" target="_blank" rel="noopener">⬇ Download PDF</a>
       </div>
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 4 }}>
         <div className="f5-card"><div className="f5-kpi-label">Total Notifications</div><div className="f5-kpi-value">{audit.totalNotifications.toLocaleString()}</div><div className="f5-kpi-sub">sent this period</div></div>
