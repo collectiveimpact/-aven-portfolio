@@ -115,13 +115,28 @@ export async function getContacts(): Promise<ContactRow[]> {
   } catch { return DEMO.contacts; }
 }
 
+const LANG_LABELS: Record<string, string> = { en: "English", fr: "French", es: "Spanish", zh: "Mandarin", pt: "Portuguese", ar: "Arabic" };
+// Render a stored jsonb rule as a human sentence for the segment cards.
+export function describeRule(rule: unknown): string {
+  if (typeof rule === "string") return rule;
+  if (!rule || typeof rule !== "object") return "Custom rule";
+  const r = rule as Record<string, unknown>;
+  if (r.all) return "All residents";
+  if (r.language) return `Language is ${LANG_LABELS[String(r.language)] ?? String(r.language)}`;
+  if (r.preferred_channel) return `Preferred channel is ${String(r.preferred_channel).toUpperCase()}`;
+  if (r.status) return `Status is ${String(r.status) === "moved_out" ? "Moved Out" : "Active"}`;
+  if (r.property_id) return "Residents of a specific property";
+  if (r.arrears_days) return `Arrears over ${String(r.arrears_days)} days`;
+  return "Custom rule";
+}
+
 export async function getSegments(): Promise<SegmentRow[]> {
   const s = await db();
   if (!s) return DEMO.segments;
   try {
     const { data } = await s.from("segments").select("id,name,rule,size");
     if (!data?.length) return DEMO.segments;
-    return data.map((g) => ({ id: g.id, name: g.name, rule: typeof g.rule === "string" ? g.rule : JSON.stringify(g.rule), size: g.size ?? 0 }));
+    return data.map((g) => ({ id: g.id, name: g.name, rule: describeRule(g.rule), size: g.size ?? 0 }));
   } catch { return DEMO.segments; }
 }
 
