@@ -1,26 +1,11 @@
-import { getDisplays, type DisplayRow } from "@/lib/queries";
-
-// Digital Signage — uptime KPI strip + grid of display cards. Live data.
-const STATUS_BADGE: Record<DisplayRow["status"], string> = {
-  online: "f5-badge ok",
-  offline: "f5-badge bad",
-  warning: "f5-badge warn",
-};
-
-const STATUS_DOT: Record<DisplayRow["status"], string> = {
-  online: "var(--f5-green)",
-  offline: "var(--f5-red)",
-  warning: "var(--f5-amber)",
-};
-
-const STATUS_LABEL: Record<DisplayRow["status"], string> = {
-  online: "Online",
-  offline: "Offline",
-  warning: "Warning",
-};
+import { getDisplays, getProperties } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { canPublish } from "@/lib/rbac";
+import { DisplaysGrid } from "./displays-grid";
 
 export default async function DisplaysPage() {
-  const displays = await getDisplays();
+  const [displays, properties, me] = await Promise.all([getDisplays(), getProperties(), getCurrentUser()]);
+  const canEdit = me?.role ? canPublish(me.role) : false;
 
   const online = displays.filter((d) => d.status === "online").length;
   const offline = displays.filter((d) => d.status === "offline").length;
@@ -39,25 +24,9 @@ export default async function DisplaysPage() {
         <div className="f5-card"><div className="f5-kpi-label">Uptime %</div><div className="f5-kpi-value">{uptime}%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 0.8%</span> 30-day avg</div></div>
       </div>
 
-      <div className="f5-section-title">Display Network</div>
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
-        {displays.map((d) => (
-          <div key={d.id} className="f5-card">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-                <span className="f5-dot" style={{ background: STATUS_DOT[d.status], marginTop: 0 }} />
-                <strong style={{ color: "var(--f5-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</strong>
-              </div>
-              <span className={STATUS_BADGE[d.status]}>{STATUS_LABEL[d.status]}</span>
-            </div>
-            <div style={{ color: "var(--f5-text-muted)", fontSize: 12, marginTop: 10 }}>{d.propertyName} · {d.location}</div>
-          </div>
-        ))}
-      </div>
+      <DisplaysGrid displays={displays} properties={properties} canEdit={canEdit} />
 
-      <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>
-        Data source: live
-      </div>
+      <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>Data source: live</div>
     </main>
   );
 }

@@ -1,10 +1,11 @@
-import { getCompliance, type ComplianceRow } from "@/lib/queries";
-
-const statusBadge: Record<ComplianceRow["status"], string> = { compliant: "ok", due_soon: "warn", overdue: "bad" };
-const statusLabel: Record<ComplianceRow["status"], string> = { compliant: "Compliant", due_soon: "Due Soon", overdue: "Overdue" };
+import { getCompliance, getProperties } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { canPublish } from "@/lib/rbac";
+import { ComplianceTable } from "./compliance-table";
 
 export default async function CompliancePage() {
-  const items = await getCompliance();
+  const [items, properties, me] = await Promise.all([getCompliance(), getProperties(), getCurrentUser()]);
+  const canEdit = me?.role ? canPublish(me.role) : false;
 
   const compliant = items.filter((i) => i.status === "compliant").length;
   const dueSoon = items.filter((i) => i.status === "due_soon").length;
@@ -21,24 +22,7 @@ export default async function CompliancePage() {
         <div className="f5-card"><div className="f5-kpi-label">Overdue</div><div className="f5-kpi-value f5-down">{overdue}</div><div className="f5-kpi-sub">needs action now</div></div>
       </div>
 
-      <div className="f5-section-title">Compliance Items</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="f5-table">
-          <thead>
-            <tr><th>Property</th><th>Kind</th><th>Due</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {items.map((i) => (
-              <tr key={i.id}>
-                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{i.propertyName}</td>
-                <td>{i.kind}</td>
-                <td>{i.due}</td>
-                <td><span className={`f5-badge ${statusBadge[i.status]}`}>{statusLabel[i.status]}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ComplianceTable items={items} properties={properties} canEdit={canEdit} />
     </main>
   );
 }

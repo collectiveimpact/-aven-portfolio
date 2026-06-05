@@ -33,9 +33,9 @@ export async function getProperties(): Promise<PropertyOption[]> {
   } catch { return []; }
 }
 export interface TemplateRow { id: string; name: string; category: string; channels: string[]; mandatory: boolean; version: string; body: string }
-export interface DisplayRow { id: string; name: string; location: string; propertyName: string; status: "online"|"offline"|"warning" }
+export interface DisplayRow { id: string; name: string; location: string; propertyName: string; propertyId: string | null; status: "online"|"offline"|"warning" }
 export interface SurveyRow { id: string; title: string; status: "draft"|"live"|"closed"; sent: number; responses: number }
-export interface ComplianceRow { id: string; propertyName: string; kind: string; due: string; status: "compliant"|"due_soon"|"overdue" }
+export interface ComplianceRow { id: string; propertyName: string; propertyId: string | null; kind: string; due: string; status: "compliant"|"due_soon"|"overdue" }
 export interface ContactRow { id: string; name: string; role: string; email: string; phone: string; property: string }
 export interface SegmentRow { id: string; name: string; rule: string; size: number }
 export interface CalendarRow { id: string; title: string; day: string; channel: string; status: string }
@@ -79,9 +79,9 @@ export async function getDisplays(): Promise<DisplayRow[]> {
   const s = await db();
   if (!s) return DEMO.displays;
   try {
-    const { data } = await s.from("displays").select("id,name,location,status,properties(name)");
+    const { data } = await s.from("displays").select("id,name,location,status,property_id,properties(name)").order("name");
     if (!data?.length) return DEMO.displays;
-    return data.map((d) => ({ id: d.id, name: d.name, location: d.location ?? "—", propertyName: propName(d.properties as PropRef), status: d.status as DisplayRow["status"] }));
+    return data.map((d) => ({ id: d.id, name: d.name, location: d.location ?? "—", propertyName: propName(d.properties as PropRef), propertyId: d.property_id ?? null, status: d.status as DisplayRow["status"] }));
   } catch { return DEMO.displays; }
 }
 
@@ -99,9 +99,9 @@ export async function getCompliance(): Promise<ComplianceRow[]> {
   const s = await db();
   if (!s) return DEMO.compliance;
   try {
-    const { data } = await s.from("compliance_items").select("id,kind,due,status,properties(name)");
+    const { data } = await s.from("compliance_items").select("id,kind,due,status,property_id,properties(name)").order("due");
     if (!data?.length) return DEMO.compliance;
-    return data.map((c) => ({ id: c.id, propertyName: propName(c.properties as PropRef), kind: c.kind, due: c.due ?? "—", status: c.status as ComplianceRow["status"] }));
+    return data.map((c) => ({ id: c.id, propertyName: propName(c.properties as PropRef), propertyId: c.property_id ?? null, kind: c.kind, due: c.due ?? "—", status: c.status as ComplianceRow["status"] }));
   } catch { return DEMO.compliance; }
 }
 
@@ -167,15 +167,15 @@ const DEMO = {
     { id: "t2", name: "Monthly Newsletter", category: "Community", channels: ["email"], mandatory: false, version: "3.0", body: "This month at {{property}}…" },
   ] as TemplateRow[],
   displays: [
-    { id: "d1", name: "Lobby Display 1", location: "Main Lobby", propertyName: "WoodGreen — Danforth", status: "online" },
-    { id: "d2", name: "Lobby Display 2", location: "Elevator A", propertyName: "WoodGreen — East York", status: "offline" },
+    { id: "d1", name: "Lobby Display 1", location: "Main Lobby", propertyName: "WoodGreen — Danforth", propertyId: null, status: "online" },
+    { id: "d2", name: "Lobby Display 2", location: "Elevator A", propertyName: "WoodGreen — East York", propertyId: null, status: "offline" },
   ] as DisplayRow[],
   surveys: [
     { id: "s1", title: "Annual Resident Satisfaction", status: "live", sent: 1284, responses: 842 },
   ] as SurveyRow[],
   compliance: [
-    { id: "c1", propertyName: "WoodGreen — Danforth", kind: "RentSafeTO Audit", due: "2026-06-20", status: "due_soon" },
-    { id: "c2", propertyName: "WoodGreen — East York", kind: "Fire Inspection", due: "2026-05-10", status: "overdue" },
+    { id: "c1", propertyName: "WoodGreen — Danforth", propertyId: null, kind: "RentSafeTO Audit", due: "2026-06-20", status: "due_soon" },
+    { id: "c2", propertyName: "WoodGreen — East York", propertyId: null, kind: "Fire Inspection", due: "2026-05-10", status: "overdue" },
   ] as ComplianceRow[],
   contacts: [
     { id: "k1", name: "Tom Bradley", role: "Property Manager", email: "t.bradley@woodgreen.org", phone: "416-555-2001", property: "Danforth" },
