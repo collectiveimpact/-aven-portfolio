@@ -6,8 +6,21 @@ import { generateDrafts, type NoticeFacts, type Draft } from "@/lib/ai";
 import { sendEmail } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { isSystemField } from "@/lib/wo-fields";
-import { canBroadcast } from "@/lib/rbac";
+import { canBroadcast, canPublish } from "@/lib/rbac";
 import { renderNoticeEmailHtml } from "@/lib/notice-template";
+
+// Operational status lifecycle (separate from the notice approval workflow):
+// open → in_progress → resolved. Settable from the work-order queue.
+export async function setWorkOrderStatus(woId: string, status: "open" | "in_progress" | "resolved"): Promise<{ ok: boolean; error?: string }> {
+  if (!["open", "in_progress", "resolved"].includes(status)) return { ok: false, error: "Invalid status." };
+  const supabase = await createClient(); if (!supabase) return { ok: false, error: "No backend." };
+  const me = await getCurrentUser(); if (!me?.orgId) return { ok: false, error: "No organization." };
+  if (!me.role || !canPublish(me.role)) return { ok: false, error: "Your role cannot update work orders." };
+  const { error } = await supabase.from("work_orders").update({ status }).eq("id", woId);
+  if (error) return { ok: false, error: error.message };
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Work Order Status", detail: `${woId} → ${status}` });
+  return { ok: true };
+}
 
 // Approval workflow: Draft → Review → Approved → Sent.
 export async function submitForReview(woId: string): Promise<{ ok: boolean; error?: string }> {

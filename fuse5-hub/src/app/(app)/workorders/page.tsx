@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { getWorkOrders, getProperties, getWoFieldConfig, getSegments, type WorkOrderRow } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { canPublish } from "@/lib/rbac";
 import { NOTICE_TYPES } from "@/lib/wo-fields";
 import { NewWorkOrder } from "./new-work-order";
+import { YardiImport } from "./yardi-import";
+import { WoStatus } from "./wo-status";
 
 const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
 const NOTICE_BADGE: Record<WorkOrderRow["noticeStatus"], string> = { none: "", draft: "f5-badge warn", pending_review: "f5-badge", approved: "f5-badge", published: "f5-badge ok" };
@@ -23,18 +27,6 @@ const PRIORITY_BADGE: Record<WorkOrderRow["priority"], string> = {
   low: "f5-badge",
 };
 
-const STATUS_BADGE: Record<WorkOrderRow["status"], string> = {
-  open: "f5-badge warn",
-  in_progress: "f5-badge",
-  resolved: "f5-badge ok",
-};
-
-const STATUS_LABEL: Record<WorkOrderRow["status"], string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-};
-
 export default async function WorkOrdersPage({
   searchParams,
 }: {
@@ -44,7 +36,8 @@ export default async function WorkOrdersPage({
   const rawFilter = sp.filter;
   const active: Filter = rawFilter === "open" || rawFilter === "urgent" ? rawFilter : "all";
 
-  const [workOrders, properties, segments] = await Promise.all([getWorkOrders(), getProperties(), getSegments()]);
+  const [workOrders, properties, segments, me] = await Promise.all([getWorkOrders(), getProperties(), getSegments(), getCurrentUser()]);
+  const canEdit = me?.role ? canPublish(me.role) : false;
   const typeConfigs = await Promise.all(NOTICE_TYPES.map((t) => getWoFieldConfig(t.key)));
   const fieldsByType = Object.fromEntries(NOTICE_TYPES.map((t, i) => [t.key, typeConfigs[i]]));
   const segOptions = segments.map((s) => ({ id: s.id, name: s.name, size: s.size }));
@@ -69,6 +62,7 @@ export default async function WorkOrdersPage({
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/workorders/fields" className="f5-btn">⚙ Configure fields</Link>
+          <YardiImport />
           <NewWorkOrder properties={properties} fieldsByType={fieldsByType} segments={segOptions} />
         </div>
       </div>
@@ -116,7 +110,7 @@ export default async function WorkOrdersPage({
                 <td style={{ fontSize: 15, letterSpacing: 2 }}>{w.channels.map((c) => CHANNEL_ICON[c] ?? "•").join(" ") || "—"}</td>
                 <td>{w.noticeStatus === "none" ? <span style={{ color: "var(--f5-text-dim)" }}>—</span> : <span className={NOTICE_BADGE[w.noticeStatus]}>{NOTICE_LABEL[w.noticeStatus]}</span>}</td>
                 <td><span className={PRIORITY_BADGE[w.priority]}>{w.priority}</span></td>
-                <td><span className={STATUS_BADGE[w.status]}>{STATUS_LABEL[w.status]}</span></td>
+                <td><WoStatus id={w.id} status={w.status} canEdit={canEdit} /></td>
                 <td><Link href={`/workorders/${w.id}`} className="f5-btn" style={{ padding: "5px 12px", fontSize: 12 }}>Open</Link></td>
               </tr>
             ))}
