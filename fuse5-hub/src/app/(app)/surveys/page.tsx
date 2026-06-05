@@ -1,14 +1,15 @@
 import { getSurveys, type SurveyRow } from "@/lib/queries";
-
-const statusBadge: Record<SurveyRow["status"], string> = { live: "ok", closed: "warn", draft: "bad" };
-const statusLabel: Record<SurveyRow["status"], string> = { live: "Live", closed: "Closed", draft: "Draft" };
+import { getCurrentUser } from "@/lib/auth";
+import { canPublish } from "@/lib/rbac";
+import { SurveysTable } from "./surveys-table";
 
 function rate(s: SurveyRow): number {
   return s.sent > 0 ? Math.round((s.responses / s.sent) * 100) : 0;
 }
 
 export default async function SurveysPage() {
-  const surveys = await getSurveys();
+  const [surveys, me] = await Promise.all([getSurveys(), getCurrentUser()]);
+  const canEdit = me?.role ? canPublish(me.role) : false;
 
   const live = surveys.filter((s) => s.status === "live").length;
   const measurable = surveys.filter((s) => s.sent > 0);
@@ -26,35 +27,7 @@ export default async function SurveysPage() {
         <div className="f5-card"><div className="f5-kpi-label">Avg Response Rate</div><div className="f5-kpi-value">{avgRate}%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 4.0%</span> vs prior wave</div></div>
       </div>
 
-      <div className="f5-section-title">All Surveys</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="f5-table">
-          <thead>
-            <tr><th>Title</th><th>Status</th><th>Sent</th><th>Responses</th><th>Response Rate</th></tr>
-          </thead>
-          <tbody>
-            {surveys.map((s) => {
-              const r = rate(s);
-              return (
-                <tr key={s.id}>
-                  <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{s.title}</td>
-                  <td><span className={`f5-badge ${statusBadge[s.status]}`}>{statusLabel[s.status]}</span></td>
-                  <td>{s.sent.toLocaleString()}</td>
-                  <td>{s.responses.toLocaleString()}</td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 999, background: "var(--f5-surface-2)", overflow: "hidden", minWidth: 80 }}>
-                        <div style={{ width: `${r}%`, height: "100%", background: "var(--f5-gradient-teal)" }} />
-                      </div>
-                      <span style={{ color: "var(--f5-text)", fontSize: 12, minWidth: 34, textAlign: "right" }}>{r}%</span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <SurveysTable surveys={surveys} canEdit={canEdit} />
     </main>
   );
 }
