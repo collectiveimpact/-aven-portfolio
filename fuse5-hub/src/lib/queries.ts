@@ -20,7 +20,7 @@ export async function getWoFieldConfig(noticeType = "general"): Promise<Resolved
 // fallback so pages render in demo mode. Section pages call these instead of
 // embedding their own data. Row types are flat + page-ready.
 
-export interface ResidentRow { id: string; unit: string; name: string; propertyName: string; language: string; status: "active" | "moved_out" }
+export interface ResidentRow { id: string; unit: string; name: string; propertyName: string; propertyId: string | null; email: string; phone: string; language: string; preferredChannel: string; status: "active" | "moved_out" }
 export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved"; channels: string[]; noticeStatus: "none"|"draft"|"pending_review"|"approved"|"published" }
 export interface PropertyOption { id: string; name: string }
 
@@ -49,9 +49,9 @@ export async function getResidents(): Promise<ResidentRow[]> {
   const s = await db();
   if (!s) return DEMO.residents;
   try {
-    const { data } = await s.from("residents").select("id,unit,name,language,status,properties(name)").order("unit");
+    const { data } = await s.from("residents").select("id,unit,name,language,status,property_id,email,phone,preferred_channel,properties(name)").order("unit");
     if (!data?.length) return DEMO.residents;
-    return data.map((r) => ({ id: r.id, unit: r.unit ?? "—", name: r.name, propertyName: propName(r.properties as PropRef), language: r.language ?? "—", status: r.status as ResidentRow["status"] }));
+    return data.map((r) => ({ id: r.id, unit: r.unit ?? "—", name: r.name, propertyName: propName(r.properties as PropRef), propertyId: r.property_id ?? null, email: r.email ?? "", phone: r.phone ?? "", language: r.language ?? "—", preferredChannel: r.preferred_channel ?? "email", status: r.status as ResidentRow["status"] }));
   } catch { return DEMO.residents; }
 }
 
@@ -138,10 +138,10 @@ export async function getCalendar(): Promise<CalendarRow[]> {
 // ---- demo fallbacks (used only when backend is off) ----
 const DEMO = {
   residents: [
-    { id: "r1", unit: "204", name: "Amara Okafor", propertyName: "WoodGreen — Danforth", language: "English", status: "active" },
-    { id: "r2", unit: "207", name: "Jean-Luc Tremblay", propertyName: "WoodGreen — Danforth", language: "French", status: "active" },
-    { id: "r3", unit: "112", name: "Mei Lin Zhang", propertyName: "WoodGreen — East York", language: "Mandarin", status: "active" },
-    { id: "r4", unit: "120", name: "David Thompson", propertyName: "WoodGreen — East York", language: "English", status: "moved_out" },
+    { id: "r1", unit: "204", name: "Amara Okafor", propertyName: "WoodGreen — Danforth", propertyId: null, email: "a.okafor@example.org", phone: "416-555-1001", language: "English", preferredChannel: "email", status: "active" },
+    { id: "r2", unit: "207", name: "Jean-Luc Tremblay", propertyName: "WoodGreen — Danforth", propertyId: null, email: "jl.tremblay@example.org", phone: "416-555-1002", language: "French", preferredChannel: "sms", status: "active" },
+    { id: "r3", unit: "112", name: "Mei Lin Zhang", propertyName: "WoodGreen — East York", propertyId: null, email: "m.zhang@example.org", phone: "416-555-1003", language: "Mandarin", preferredChannel: "email", status: "active" },
+    { id: "r4", unit: "120", name: "David Thompson", propertyName: "WoodGreen — East York", propertyId: null, email: "d.thompson@example.org", phone: "416-555-1004", language: "English", preferredChannel: "email", status: "moved_out" },
   ] as ResidentRow[],
   workOrders: [
     { id: "w1", title: "Leaking faucet — unit 204", propertyName: "WoodGreen — Danforth", unit: "204", category: "Plumbing", priority: "high", status: "open", channels: ["email","sms"], noticeStatus: "published" },
