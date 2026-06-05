@@ -1,45 +1,21 @@
-import { ROLE_LABELS } from "@/lib/rbac";
 import { getMembers, getAuditLog, getSubscription } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { canAdmin } from "@/lib/rbac";
+import { MemberRoles } from "./member-roles";
 
 // Admin hub — async server component. Members, audit, and billing read live from
 // the shared Supabase query layer (with demo fallback).
 
-const statusBadge: Record<string, string> = { active: "ok", invited: "warn", suspended: "bad" };
-const statusLabel: Record<string, string> = { active: "Active", invited: "Invited", suspended: "Suspended" };
-
 export default async function AdminPage() {
-  const members = await getMembers();
-  const audit = await getAuditLog();
-  const sub = await getSubscription();
+  const [members, audit, sub, me] = await Promise.all([getMembers(), getAuditLog(), getSubscription(), getCurrentUser()]);
+  const canManage = me?.role ? canAdmin(me.role) : false;
 
   return (
     <main className="f5-content">
       <div className="f5-page-title">Admin</div>
       <div className="f5-page-sub">Northgate Living — members, billing, org settings, and audit trail.</div>
 
-      <div className="f5-section-title">Users &amp; Roles</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="f5-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr key={m.id}>
-                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{m.fullName}</td>
-                <td>{m.email}</td>
-                <td>{ROLE_LABELS[m.role]}</td>
-                <td><span className={`f5-badge ${statusBadge[m.status]}`}>{statusLabel[m.status]}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <MemberRoles members={members} canManage={canManage} currentUserId={me?.id ?? ""} />
 
       <div className="f5-section-title">Billing</div>
       <div className="f5-grid" style={{ gridTemplateColumns: "2fr 1fr" }}>

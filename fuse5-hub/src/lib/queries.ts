@@ -193,7 +193,7 @@ const DEMO = {
 // Admin / analytics / dashboard aggregates
 // ===========================================================================
 
-export interface MemberRow { id: string; fullName: string; email: string; role: F5Role; status: "active" | "invited" | "suspended" }
+export interface MemberRow { id: string; userId: string; fullName: string; email: string; role: F5Role; status: "active" | "invited" | "suspended" }
 export interface AuditRow { id: string; actor: string; action: string; detail: string; when: string }
 export interface SubscriptionInfo { plan: string; seats: number; usedSeats: number; status: string; cycleSpend: string }
 export interface DashboardStats {
@@ -227,7 +227,7 @@ export async function getMembers(): Promise<MemberRow[]> {
     const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
     return members.map((m) => {
       const p = pmap.get(m.user_id);
-      return { id: m.id, fullName: p?.full_name || "—", email: p?.email || "—", role: m.role as F5Role, status: "active" as const };
+      return { id: m.id, userId: m.user_id, fullName: p?.full_name || "—", email: p?.email || "—", role: m.role as F5Role, status: "active" as const };
     });
   } catch { return DEMO2.members; }
 }
@@ -464,10 +464,10 @@ export async function getAuditReport(): Promise<AuditReport> {
 
 const DEMO2 = {
   members: [
-    { id: "m1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },
-    { id: "m2", fullName: "Tom Bradley", email: "t.bradley@woodgreen.org", role: "property_manager", status: "active" },
-    { id: "m3", fullName: "Maria Rodriguez", email: "m.rodriguez@woodgreen.org", role: "comms_manager", status: "active" },
-    { id: "m4", fullName: "Dana Lee", email: "d.lee@woodgreen.org", role: "viewer", status: "invited" },
+    { id: "m1", userId: "u1", fullName: "Clinton Reid", email: "clinton@fuse5.ca", role: "org_admin", status: "active" },
+    { id: "m2", userId: "u2", fullName: "Tom Bradley", email: "t.bradley@woodgreen.org", role: "property_manager", status: "active" },
+    { id: "m3", userId: "u3", fullName: "Maria Rodriguez", email: "m.rodriguez@woodgreen.org", role: "comms_manager", status: "active" },
+    { id: "m4", userId: "u4", fullName: "Dana Lee", email: "d.lee@woodgreen.org", role: "viewer", status: "invited" },
   ] as MemberRow[],
   audit: [
     { id: "a1", actor: "Clinton Reid", action: "Broadcast", detail: "Water shutoff via email — 24 recipients", when: "2m ago" },
