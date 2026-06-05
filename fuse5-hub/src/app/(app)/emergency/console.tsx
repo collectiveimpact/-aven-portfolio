@@ -4,8 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sendEmergency } from "./actions";
 import type { SendBroadcastResult } from "@/app/(app)/compose/actions";
+import { FANOUT_TEMPLATES, type Severity } from "@/lib/fanouts";
 
 const TYPES = ["Fire / Evacuation", "Water / Utility", "Severe Weather", "Security"];
+const SEV_ORDER: Severity[] = ["emergency", "planned", "info"];
+const SEV_LABEL: Record<Severity, string> = { emergency: "Emergency", planned: "Planned", info: "Service notice" };
 
 export function EmergencyConsole() {
   const router = useRouter();
@@ -15,6 +18,17 @@ export function EmergencyConsole() {
     "EMERGENCY: Please evacuate via the nearest stairwell. Do not use elevators. Assemble at the designated muster point.",
   );
   const [result, setResult] = useState<SendBroadcastResult | null>(null);
+  const [property, setProperty] = useState("");
+
+  // Pre-fill the message from a fan-out template (TCHC Emergency Matrix).
+  function applyFanout(key: string) {
+    const t = FANOUT_TEMPLATES.find((x) => x.key === key);
+    if (!t) return;
+    const fill = (s: string) => s.replace(/\{\{property\}\}/g, property || "{{property}}");
+    setMessage(`${fill(t.subject)}\n\n${fill(t.body)}`);
+    if (/water/i.test(t.category)) setType("Water / Utility");
+    else if (/elevator|door|electrical|fire/i.test(t.category)) setType("Security");
+  }
 
   function fire() {
     startTransition(async () => {
@@ -52,8 +66,23 @@ export function EmergencyConsole() {
         </div>
       </div>
 
+      <label className="f5-label">Fan-out template</label>
+      <div className="f5-grid" style={{ gridTemplateColumns: "2fr 1fr", marginBottom: 4 }}>
+        <select className="f5-select" defaultValue="" onChange={(e) => applyFanout(e.target.value)}>
+          <option value="">— Start from a fan-out —</option>
+          {SEV_ORDER.map((sev) => (
+            <optgroup key={sev} label={SEV_LABEL[sev]}>
+              {FANOUT_TEMPLATES.filter((t) => t.severity === sev).map((t) => (
+                <option key={t.key} value={t.key}>{t.title}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <input className="f5-input" value={property} onChange={(e) => setProperty(e.target.value)} placeholder="Property (fills {{property}})" />
+      </div>
+
       <label className="f5-label" htmlFor="message">Message</label>
-      <textarea id="message" className="f5-textarea" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} />
+      <textarea id="message" className="f5-textarea" rows={5} value={message} onChange={(e) => setMessage(e.target.value)} />
 
       <div style={{ color: "var(--f5-text-dim)", fontSize: 12, marginTop: 12 }}>
         All channels selected · email · SMS · WhatsApp · voice · display

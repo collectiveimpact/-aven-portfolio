@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { hasEmail } from "@/lib/env";
 
-// Integrations — async server component. Status reflects env where relevant (email provider).
+// Integrations — async server component. Status reflects what is actually wired.
 
-type IntegrationStatus = "connected" | "configured" | "disconnected";
+type IntegrationStatus = "connected" | "active" | "available" | "configured" | "disconnected";
 
 interface Integration {
   key: string;
@@ -10,10 +11,14 @@ interface Integration {
   ico: string;
   description: string;
   status: IntegrationStatus;
+  href?: string;       // when set, the action button links here
+  cta?: string;        // button label override
 }
 
 const badgeFor: Record<IntegrationStatus, { cls: string; label: string }> = {
   connected: { cls: "ok", label: "Connected" },
+  active: { cls: "ok", label: "Import active" },
+  available: { cls: "warn", label: "Available" },
   configured: { cls: "warn", label: "Set provider key" },
   disconnected: { cls: "bad", label: "Disconnected" },
 };
@@ -24,15 +29,17 @@ export default async function IntegrationsPage() {
       key: "yardi",
       name: "Yardi Voyager",
       ico: "🏢",
-      description: "Two-way sync of properties, units, and resident records.",
-      status: "connected",
+      description: "Import properties, units, residents, and work orders from a Yardi ETL export. Direct API sync available with a Yardi interface license.",
+      status: "active",
+      href: "/workorders",
+      cta: "Import",
     },
     {
       key: "rentsafeto",
       name: "RentSafeTO",
       ico: "✅",
       description: "Building scores and compliance evaluations from the City of Toronto.",
-      status: "connected",
+      status: "available",
     },
     {
       key: "email",
@@ -70,7 +77,9 @@ export default async function IntegrationsPage() {
               </div>
               <div style={{ color: "var(--f5-text-secondary)", fontSize: 13, minHeight: 36 }}>{it.description}</div>
               <div style={{ marginTop: 14 }}>
-                <button className="f5-btn" type="button">Configure</button>
+                {it.href
+                  ? <Link href={it.href} className="f5-btn">{it.cta ?? "Configure"}</Link>
+                  : <button className="f5-btn" type="button">{it.cta ?? "Configure"}</button>}
               </div>
             </div>
           );
