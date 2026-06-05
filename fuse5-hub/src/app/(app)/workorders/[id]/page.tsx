@@ -10,5 +10,5 @@ export default async function WorkOrderStudioPage({ params }: { params: Promise<
   if (!wo) notFound();
   const [recipients, me] = await Promise.all([getRecipientSummary(wo.propertyId), getCurrentUser()]);
   const canApprove = !!me?.role && canBroadcast(me.role);
-  return <NoticeStudio wo={wo} recipients={recipients} canApprove={canApprove} />;
+  return <NoticeStudio wo={wo} recipients={recipients} canApprove={canApprove} orgName={me?.orgName ?? "Your housing provider"} />;
 }

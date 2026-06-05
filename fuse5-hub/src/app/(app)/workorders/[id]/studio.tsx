@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { saveNotice, publishNotice, submitForReview, approveNotice, rejectNotice } from "../actions";
 import type { WorkOrderDetail, RecipientSummary, NoticeDraft } from "@/lib/queries";
+import { renderNoticeEmailHtml, themeFor } from "@/lib/notice-template";
 
 const STEPS: { key: string; label: string }[] = [
   { key: "draft", label: "Draft" },
@@ -14,17 +15,9 @@ const STEPS: { key: string; label: string }[] = [
 ];
 const stepIndex = (s: string) => Math.max(0, STEPS.findIndex((x) => x.key === (s === "none" ? "draft" : s)));
 
-const IMAGE_THEME: Record<string, { emoji: string; color: string }> = {
-  water: { emoji: "💧", color: "#2563EB" },
-  fire: { emoji: "🔥", color: "#DC2626" },
-  elevator: { emoji: "🛗", color: "#7C3AED" },
-  heat: { emoji: "🌡️", color: "#EA580C" },
-  pest: { emoji: "🐜", color: "#059669" },
-  default: { emoji: "📢", color: "#0E7490" },
-};
 const CATEGORIES = ["default", "water", "fire", "elevator", "heat", "pest"];
 
-export function NoticeStudio({ wo, recipients, canApprove }: { wo: WorkOrderDetail; recipients: RecipientSummary; canApprove: boolean }) {
+export function NoticeStudio({ wo, recipients, canApprove, orgName }: { wo: WorkOrderDetail; recipients: RecipientSummary; canApprove: boolean; orgName: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState("");
@@ -36,9 +29,12 @@ export function NoticeStudio({ wo, recipients, canApprove }: { wo: WorkOrderDeta
   const [drafts, setDrafts] = useState<NoticeDraft[]>(wo.drafts);
   const [status, setStatus] = useState(wo.noticeStatus);
 
-  const theme = IMAGE_THEME[n.imageCategory] ?? IMAGE_THEME.default;
+  const theme = themeFor(n.imageCategory);
   const email = drafts.find((d) => d.channel === "email");
   const sms = drafts.find((d) => d.channel === "sms");
+  const emailHtml = email
+    ? renderNoticeEmailHtml({ orgName, propertyName: wo.propertyName, title, subject: email.subject, body: email.body, cta: n.cta, dateText: n.dateText, affected: n.affected, contactInfo: n.contactInfo, imageCategory: n.imageCategory })
+    : null;
   const set = (k: keyof typeof n, v: string) => setN((p) => ({ ...p, [k]: v }));
   const toggle = (c: string) => setChannels((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]));
 
@@ -147,23 +143,32 @@ export function NoticeStudio({ wo, recipients, canApprove }: { wo: WorkOrderDeta
                 <div style={{ fontSize: 54 }}>{theme.emoji}</div>
                 <div style={{ fontWeight: 800, fontSize: 18, marginTop: 8, textTransform: "uppercase", letterSpacing: 1 }}>{n.operationTitle || title}</div>
               </div>
-              <div style={{ flex: 1, background: "#fff", color: "#0B0E14", padding: "22px 24px" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#444" }}>{n.dateText || "Date / time"}</div>
-                <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.05, margin: "6px 0" }}>{title}</div>
+              <div style={{ flex: 1, background: "#fff", color: "#0B0E14", padding: "20px 24px", display: "flex", flexDirection: "column" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: theme.color, textTransform: "uppercase" }}>{wo.propertyName}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#444", marginTop: 4 }}>{n.dateText || "Date / time"}</div>
+                <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.05, margin: "4px 0" }}>{title}</div>
                 <div style={{ fontSize: 14, color: "#666" }}>{n.affected || "Affected units"}</div>
-                <div style={{ fontSize: 13, color: "#333", marginTop: 12 }}>{n.cta || "Call to action"}</div>
+                {n.cta
+                  ? <div style={{ alignSelf: "flex-start", marginTop: 12, background: theme.color, color: "#fff", fontWeight: 700, fontSize: 13, padding: "7px 14px", borderRadius: 8 }}>{n.cta}</div>
+                  : <div style={{ fontSize: 13, color: "#333", marginTop: 12 }}>Call to action</div>}
+                {n.contactInfo ? <div style={{ marginTop: "auto", paddingTop: 12, fontSize: 12, color: "#888" }}>{n.contactInfo}</div> : null}
               </div>
             </div>
             <div style={{ height: 5, display: "flex" }}><span style={{ flex: 1, background: "#FBBF24" }} /><span style={{ flex: 1, background: "#34D399" }} /><span style={{ flex: 1, background: "#EF4444" }} /></div>
           </div>
 
-          {/* Email preview */}
+          {/* Email preview — the exact branded HTML residents receive */}
           <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--f5-border)" }}>
-              <strong>Email</strong><span className="f5-badge">AI generated</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--f5-border)" }}>
+              <strong>Email</strong>
+              <span style={{ display: "flex", gap: 6 }}>
+                <span className="f5-badge">{email?.subject ? `Subject: ${email.subject}` : "No subject"}</span>
+                <span className="f5-badge ok">Delivered render</span>
+              </span>
             </div>
-            <div style={{ background: theme.color, color: "#fff", padding: 16, fontWeight: 700 }}>{email?.subject || title}</div>
-            <div style={{ padding: 16, whiteSpace: "pre-wrap", fontSize: 13, color: "var(--f5-text-secondary)" }}>{email?.body || "No email draft — Regenerate AI."}</div>
+            {emailHtml
+              ? <iframe title="Email preview" srcDoc={emailHtml} style={{ width: "100%", height: 460, border: 0, background: "#f1f4f8", display: "block" }} />
+              : <div style={{ padding: 16, fontSize: 13, color: "var(--f5-text-muted)" }}>No email draft — Regenerate AI.</div>}
           </div>
 
           {/* SMS preview */}

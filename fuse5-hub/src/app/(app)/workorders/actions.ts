@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { isSystemField } from "@/lib/wo-fields";
 import { canBroadcast } from "@/lib/rbac";
+import { renderNoticeEmailHtml } from "@/lib/notice-template";
 
 // Approval workflow: Draft → Review → Approved → Sent.
 export async function submitForReview(woId: string): Promise<{ ok: boolean; error?: string }> {
@@ -135,7 +136,7 @@ export async function publishNotice(woId: string): Promise<{ ok: boolean; sent?:
   const me = await getCurrentUser();
   if (!me?.orgId) return { ok: false, error: "No organization." };
 
-  const { data: wo } = await supabase.from("work_orders").select("title,property_id,channels,drafts,notice_status").eq("id", woId).single();
+  const { data: wo } = await supabase.from("work_orders").select("title,property_id,channels,drafts,notice_status,notice,properties(name)").eq("id", woId).single();
   if (!wo) return { ok: false, error: "Work order not found." };
   if (wo.notice_status !== "approved") return { ok: false, error: "Notice must be Approved before publishing." };
 
@@ -143,10 +144,16 @@ export async function publishNotice(woId: string): Promise<{ ok: boolean; sent?:
   const emailDraft = drafts.find((d) => d.channel === "email");
   const smsDraft = drafts.find((d) => d.channel === "sms");
   const channels: string[] = wo.channels ?? [];
+  const facts = (wo.notice ?? {}) as Partial<NoticeFactsRow>;
+  const propertyName = (Array.isArray(wo.properties) ? wo.properties[0]?.name : (wo.properties as { name: string } | null)?.name) ?? "Your residence";
   let sent = 0;
   if (wo.property_id) {
     const { data: recips } = await supabase.from("residents").select("email,phone,preferred_channel").eq("property_id", wo.property_id).eq("status", "active").limit(200);
-    const html = emailDraft ? `<div>${emailDraft.body.replace(/\n/g, "<br/>")}</div>` : "";
+    const html = emailDraft ? renderNoticeEmailHtml({
+      orgName: me.orgName ?? "Your housing provider", propertyName, title: wo.title,
+      subject: emailDraft.subject, body: emailDraft.body, cta: facts.cta, dateText: facts.dateText,
+      affected: facts.affected, contactInfo: facts.contactInfo, imageCategory: facts.imageCategory,
+    }) : "";
     for (const r of recips ?? []) {
       const pref = r.preferred_channel as "email" | "sms" | "whatsapp" | null;
       let ch: "email" | "sms" | null = null;
