@@ -1,17 +1,13 @@
 import Link from "next/link";
 import { getOrgSettings, getSegments } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
+import { canAdmin } from "@/lib/rbac";
+import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
   const [settings, segments, me] = await Promise.all([getOrgSettings(), getSegments(), getCurrentUser()]);
   const orgName = me?.orgName ?? "Your Organization";
-
-  const Toggle = ({ on, label }: { on: boolean; label: string }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--f5-border)" }}>
-      <span style={{ fontSize: 13, color: "var(--f5-text-secondary)" }}>{label}</span>
-      <span className={`f5-badge ${on ? "ok" : ""}`}>{on ? "Collecting" : "Off"}</span>
-    </div>
-  );
+  const canEdit = me?.role ? canAdmin(me.role) : false;
 
   return (
     <main className="f5-content">
@@ -19,24 +15,7 @@ export default async function SettingsPage() {
       <div className="f5-page-sub">Organization configuration, audience groups, and data collection.</div>
 
       <div className="f5-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 18, alignItems: "start" }}>
-        {/* Org profile */}
-        <div className="f5-card">
-          <div className="f5-section-title" style={{ marginTop: 0 }}>Organization</div>
-          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "8px 16px", fontSize: 13 }}>
-            <span style={{ color: "var(--f5-text-muted)" }}>Name</span><span style={{ color: "var(--f5-text)" }}>{orgName}</span>
-            <span style={{ color: "var(--f5-text-muted)" }}>Plan</span><span>Growth</span>
-            <span style={{ color: "var(--f5-text-muted)" }}>Data residency</span><span>{settings.dataResidency}</span>
-            <span style={{ color: "var(--f5-text-muted)" }}>Audit reports</span><span style={{ textTransform: "capitalize" }}>{settings.auditReportCadence} · PDF</span>
-          </div>
-        </div>
-
-        {/* Data collection */}
-        <div className="f5-card">
-          <div className="f5-section-title" style={{ marginTop: 0 }}>Data Collection</div>
-          <Toggle on={settings.collectDeliveryLogs} label="Delivery logs (email / SMS)" />
-          <Toggle on={settings.collectProofOfPlay} label="Signage proof-of-play" />
-          <Toggle on={settings.collectAcknowledgements} label="Acknowledgements / responses" />
-        </div>
+        <SettingsForm initial={settings} orgName={orgName} canEdit={canEdit} />
 
         {/* Tenant groups */}
         <div className="f5-card">

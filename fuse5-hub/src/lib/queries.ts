@@ -115,6 +115,40 @@ export async function getContacts(): Promise<ContactRow[]> {
   } catch { return DEMO.contacts; }
 }
 
+export interface ContentRow { id: string; title: string; type: "image"|"video"|"notice"|"playlist"; durationS: number | null; updatedAt: string }
+export async function getContent(): Promise<ContentRow[]> {
+  const s = await db();
+  if (!s) return DEMO.content;
+  try {
+    const { data } = await s.from("content_items").select("id,title,type,duration_s,updated_at").order("updated_at", { ascending: false });
+    if (!data?.length) return DEMO.content;
+    return data.map((c) => ({ id: c.id, title: c.title, type: c.type as ContentRow["type"], durationS: c.duration_s ?? null, updatedAt: new Date(c.updated_at).toISOString().slice(0, 10) }));
+  } catch { return DEMO.content; }
+}
+
+// One config row per delivery channel. We always surface the full set of five
+// channels (merging any stored rows over the defaults) so the page can toggle a
+// channel that has no row yet — the first save inserts it.
+export const CHANNEL_KEYS = ["email", "sms", "whatsapp", "voice", "display"] as const;
+export type ChannelKey = (typeof CHANNEL_KEYS)[number];
+export interface ChannelConfigRow { channel: ChannelKey; enabled: boolean; settings: Record<string, string> }
+export async function getChannelsConfig(): Promise<ChannelConfigRow[]> {
+  const defaults: ChannelConfigRow[] = CHANNEL_KEYS.map((channel) => ({ channel, enabled: true, settings: {} }));
+  const s = await db();
+  if (!s) return defaults;
+  try {
+    const { data } = await s.from("channels_config").select("channel,enabled,settings");
+    if (!data?.length) return defaults;
+    const byKey = new Map(data.map((r) => [r.channel as ChannelKey, r]));
+    return defaults.map((d) => {
+      const row = byKey.get(d.channel);
+      if (!row) return d;
+      const settings = (row.settings && typeof row.settings === "object" ? row.settings : {}) as Record<string, string>;
+      return { channel: d.channel, enabled: row.enabled ?? true, settings };
+    });
+  } catch { return defaults; }
+}
+
 const LANG_LABELS: Record<string, string> = { en: "English", fr: "French", es: "Spanish", zh: "Mandarin", pt: "Portuguese", ar: "Arabic" };
 // Render a stored jsonb rule as a human sentence for the segment cards.
 export function describeRule(rule: unknown): string {
@@ -152,6 +186,12 @@ export async function getCalendar(): Promise<CalendarRow[]> {
 
 // ---- demo fallbacks (used only when backend is off) ----
 const DEMO = {
+  content: [
+    { id: "c-01", title: "Welcome Loop — Lobby", type: "playlist", durationS: 120, updatedAt: "2026-05-30" },
+    { id: "c-02", title: "Fire Safety Notice", type: "notice", durationS: 15, updatedAt: "2026-05-29" },
+    { id: "c-03", title: "Community BBQ — June 14", type: "image", durationS: 10, updatedAt: "2026-05-28" },
+    { id: "c-04", title: "Amenities Tour", type: "video", durationS: 90, updatedAt: "2026-05-21" },
+  ] as ContentRow[],
   residents: [
     { id: "r1", unit: "204", name: "Amara Okafor", propertyName: "WoodGreen — Danforth", propertyId: null, email: "a.okafor@example.org", phone: "416-555-1001", language: "English", preferredChannel: "email", status: "active" },
     { id: "r2", unit: "207", name: "Jean-Luc Tremblay", propertyName: "WoodGreen — Danforth", propertyId: null, email: "jl.tremblay@example.org", phone: "416-555-1002", language: "French", preferredChannel: "sms", status: "active" },
