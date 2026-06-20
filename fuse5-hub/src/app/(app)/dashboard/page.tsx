@@ -1,5 +1,7 @@
-// Operations Dashboard — live ops KPIs, weekly trend, activity feed.
+// Operations Dashboard — live ops KPIs, weekly trend, activity feed + the
+// command-center layer (sparkline stats, quick actions, AI insights, compliance).
 import { getDashboardStats } from "@/lib/queries";
+import { CommandCenter } from "./command-center";
 
 const TREND: { label: string; value: number }[] = [
   { label: "Mon", value: 1240 },
@@ -37,6 +39,8 @@ export default async function DashboardPage() {
         <div className="f5-card"><div className="f5-kpi-label">Response Rate</div><div className="f5-kpi-value">62.4%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 4.1%</span> 7-day avg</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Open Work Orders</div><div className="f5-kpi-value f5-warn">{stats.openWorkOrders}</div><div className="f5-kpi-sub"><span className="f5-down">7</span> overdue</div></div>
       </div>
+
+      <CommandCenter />
 
       <div className="f5-grid" style={{ gridTemplateColumns: "1fr", marginTop: 18 }}>
         <div className="f5-card">

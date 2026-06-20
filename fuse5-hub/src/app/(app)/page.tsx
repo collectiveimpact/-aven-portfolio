@@ -48,9 +48,64 @@ export default async function OverviewPage() {
         </div>
       </div>
 
+      {/* Upcoming Inspections & Violations */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="f5-section-title" style={{ margin: 0 }}>Upcoming Inspections &amp; Violations</div>
+        <a className="f5-btn" href="/compliance" style={{ padding: "5px 12px", fontSize: 12 }}>View All</a>
+      </div>
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="f5-table">
+          <thead><tr><th>Building</th><th>Type</th><th>Authority</th><th>Due</th><th>Status</th><th>Score</th></tr></thead>
+          <tbody>
+            {INSPECTIONS.map((r) => (
+              <tr key={r.building + r.type}>
+                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.building}</td>
+                <td>{r.type}</td>
+                <td style={{ color: "var(--f5-text-muted)" }}>{r.authority}</td>
+                <td>{r.due}</td>
+                <td><span className={`f5-badge ${r.tone}`}>{r.status}</span></td>
+                <td style={{ color: r.score >= 85 ? "var(--f5-green,#34d399)" : r.score >= 60 ? "#f59e0b" : "var(--f5-red,#f87171)" }}>{r.score}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Building Roster */}
+      <div className="f5-section-title">Building Roster</div>
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="f5-table">
+          <thead><tr><th>Property</th><th>Units</th><th>Occupancy</th><th>Displays</th><th>WOs Open</th><th>Compliance</th></tr></thead>
+          <tbody>
+            {ROSTER.map((r) => (
+              <tr key={r.property}>
+                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.property}</td>
+                <td>{r.units}</td>
+                <td>{r.occupancy}%</td>
+                <td>{r.displays}</td>
+                <td>{r.wos}</td>
+                <td style={{ color: r.compliance >= 85 ? "var(--f5-green,#34d399)" : "#f59e0b" }}>{r.compliance}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>
         Data source: {d.source === "live" ? "Fuse5 backend (live)" : "demo seed"}
       </div>
     </main>
   );
 }
+
+const INSPECTIONS: { building: string; type: string; authority: string; due: string; status: string; tone: string; score: number }[] = [
+  { building: "WoodGreen — East York", type: "RentSafeTO", authority: "City of Toronto", due: "Apr 17, 2026", status: "Due Soon", tone: "warn", score: 91 },
+  { building: "WoodGreen — Danforth", type: "Fire Safety", authority: "Ontario Fire", due: "May 2, 2026", status: "Scheduled", tone: "", score: 95 },
+  { building: "Neighbours — Main St W", type: "AODA Accessibility", authority: "Province of Ontario", due: "May 15, 2026", status: "Open Violation", tone: "danger", score: 62 },
+  { building: "Kiwanis — King St", type: "Hamilton SAB", authority: "City of Hamilton", due: "Jun 3, 2026", status: "Scheduled", tone: "", score: 85 },
+];
+const ROSTER: { property: string; units: number; occupancy: number; displays: number; wos: number; compliance: number }[] = [
+  { property: "WoodGreen — Danforth", units: 142, occupancy: 96, displays: 6, wos: 4, compliance: 91 },
+  { property: "WoodGreen — East York", units: 98, occupancy: 94, displays: 4, wos: 8, compliance: 76 },
+  { property: "WoodGreen — Riverdale", units: 76, occupancy: 98, displays: 3, wos: 2, compliance: 94 },
+];
