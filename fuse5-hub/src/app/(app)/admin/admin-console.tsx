@@ -7,6 +7,7 @@ import { MemberRoles } from "./member-roles";
 import { BillingPanel, OrgSettingsPanel, AuditPanel, PlatformOverviewPanel, AllProvidersPanel, ProviderRolesPanel, ProviderUsersPanel, EnvironmentsPanel, PermissionMatrixPanel, LocationPlayerPanel } from "./panels";
 import { TenantPortalForm } from "./tenant-portal-form";
 import { ImpersonationPanel } from "./impersonation-panel";
+import { FuseRolesPanel, IntegrationsAdminPanel, TemplateLibraryPanel, ApprovalWorkflowPanel, ComplianceSettingsPanel, PlatformBillingTable } from "./admin-panels-v2";
 
 export interface AdminConsoleProps {
   isSuper: boolean;
@@ -34,6 +35,7 @@ const ACCOUNT: { key: PanelKey; label: string }[] = [
 ];
 const PLATFORM: { key: PanelKey; label: string }[] = [
   { key: "platform-overview", label: "Platform Overview" },
+  { key: "fuse5-roles", label: "Users & Permissions" },
   { key: "all-providers", label: "All Providers" },
   { key: "provider-roles", label: "Provider Role Templates" },
   { key: "provider-users", label: "All Provider Users" },
@@ -42,6 +44,10 @@ const PLATFORM: { key: PanelKey; label: string }[] = [
   { key: "permission-matrix", label: "Permission Matrix" },
   { key: "tenant-portal", label: "Tenant Portal Config" },
   { key: "location-player", label: "Location-Player Config" },
+  { key: "integrations", label: "Data Sources & Integrations" },
+  { key: "template-library", label: "Template Library" },
+  { key: "approval-workflow", label: "Approval Workflow" },
+  { key: "compliance-settings", label: "Compliance Settings" },
 ];
 
 export function AdminConsole(p: AdminConsoleProps) {
@@ -72,7 +78,7 @@ export function AdminConsole(p: AdminConsoleProps) {
 
       <section style={{ minWidth: 0 }}>
         {active === "users-roles" && <MemberRoles members={p.members} canManage={p.canManage} currentUserId={p.currentUserId} />}
-        {active === "billing" && <BillingPanel sub={p.sub} />}
+        {active === "billing" && (p.isSuper ? <PlatformBillingTable /> : <BillingPanel sub={p.sub} />)}
         {active === "org-settings" && <OrgSettingsPanel orgName={p.orgName} />}
         {active === "audit" && <AuditPanel audit={p.audit} />}
         {active === "platform-overview" && <PlatformOverviewPanel stats={p.stats} providers={p.providers} />}
@@ -84,6 +90,11 @@ export function AdminConsole(p: AdminConsoleProps) {
         {active === "permission-matrix" && <PermissionMatrixPanel />}
         {active === "tenant-portal" && <TenantPortalForm initial={p.portal} canEdit={p.canManage} />}
         {active === "location-player" && <LocationPlayerPanel fleet={p.fleet} />}
+        {active === "fuse5-roles" && <FuseRolesPanel />}
+        {active === "integrations" && <IntegrationsAdminPanel />}
+        {active === "template-library" && <TemplateLibraryPanel />}
+        {active === "approval-workflow" && <ApprovalWorkflowPanel />}
+        {active === "compliance-settings" && <ComplianceSettingsPanel />}
       </section>
     </div>
   );
