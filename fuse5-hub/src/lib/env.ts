@@ -17,3 +17,8 @@ export const hasSms = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_
 // Demo affordances (prefilled login creds, demo hints). ON for local/dev; OFF in
 // production unless NEXT_PUBLIC_DEMO=true is set explicitly. Client-safe flag.
 export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO === "true" || process.env.NODE_ENV !== "production";
+
+// Whether list getters fall back to canned demo rows when a backed table is
+// EMPTY. ON for local/dev (rich demo); OFF in production so a real org with no
+// data renders true empty states instead of fake rows. Follows IS_DEMO.
+export const DEMO_FALLBACK = process.env.DEMO_FALLBACK === "true" || (process.env.DEMO_FALLBACK !== "false" && IS_DEMO);

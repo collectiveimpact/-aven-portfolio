@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { F5Role } from "@/lib/rbac";
 import { resolveFields, type ResolvedField, type FieldOverride } from "@/lib/wo-fields";
 import { DEMO_PROVIDERS, DEMO_PLATFORM_USERS, DEMO_FLEET, DEFAULT_PORTAL, type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type PortalConfig } from "@/lib/platform";
+import { DEMO_FALLBACK } from "@/lib/env";
+
+// Demo fallback for EMPTY/errored backed reads: canned demo rows in demo mode,
+// real (empty) value in production. The no-backend (`!s`) path stays demo always.
+function fb<T>(demo: T, real: T): T { return DEMO_FALLBACK ? demo : real; }
 
 /** Per-client, per-notice-type field config (registry merged with the org's overrides). */
 export async function getWoFieldConfig(noticeType = "general"): Promise<ResolvedField[]> {
@@ -51,9 +56,9 @@ export async function getResidents(): Promise<ResidentRow[]> {
   if (!s) return DEMO.residents;
   try {
     const { data } = await s.from("residents").select("id,unit,name,language,status,property_id,email,phone,preferred_channel,properties(name)").order("unit");
-    if (!data?.length) return DEMO.residents;
+    if (!data?.length) return fb(DEMO.residents, []);
     return data.map((r) => ({ id: r.id, unit: r.unit ?? "—", name: r.name, propertyName: propName(r.properties as PropRef), propertyId: r.property_id ?? null, email: r.email ?? "", phone: r.phone ?? "", language: r.language ?? "—", preferredChannel: r.preferred_channel ?? "email", status: r.status as ResidentRow["status"] }));
-  } catch { return DEMO.residents; }
+  } catch { return fb(DEMO.residents, []); }
 }
 
 export async function getWorkOrders(): Promise<WorkOrderRow[]> {
@@ -61,9 +66,9 @@ export async function getWorkOrders(): Promise<WorkOrderRow[]> {
   if (!s) return DEMO.workOrders;
   try {
     const { data } = await s.from("work_orders").select("id,title,unit,category,priority,status,channels,notice_status,properties(name)").order("created_at", { ascending: false });
-    if (!data?.length) return DEMO.workOrders;
+    if (!data?.length) return fb(DEMO.workOrders, []);
     return data.map((w) => ({ id: w.id, title: w.title, propertyName: propName(w.properties as PropRef), unit: w.unit ?? "—", category: w.category ?? "—", priority: w.priority as WorkOrderRow["priority"], status: w.status as WorkOrderRow["status"], channels: w.channels ?? [], noticeStatus: (w.notice_status ?? "none") as WorkOrderRow["noticeStatus"] }));
-  } catch { return DEMO.workOrders; }
+  } catch { return fb(DEMO.workOrders, []); }
 }
 
 export async function getTemplates(): Promise<TemplateRow[]> {
@@ -71,9 +76,9 @@ export async function getTemplates(): Promise<TemplateRow[]> {
   if (!s) return DEMO.templates;
   try {
     const { data } = await s.from("templates").select("id,name,category,channels,mandatory,version,body").order("name");
-    if (!data?.length) return DEMO.templates;
+    if (!data?.length) return fb(DEMO.templates, []);
     return data.map((t) => ({ id: t.id, name: t.name, category: t.category ?? "—", channels: t.channels ?? [], mandatory: !!t.mandatory, version: t.version ?? "1.0", body: t.body ?? "" }));
-  } catch { return DEMO.templates; }
+  } catch { return fb(DEMO.templates, []); }
 }
 
 export async function getDisplays(): Promise<DisplayRow[]> {
@@ -81,9 +86,9 @@ export async function getDisplays(): Promise<DisplayRow[]> {
   if (!s) return DEMO.displays;
   try {
     const { data } = await s.from("displays").select("id,name,location,status,property_id,properties(name)").order("name");
-    if (!data?.length) return DEMO.displays;
+    if (!data?.length) return fb(DEMO.displays, []);
     return data.map((d) => ({ id: d.id, name: d.name, location: d.location ?? "—", propertyName: propName(d.properties as PropRef), propertyId: d.property_id ?? null, status: d.status as DisplayRow["status"] }));
-  } catch { return DEMO.displays; }
+  } catch { return fb(DEMO.displays, []); }
 }
 
 export async function getSurveys(): Promise<SurveyRow[]> {
@@ -91,9 +96,9 @@ export async function getSurveys(): Promise<SurveyRow[]> {
   if (!s) return DEMO.surveys;
   try {
     const { data } = await s.from("surveys").select("id,title,status,sent,responses");
-    if (!data?.length) return DEMO.surveys;
+    if (!data?.length) return fb(DEMO.surveys, []);
     return data.map((x) => ({ id: x.id, title: x.title, status: x.status as SurveyRow["status"], sent: x.sent ?? 0, responses: x.responses ?? 0 }));
-  } catch { return DEMO.surveys; }
+  } catch { return fb(DEMO.surveys, []); }
 }
 
 export async function getCompliance(): Promise<ComplianceRow[]> {
@@ -101,9 +106,9 @@ export async function getCompliance(): Promise<ComplianceRow[]> {
   if (!s) return DEMO.compliance;
   try {
     const { data } = await s.from("compliance_items").select("id,kind,due,status,property_id,properties(name)").order("due");
-    if (!data?.length) return DEMO.compliance;
+    if (!data?.length) return fb(DEMO.compliance, []);
     return data.map((c) => ({ id: c.id, propertyName: propName(c.properties as PropRef), propertyId: c.property_id ?? null, kind: c.kind, due: c.due ?? "—", status: c.status as ComplianceRow["status"] }));
-  } catch { return DEMO.compliance; }
+  } catch { return fb(DEMO.compliance, []); }
 }
 
 export async function getContacts(): Promise<ContactRow[]> {
@@ -111,9 +116,9 @@ export async function getContacts(): Promise<ContactRow[]> {
   if (!s) return DEMO.contacts;
   try {
     const { data } = await s.from("contacts").select("id,name,role,email,phone,property");
-    if (!data?.length) return DEMO.contacts;
+    if (!data?.length) return fb(DEMO.contacts, []);
     return data.map((c) => ({ id: c.id, name: c.name, role: c.role ?? "—", email: c.email ?? "—", phone: c.phone ?? "—", property: c.property ?? "—" }));
-  } catch { return DEMO.contacts; }
+  } catch { return fb(DEMO.contacts, []); }
 }
 
 export interface ContentRow { id: string; title: string; type: "image"|"video"|"notice"|"playlist"; durationS: number | null; updatedAt: string }
@@ -122,9 +127,9 @@ export async function getContent(): Promise<ContentRow[]> {
   if (!s) return DEMO.content;
   try {
     const { data } = await s.from("content_items").select("id,title,type,duration_s,updated_at").order("updated_at", { ascending: false });
-    if (!data?.length) return DEMO.content;
+    if (!data?.length) return fb(DEMO.content, []);
     return data.map((c) => ({ id: c.id, title: c.title, type: c.type as ContentRow["type"], durationS: c.duration_s ?? null, updatedAt: new Date(c.updated_at).toISOString().slice(0, 10) }));
-  } catch { return DEMO.content; }
+  } catch { return fb(DEMO.content, []); }
 }
 
 // One config row per delivery channel. We always surface the full set of five
@@ -170,9 +175,9 @@ export async function getSegments(): Promise<SegmentRow[]> {
   if (!s) return DEMO.segments;
   try {
     const { data } = await s.from("segments").select("id,name,rule,size");
-    if (!data?.length) return DEMO.segments;
+    if (!data?.length) return fb(DEMO.segments, []);
     return data.map((g) => ({ id: g.id, name: g.name, rule: describeRule(g.rule), size: g.size ?? 0 }));
-  } catch { return DEMO.segments; }
+  } catch { return fb(DEMO.segments, []); }
 }
 
 export async function getCalendar(): Promise<CalendarRow[]> {
@@ -180,9 +185,9 @@ export async function getCalendar(): Promise<CalendarRow[]> {
   if (!s) return DEMO.calendar;
   try {
     const { data } = await s.from("calendar_events").select("id,title,day,channel,status").order("day");
-    if (!data?.length) return DEMO.calendar;
+    if (!data?.length) return fb(DEMO.calendar, []);
     return data.map((e) => ({ id: e.id, title: e.title, day: e.day, channel: e.channel ?? "multi", status: e.status ?? "scheduled" }));
-  } catch { return DEMO.calendar; }
+  } catch { return fb(DEMO.calendar, []); }
 }
 
 // ---- demo fallbacks (used only when backend is off) ----
@@ -262,7 +267,7 @@ export async function getMembers(): Promise<MemberRow[]> {
   if (!s) return DEMO2.members;
   try {
     const { data: members } = await s.from("org_members").select("id,user_id,role");
-    if (!members?.length) return DEMO2.members;
+    if (!members?.length) return fb(DEMO2.members, []);
     const ids = members.map((m) => m.user_id);
     const { data: profiles } = await s.from("profiles").select("id,full_name,email").in("id", ids);
     const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
@@ -270,7 +275,7 @@ export async function getMembers(): Promise<MemberRow[]> {
       const p = pmap.get(m.user_id);
       return { id: m.id, userId: m.user_id, fullName: p?.full_name || "—", email: p?.email || "—", role: m.role as F5Role, status: "active" as const };
     });
-  } catch { return DEMO2.members; }
+  } catch { return fb(DEMO2.members, []); }
 }
 
 export async function getAuditLog(): Promise<AuditRow[]> {
@@ -278,12 +283,12 @@ export async function getAuditLog(): Promise<AuditRow[]> {
   if (!s) return DEMO2.audit;
   try {
     const { data } = await s.from("audit_log").select("id,actor_id,action,detail,created_at").order("created_at", { ascending: false }).limit(20);
-    if (!data?.length) return DEMO2.audit;
+    if (!data?.length) return fb(DEMO2.audit, []);
     const ids = [...new Set(data.map((a) => a.actor_id).filter(Boolean))] as string[];
     const { data: profiles } = ids.length ? await s.from("profiles").select("id,full_name").in("id", ids) : { data: [] };
     const pmap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
     return data.map((a) => ({ id: String(a.id), actor: (a.actor_id && pmap.get(a.actor_id)) || "System", action: a.action, detail: a.detail ?? "", when: relTime(a.created_at) }));
-  } catch { return DEMO2.audit; }
+  } catch { return fb(DEMO2.audit, []); }
 }
 
 export async function getSubscription(): Promise<SubscriptionInfo> {
@@ -348,7 +353,7 @@ export async function getInbox(): Promise<InboundRow[]> {
   if (!s) return DEMO2.inbox;
   try {
     const { data } = await s.from("inbound_messages").select("id,channel,body,status,received_at,residents(name,unit)").order("received_at", { ascending: false });
-    if (!data?.length) return DEMO2.inbox;
+    if (!data?.length) return fb(DEMO2.inbox, []);
     return data.map((m) => {
       const r = m.residents as { name: string; unit: string } | { name: string; unit: string }[] | null;
       const res = Array.isArray(r) ? r[0] : r;
@@ -362,7 +367,7 @@ export async function getInbox(): Promise<InboundRow[]> {
         status: (m.status === "open" ? "unread" : m.status) as InboundRow["status"],
       };
     });
-  } catch { return DEMO2.inbox; }
+  } catch { return fb(DEMO2.inbox, []); }
 }
 
 export interface EmergencyLogRow { id: string; date: string; type: string; reach: string; status: "sent" | "resolved" | "active" }
@@ -372,7 +377,7 @@ export async function getEmergencyLog(): Promise<EmergencyLogRow[]> {
   if (!s) return DEMO2.emergencyLog;
   try {
     const { data } = await s.from("messages").select("id,subject,audience_count,status,created_at").eq("priority", "emergency").order("created_at", { ascending: false }).limit(20);
-    if (!data?.length) return DEMO2.emergencyLog;
+    if (!data?.length) return fb(DEMO2.emergencyLog, []);
     return data.map((m) => ({
       id: m.id,
       date: new Date(m.created_at).toLocaleString("en-CA", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
@@ -380,7 +385,7 @@ export async function getEmergencyLog(): Promise<EmergencyLogRow[]> {
       reach: `${(m.audience_count ?? 0).toLocaleString()} residents`,
       status: (m.status === "sent" ? "sent" : "active") as EmergencyLogRow["status"],
     }));
-  } catch { return DEMO2.emergencyLog; }
+  } catch { return fb(DEMO2.emergencyLog, []); }
 }
 
 export interface ComposeTemplate { id: string; name: string; channels: string[]; body: string }
@@ -556,7 +561,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
       s.from("properties").select("id", { count: "exact", head: true }),
       s.from("residents").select("id", { count: "exact", head: true }),
     ]);
-    if ((orgs.count ?? 0) <= 1) return demo;
+    if ((orgs.count ?? 0) <= 1 && DEMO_FALLBACK) return demo;
     return { providers: orgs.count ?? 0, users: members.count ?? 0, properties: props.count ?? 0, tenants: residents.count ?? 0, uptime: "99.7%" };
   } catch { return demo; }
 }
@@ -566,7 +571,8 @@ export async function getPlatformProviders(): Promise<ProviderDemo[]> {
   if (!s) return DEMO_PROVIDERS;
   try {
     const { data: orgs } = await s.from("organizations").select("id,name,region");
-    if (!orgs || orgs.length <= 1) return DEMO_PROVIDERS;
+    if (!orgs?.length) return fb(DEMO_PROVIDERS, []);
+    if (orgs.length <= 1 && DEMO_FALLBACK) return DEMO_PROVIDERS;
     // Map live orgs into the provider shape (counts per org).
     const out: ProviderDemo[] = [];
     for (const o of orgs) {
@@ -580,7 +586,7 @@ export async function getPlatformProviders(): Promise<ProviderDemo[]> {
       out.push({ id: o.id, short, name: o.name, tier: "EMPRESA", color: "#009999", since: "—", yardi: "synced", status: "active", properties: props.count ?? 0, users: members.count ?? 0, tenants: residents.count ?? 0, players: displays.count ?? 0, compliance: 100, roles: [] });
     }
     return out;
-  } catch { return DEMO_PROVIDERS; }
+  } catch { return fb(DEMO_PROVIDERS, []); }
 }
 
 export async function getPlatformUsers(): Promise<PlatformUserDemo[]> {
@@ -588,12 +594,13 @@ export async function getPlatformUsers(): Promise<PlatformUserDemo[]> {
   if (!s) return DEMO_PLATFORM_USERS;
   try {
     const { data: orgs } = await s.from("organizations").select("id,name");
-    if (!orgs || orgs.length <= 1) return DEMO_PLATFORM_USERS;
+    if (!orgs?.length) return fb(DEMO_PLATFORM_USERS, []);
+    if (orgs.length <= 1 && DEMO_FALLBACK) return DEMO_PLATFORM_USERS;
     const orgName = new Map(orgs.map((o) => [o.id, o.name]));
     const { data } = await s.from("org_members").select("org_id,full_name,email,role,status");
-    if (!data?.length) return DEMO_PLATFORM_USERS;
+    if (!data?.length) return fb(DEMO_PLATFORM_USERS, []);
     return data.map((m) => ({ name: m.full_name ?? m.email ?? "—", email: m.email ?? "—", provider: orgName.get(m.org_id) ?? "—", providerColor: "#009999", role: m.role ?? "viewer", properties: "—", lastLogin: "—", status: (m.status === "suspended" ? "Suspended" : m.status === "invited" ? "Invited" : "Active") as PlatformUserDemo["status"] }));
-  } catch { return DEMO_PLATFORM_USERS; }
+  } catch { return fb(DEMO_PLATFORM_USERS, []); }
 }
 
 export async function getPlayerFleet(): Promise<PlayerDemo[]> {
@@ -601,11 +608,12 @@ export async function getPlayerFleet(): Promise<PlayerDemo[]> {
   if (!s) return DEMO_FLEET;
   try {
     const { data: orgs } = await s.from("organizations").select("id");
-    if (!orgs || orgs.length <= 1) return DEMO_FLEET;
+    if (!orgs?.length) return fb(DEMO_FLEET, []);
+    if (orgs.length <= 1 && DEMO_FALLBACK) return DEMO_FLEET;
     const { data } = await s.from("displays").select("id,name,location,status,properties(name)");
-    if (!data?.length) return DEMO_FLEET;
+    if (!data?.length) return fb(DEMO_FLEET, []);
     return data.map((d) => ({ id: d.id, model: "H200W", provider: "—", property: propName(d.properties as PropRef), location: d.location ?? "—", status: (d.status as PlayerDemo["status"]) ?? "online", uptime: 99, firmware: "v4.2.1", display: "1920×1080", orientation: "landscape", lastSeen: "—" }));
-  } catch { return DEMO_FLEET; }
+  } catch { return fb(DEMO_FLEET, []); }
 }
 
 export async function getTenantPortalConfig(): Promise<PortalConfig> {
