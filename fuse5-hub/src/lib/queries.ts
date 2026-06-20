@@ -617,3 +617,28 @@ export async function getTenantPortalConfig(): Promise<PortalConfig> {
     return { ...DEFAULT_PORTAL, ...(data.settings as Partial<PortalConfig>) };
   } catch { return DEFAULT_PORTAL; }
 }
+
+// Integrations catalog merged with the org's saved rows (integrations table).
+// Status is configurable per org; defaults reflect what's actually wired.
+export type IntegrationStatus = "connected" | "active" | "available" | "disconnected";
+export interface IntegrationRow { provider: string; name: string; ico: string; description: string; status: IntegrationStatus; settings: Record<string, string> }
+const INTEGRATION_CATALOG: IntegrationRow[] = [
+  { provider: "yardi", name: "Yardi Voyager", ico: "🏢", description: "Import properties, units, residents, and work orders from a Yardi ETL export. Direct API sync with a Yardi interface license.", status: "active", settings: {} },
+  { provider: "rentsafeto", name: "RentSafeTO", ico: "✅", description: "Building scores and compliance evaluations from the City of Toronto.", status: "available", settings: {} },
+  { provider: "email", name: "Email Provider", ico: "✉️", description: "Transactional and broadcast email delivery for resident comms.", status: "available", settings: {} },
+  { provider: "twilio", name: "Twilio SMS / Voice", ico: "📱", description: "SMS broadcasts and automated voice calls for emergencies.", status: "disconnected", settings: {} },
+];
+export async function getIntegrations(): Promise<IntegrationRow[]> {
+  const s = await db();
+  if (!s) return INTEGRATION_CATALOG;
+  try {
+    const { data } = await s.from("integrations").select("provider,status,settings");
+    const byKey = new Map((data ?? []).map((r) => [r.provider, r]));
+    return INTEGRATION_CATALOG.map((c) => {
+      const row = byKey.get(c.provider);
+      if (!row) return c;
+      const settings = (row.settings && typeof row.settings === "object" ? row.settings : {}) as Record<string, string>;
+      return { ...c, status: (row.status as IntegrationStatus) ?? c.status, settings };
+    });
+  } catch { return INTEGRATION_CATALOG; }
+}

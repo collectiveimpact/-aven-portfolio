@@ -39,6 +39,7 @@ const GROUPS: { group: string; items: Item[] }[] = [
     items: [
       { href: "/properties", label: "Properties", ico: "🏢" },
       { href: "/workorders", label: "Work Orders", ico: "🔧", badge: "7" },
+      { href: "/frontline", label: "Submit Request", ico: "➕" },
       { href: "/displays", label: "Displays", ico: "🖥" },
       { href: "/content", label: "Content on Demand", ico: "▶" },
       { href: "/compliance", label: "Compliance", ico: "🛡" },

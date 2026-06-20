@@ -34,6 +34,32 @@ export interface SendBroadcastResult {
 }
 
 // Send a real broadcast: persist Message + MessageRecipient rows, write an audit
+// Persist an unsent draft (status='draft', no recipients dispatched). Shows up in
+// message history and can be re-opened/sent later.
+export async function saveDraft(input: SendBroadcastInput): Promise<{ ok: boolean; mode?: "live" | "demo"; error?: string }> {
+  if (!input.subject.trim() && !input.body.trim()) return { ok: false, error: "Add a subject or body before saving." };
+  const supabase = await createClient();
+  if (!supabase) return { ok: true, mode: "demo" };
+  const me = await getCurrentUser();
+  if (!me?.orgId) return { ok: false, error: "No organization for the current user." };
+
+  const { data: msg, error } = await supabase.from("messages").insert({
+    org_id: me.orgId,
+    subject: input.subject || "(untitled draft)",
+    body: input.body,
+    channels: input.channels,
+    status: "draft",
+    priority: input.priority,
+    audience_count: input.audienceCount,
+    scheduled_for: input.scheduledFor,
+    created_by: me.id ?? null,
+  }).select("id").single();
+  if (error || !msg) return { ok: false, error: error?.message ?? "Could not save draft." };
+
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Draft Saved", detail: `"${input.subject || "(untitled draft)"}" — ${input.channels.join(", ") || "no channel"}` });
+  return { ok: true, mode: "live" };
+}
+
 // entry, and dispatch email via the provider adapter (live when RESEND_API_KEY is
 // set, safe stub otherwise). Falls back to a demo result when no backend.
 export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroadcastResult> {

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import type { Channel } from "@/lib/types";
 import type { ComposeTemplate } from "@/lib/queries";
-import { sendBroadcast, aiCompose } from "./actions";
+import { sendBroadcast, saveDraft, aiCompose } from "./actions";
 
 const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "display"]);
 
@@ -48,6 +48,7 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
   const [warning, setWarning] = useState<string | null>(null);
   const [stage, setStage] = useState<"compose" | "confirm" | "sent">("compose");
   const [sentCount, setSentCount] = useState(0);
+  const [draftSaved, setDraftSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const audienceCount = useMemo(
@@ -125,8 +126,16 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
 
   const onSaveDraft = () => {
     setWarning(null);
-    setStage("compose");
-    // TODO: real provider send — persist draft Message row.
+    setDraftSaved(false);
+    if (!subject.trim() && !body.trim()) { setWarning("Add a subject or body before saving a draft."); return; }
+    startTransition(async () => {
+      const res = await saveDraft({
+        subject, body, channels, segments, priority, language, audienceCount,
+        delivery, scheduledFor: delivery === "schedule" ? scheduledFor : null,
+      });
+      if (res.ok) setDraftSaved(true);
+      else setWarning(res.error ?? "Could not save draft.");
+    });
   };
 
   const radio = (checked: boolean): React.CSSProperties => ({
@@ -349,8 +358,9 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
             ) : (
               <button type="button" className="f5-btn primary" onClick={onReview}>Schedule</button>
             )}
-            <button type="button" className="f5-btn" onClick={onSaveDraft}>Save Draft</button>
+            <button type="button" className="f5-btn" onClick={onSaveDraft} disabled={isPending}>Save Draft</button>
             <button type="button" className="f5-btn" onClick={() => validate() && setStage("confirm")}>Preview</button>
+            {draftSaved && <span style={{ alignSelf: "center", fontSize: 12, color: "var(--f5-green,#34d399)" }}>Draft saved ✓</span>}
           </div>
         </div>
 
