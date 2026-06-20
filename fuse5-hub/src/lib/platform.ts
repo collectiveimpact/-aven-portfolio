@@ -130,13 +130,35 @@ export interface PortalConfig {
   url: string;
   features: Record<string, boolean>; // self-service feature toggles
   channels: Record<string, boolean>;
+  kiosk: Record<string, boolean>;    // kiosk-mode toggles
   theme: "dark" | "light";
   primaryColor: string;
   headerText: string;
+  welcomeMessage: string;
+  footerText: string;
   idleTimeout: number;
   quietStart: string;
   quietEnd: string;
 }
+// Kiosk-mode toggles (Section D).
+export const PORTAL_KIOSK = [
+  { key: "enable", label: "Enable Kiosk Mode" }, { key: "return_home", label: "Return-to-Home Screen" }, { key: "touch_sound", label: "Touch Sound Effects" },
+  { key: "accessibility", label: "Accessibility Mode" }, { key: "language_selector", label: "Language Selector" }, { key: "pin_lock", label: "PIN Lock" },
+] as const;
+// Provider-level notification defaults (Section E). `forced` = locked on.
+export const PORTAL_NOTIFY = [
+  { label: "Maintenance Updates", sms: true, email: true, signage: false, forced: false },
+  { label: "Emergency Alerts", sms: true, email: true, signage: true, forced: true },
+  { label: "Community Events", sms: false, email: true, signage: false, forced: false },
+  { label: "Compliance Notices", sms: true, email: true, signage: true, forced: true },
+] as const;
+// Integration status (Section G).
+export const PORTAL_INTEGRATIONS = [
+  { name: "Yardi Virtuoso", sub: "WO tracking & tenant data sync", status: "Connected · Sync 2m ago" },
+  { name: "Agent 05 (Tenant Inquiry)", sub: "Self-service FAQ & escalation", status: "Active" },
+  { name: "Agent 06 (Maintenance Request)", sub: "Submit & track work orders", status: "Active" },
+  { name: "Translation Agent", sub: "Supported: EN, FR, ES, ZH", status: "Active" },
+] as const;
 export const PORTAL_FEATURES = [
   { key: "view_wo", label: "View Work Orders", sub: "Tenants can check status of maintenance requests", future: false },
   { key: "submit_wo", label: "Submit Maintenance Requests", sub: "Submit new work orders with photos and descriptions", future: false },
@@ -159,9 +181,12 @@ export const DEFAULT_PORTAL: PortalConfig = {
   url: "portal.fuse5.ca/woodgreen",
   features: { view_wo: true, submit_wo: true, comm_prefs: true, view_notices: true, pay_rent: false, book_amenities: false, esign: false, events: false },
   channels: { signage: true, sms: true, email: true, push: false, kiosk: true },
+  kiosk: { enable: true, return_home: true, touch_sound: true, accessibility: true, language_selector: true, pin_lock: true },
   theme: "dark",
   primaryColor: "#009999",
   headerText: "WoodGreen Tenant Portal",
+  welcomeMessage: "Welcome to your resident portal. View notices, submit requests, and update your contact preferences.",
+  footerText: "© 2026 WoodGreen Community Housing",
   idleTimeout: 300,
   quietStart: "22:00",
   quietEnd: "07:00",

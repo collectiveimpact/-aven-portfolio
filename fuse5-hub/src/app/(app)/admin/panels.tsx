@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  PERM_MODULES, PERM_GLYPH, PERM_LABEL, F5_GLOBAL_ROLES, PROVIDER_ROLES, ENVIRONMENTS,
+  PERM_MODULES, PERM_GLYPH, PERM_LABEL, F5_GLOBAL_ROLES, PROVIDER_ROLES, ENVIRONMENTS, LATEST_FIRMWARE,
   type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type RoleRow, type PermLevel,
 } from "@/lib/platform";
 import type { PlatformStats, AuditRow, SubscriptionInfo } from "@/lib/queries";
@@ -299,6 +299,23 @@ export function LocationPlayerPanel({ fleet }: { fleet: PlayerDemo[] }) {
           </div>
         );
       })}
+
+      <div className="f5-section-title">Firmware Distribution</div>
+      <div className="f5-card">
+        {Object.entries(fleet.reduce<Record<string, number>>((a, f) => { const v = f.firmware ?? "—"; a[v] = (a[v] ?? 0) + 1; return a; }, {}))
+          .sort((a, b) => (a[0] === LATEST_FIRMWARE ? -1 : b[0] === LATEST_FIRMWARE ? 1 : b[1] - a[1]))
+          .map(([ver, count]) => (
+            <div key={ver} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--f5-border)" }}>
+              <span style={{ color: fg, fontFamily: "monospace", fontSize: 13 }}>{ver}</span>
+              <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <span style={{ color: dim, fontSize: 12 }}>{count} player{count === 1 ? "" : "s"}</span>
+                {ver === LATEST_FIRMWARE
+                  ? <span className="f5-badge ok">Latest</span>
+                  : ver === "—" ? <span className="f5-badge">Provisioning</span> : <span className="f5-badge warn">Update Available</span>}
+              </span>
+            </div>
+          ))}
+      </div>
     </>
   );
 }
