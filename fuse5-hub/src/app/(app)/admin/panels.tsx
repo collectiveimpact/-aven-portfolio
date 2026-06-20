@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   PERM_MODULES, PERM_GLYPH, PERM_LABEL, F5_GLOBAL_ROLES, PROVIDER_ROLES, ENVIRONMENTS, LATEST_FIRMWARE,
   type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type RoleRow, type PermLevel,
@@ -82,8 +83,16 @@ export function PlatformOverviewPanel({ stats, providers }: { stats: PlatformSta
   ];
   return (
     <>
-      <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 14 }}>Fuse5 Communication Hub — Multi-Tenant Admin Console</div>
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(5,1fr)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div className="f5-page-sub" style={{ marginTop: -6 }}>Fuse5 Communication Hub — Multi-Tenant Admin Console</div>
+        <select className="f5-select" defaultValue="live" style={{ maxWidth: 200 }}>
+          <option value="live">🟢 Live Production</option>
+          <option value="test">🟡 Test / Staging</option>
+          <option value="demo">🟣 Demo Site</option>
+          <option value="sales">🔵 Sales Site</option>
+        </select>
+      </div>
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(5,1fr)", marginTop: 12 }}>
         {kpis.map((k) => <div key={k.label} className="f5-card"><div className="f5-kpi-label">{k.label}</div><div className="f5-kpi-value">{k.value}</div></div>)}
       </div>
       <div className="f5-section-title">Active Providers</div>
@@ -151,9 +160,13 @@ export function ProviderRolesPanel() {
             <div style={{ fontWeight: 700, color: fg }}>{r.icon} {r.name}</div>
             <div style={{ fontSize: 12, color: dim, margin: "6px 0 10px" }}>{r.description}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {PERM_MODULES.map((m, i) => r.perms[i] > 0 && (
-                <span key={m.key} className="f5-badge" style={{ fontSize: 10 }}>{m.label}: {PERM_LABEL[r.perms[i]]}</span>
-              ))}
+              {PERM_MODULES.map((m, i) => {
+                const lvl = r.perms[i];
+                // teal Full · blue R/W · gray Read · red None — curated color-by-level (v2.0.x).
+                const c = lvl === 3 ? "rgba(0,153,153,0.18)" : lvl === 2 ? "rgba(59,130,246,0.18)" : lvl === 1 ? "var(--f5-bg-soft, rgba(255,255,255,0.05))" : "rgba(239,68,68,0.14)";
+                const t = lvl === 3 ? "var(--f5-teal,#00CCCC)" : lvl === 2 ? "#60a5fa" : lvl === 1 ? "var(--f5-text-secondary)" : "#f87171";
+                return <span key={m.key} className="f5-badge" style={{ fontSize: 10, background: c, color: t }}>{m.label}: {PERM_LABEL[lvl]}</span>;
+              })}
             </div>
           </div>
         ))}
@@ -169,14 +182,22 @@ export function ProviderRolesPanel() {
 
 export function ProviderUsersPanel({ users }: { users: PlatformUserDemo[] }) {
   const statusBadge = (s: PlatformUserDemo["status"]) => s === "Active" ? "f5-badge ok" : s === "Invited" ? "f5-badge" : "f5-badge warn";
+  const [filter, setFilter] = useState("All Providers");
+  const providers = ["All Providers", ...Array.from(new Set(users.map((u) => u.provider)))];
+  const rows = users.filter((u) => filter === "All Providers" || u.provider === filter);
   return (
     <>
-      <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 14 }}>Cross-provider view of every user across all housing provider organizations.</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div className="f5-page-sub" style={{ marginTop: -6 }}>Cross-provider view of every user across all housing provider organizations.</div>
+        <select className="f5-select" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 180 }}>
+          {providers.map((p) => <option key={p}>{p}</option>)}
+        </select>
+      </div>
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 12 }}>
         <table className="f5-table">
           <thead><tr><th>User</th><th>Provider</th><th>Role</th><th>Properties</th><th>Last Login</th><th>Status</th></tr></thead>
           <tbody>
-            {users.map((u) => (
+            {rows.map((u) => (
               <tr key={u.email}>
                 <td><div style={{ color: fg, fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 11, color: dim }}>{u.email}</div></td>
                 <td style={{ color: u.providerColor, fontWeight: 700 }}>{u.provider}</td>
