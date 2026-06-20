@@ -13,3 +13,7 @@ export const TWILIO_FROM = process.env.TWILIO_FROM ?? "";
 export const hasAI = Boolean(ANTHROPIC_API_KEY);
 export const hasEmail = Boolean(RESEND_API_KEY);
 export const hasSms = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM);
+
+// Demo affordances (prefilled login creds, demo hints). ON for local/dev; OFF in
+// production unless NEXT_PUBLIC_DEMO=true is set explicitly. Client-safe flag.
+export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO === "true" || process.env.NODE_ENV !== "production";

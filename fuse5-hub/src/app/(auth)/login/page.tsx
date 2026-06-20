@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useActionState } from "react";
 import { signIn, type LoginState } from "./actions";
+import { IS_DEMO } from "@/lib/env";
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(signIn, {});
@@ -18,9 +19,9 @@ export default function LoginPage() {
         </div>
         <form action={formAction}>
           <label className="f5-label" htmlFor="email">Work email</label>
-          <input id="email" name="email" className="f5-input" type="email" defaultValue="clinton@fuse5.ca" autoComplete="username" />
+          <input id="email" name="email" className="f5-input" type="email" defaultValue={IS_DEMO ? "clinton@fuse5.ca" : ""} autoComplete="username" />
           <label className="f5-label" htmlFor="password">Password</label>
-          <input id="password" name="password" className="f5-input" type="password" defaultValue="demo12345" autoComplete="current-password" />
+          <input id="password" name="password" className="f5-input" type="password" defaultValue={IS_DEMO ? "demo12345" : ""} autoComplete="current-password" />
           {state?.error ? (
             <div style={{ color: "var(--f5-red)", fontSize: 12, marginTop: 10 }}>{state.error}</div>
           ) : null}
@@ -28,9 +29,11 @@ export default function LoginPage() {
             {pending ? "Signing in…" : "Sign In"}
           </button>
         </form>
-        <div style={{ fontSize: 11, color: "var(--f5-text-dim)", marginTop: 14, textAlign: "center" }}>
-          Demo: clinton@fuse5.ca / demo12345
-        </div>
+        {IS_DEMO ? (
+          <div style={{ fontSize: 11, color: "var(--f5-text-dim)", marginTop: 14, textAlign: "center" }}>
+            Demo: clinton@fuse5.ca / demo12345
+          </div>
+        ) : null}
       </div>
     </div>
   );
