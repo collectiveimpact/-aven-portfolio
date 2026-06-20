@@ -219,8 +219,10 @@ export function EnvironmentsPanel() {
 }
 
 function PermCell({ level }: { level: PermLevel }) {
-  const color = level === 3 ? "var(--f5-teal, #00CCCC)" : level === 2 ? "#3b82f6" : level === 1 ? "var(--f5-text-secondary)" : "var(--f5-text-dim)";
-  return <td title={PERM_LABEL[level]} style={{ textAlign: "center", color, fontSize: 15 }}>{PERM_GLYPH[level]}</td>;
+  // Read (○) and None (✕) need enough contrast to read on the light-mode white
+  // background, while staying visually de-emphasized vs the filled ●/◐ glyphs.
+  const color = level === 3 ? "var(--f5-teal, #00CCCC)" : level === 2 ? "#3b82f6" : level === 1 ? "var(--f5-text)" : "var(--f5-text-muted)";
+  return <td title={PERM_LABEL[level]} style={{ textAlign: "center", color, fontSize: 15, opacity: level === 0 ? 0.6 : 1 }}>{PERM_GLYPH[level]}</td>;
 }
 function MatrixRows({ roles }: { roles: RoleRow[] }) {
   return <>{roles.map((r) => (
