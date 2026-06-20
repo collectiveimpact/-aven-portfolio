@@ -1,107 +1,46 @@
-import { getMembers, getAuditLog, getSubscription } from "@/lib/queries";
+import {
+  getMembers, getAuditLog, getSubscription,
+  getPlatformStats, getPlatformProviders, getPlatformUsers, getPlayerFleet, getTenantPortalConfig,
+} from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
-import { canAdmin } from "@/lib/rbac";
-import { MemberRoles } from "./member-roles";
+import { canAdmin, isGlobal } from "@/lib/rbac";
+import { DEMO_IMPERSONATE } from "@/lib/platform";
+import { AdminConsole } from "./admin-console";
 
-// Admin hub — async server component. Members, audit, and billing read live from
-// the shared Supabase query layer (with demo fallback).
-
+// Admin console — async server component. Account panels (members/billing/audit)
+// read live; the Fuse5 platform panels (super-admin only) read cross-org or fall
+// back to the v8.1 demo set.
 export default async function AdminPage() {
-  const [members, audit, sub, me] = await Promise.all([getMembers(), getAuditLog(), getSubscription(), getCurrentUser()]);
+  const me = await getCurrentUser();
+  const isSuper = me?.role ? isGlobal(me.role) : false;
   const canManage = me?.role ? canAdmin(me.role) : false;
+
+  const [members, audit, sub, stats, providers, users, fleet, portal] = await Promise.all([
+    getMembers(), getAuditLog(), getSubscription(),
+    getPlatformStats(), getPlatformProviders(), getPlatformUsers(), getPlayerFleet(), getTenantPortalConfig(),
+  ]);
 
   return (
     <main className="f5-content">
       <div className="f5-page-title">Admin</div>
-      <div className="f5-page-sub">Northgate Living — members, billing, org settings, and audit trail.</div>
+      <div className="f5-page-sub">{me?.orgName ?? "Your Organization"} — members, billing, audit{isSuper ? ", and the Fuse5 platform console" : ""}.</div>
 
-      <MemberRoles members={members} canManage={canManage} currentUserId={me?.id ?? ""} />
-
-      <div className="f5-section-title">Billing</div>
-      <div className="f5-grid" style={{ gridTemplateColumns: "2fr 1fr" }}>
-        <div className="f5-card">
-          <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
-            <div>
-              <div className="f5-kpi-label">Plan</div>
-              <div className="f5-kpi-value" style={{ fontSize: 24 }}>{sub.plan}</div>
-              <div className="f5-kpi-sub">Billed annually</div>
-            </div>
-            <div>
-              <div className="f5-kpi-label">Seats</div>
-              <div className="f5-kpi-value" style={{ fontSize: 24 }}>{sub.usedSeats}<span style={{ fontSize: 16, color: "var(--f5-text-muted)" }}>/{sub.seats}</span></div>
-              <div className="f5-kpi-sub"><span className="f5-up">{Math.max(0, sub.seats - sub.usedSeats)} available</span></div>
-            </div>
-            <div>
-              <div className="f5-kpi-label">Status</div>
-              <div className="f5-kpi-value" style={{ fontSize: 24 }}><span className="f5-up">{sub.status}</span></div>
-              <div className="f5-kpi-sub">Next invoice Jul 1, 2026</div>
-            </div>
-          </div>
-          <div style={{ marginTop: 18 }}>
-            <button className="f5-btn primary" type="button">Manage billing</button>
-          </div>
-        </div>
-        <div className="f5-card">
-          <div className="f5-kpi-label">This Cycle</div>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--f5-border)", fontSize: 13 }}>
-            <span style={{ color: "var(--f5-text-secondary)" }}>Base (Growth)</span><span>$960.00</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--f5-border)", fontSize: 13 }}>
-            <span style={{ color: "var(--f5-text-secondary)" }}>SMS overage</span><span>$184.00</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13 }}>
-            <span style={{ color: "var(--f5-text-secondary)" }}>AI agents</span><span>$116.00</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, fontWeight: 700 }}>
-            <span>Total due</span><span>{sub.cycleSpend}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="f5-section-title">Org Settings</div>
-      <div className="f5-card">
-        <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
-          <div>
-            <label className="f5-label">Organization name</label>
-            <input className="f5-input" value="Northgate Living" readOnly />
-          </div>
-          <div>
-            <label className="f5-label">Region</label>
-            <input className="f5-input" value="Canada (Ontario)" readOnly />
-          </div>
-          <div>
-            <label className="f5-label">Data residency</label>
-            <input className="f5-input" value="ca-central-1" readOnly />
-          </div>
-        </div>
-        <div className="f5-kpi-sub" style={{ marginTop: 12 }}>
-          Residency and region are locked to your contract. Contact your Fuse5 admin to change.
-        </div>
-      </div>
-
-      <div className="f5-section-title">Audit Log</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="f5-table">
-          <thead>
-            <tr>
-              <th>Actor</th>
-              <th>Action</th>
-              <th>Detail</th>
-              <th>Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {audit.map((e) => (
-              <tr key={e.id}>
-                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{e.actor}</td>
-                <td>{e.action}</td>
-                <td>{e.detail}</td>
-                <td style={{ color: "var(--f5-text-dim)" }}>{e.when}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AdminConsole
+        isSuper={isSuper}
+        canManage={canManage}
+        canImpersonate={isSuper}
+        currentUserId={me?.id ?? ""}
+        orgName={me?.orgName ?? "Your Organization"}
+        members={members}
+        audit={audit}
+        sub={sub}
+        stats={stats}
+        providers={providers}
+        users={users}
+        fleet={fleet}
+        portal={portal}
+        impTargets={DEMO_IMPERSONATE}
+      />
     </main>
   );
 }

@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { F5Role } from "@/lib/rbac";
 import { resolveFields, type ResolvedField, type FieldOverride } from "@/lib/wo-fields";
+import { DEMO_PROVIDERS, DEMO_PLATFORM_USERS, DEMO_FLEET, DEFAULT_PORTAL, type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type PortalConfig } from "@/lib/platform";
 
 /** Per-client, per-notice-type field config (registry merged with the org's overrides). */
 export async function getWoFieldConfig(noticeType = "general"): Promise<ResolvedField[]> {
@@ -537,3 +538,82 @@ const DEMO2 = {
     { id: "eb-1", date: "Apr 27, 22:10", type: "Gas Leak Evacuation", reach: "210 residents", status: "resolved" },
   ] as EmergencyLogRow[],
 };
+
+// ---- platform-operator (super-admin) getters: live cross-org or demo fallback ----
+// The local DB carries a single org, so these fall back to the v8.1 demo set
+// (4 providers) until real multi-tenant data exists. RLS super-read policies
+// (migration 0010) let a super_admin actually read across orgs in production.
+
+export interface PlatformStats { providers: number; users: number; properties: number; tenants: number; uptime: string }
+export async function getPlatformStats(): Promise<PlatformStats> {
+  const demo: PlatformStats = { providers: 4, users: 27, properties: 18, tenants: 2407, uptime: "99.7%" };
+  const s = await db();
+  if (!s) return demo;
+  try {
+    const [orgs, members, props, residents] = await Promise.all([
+      s.from("organizations").select("id", { count: "exact", head: true }),
+      s.from("org_members").select("id", { count: "exact", head: true }),
+      s.from("properties").select("id", { count: "exact", head: true }),
+      s.from("residents").select("id", { count: "exact", head: true }),
+    ]);
+    if ((orgs.count ?? 0) <= 1) return demo;
+    return { providers: orgs.count ?? 0, users: members.count ?? 0, properties: props.count ?? 0, tenants: residents.count ?? 0, uptime: "99.7%" };
+  } catch { return demo; }
+}
+
+export async function getPlatformProviders(): Promise<ProviderDemo[]> {
+  const s = await db();
+  if (!s) return DEMO_PROVIDERS;
+  try {
+    const { data: orgs } = await s.from("organizations").select("id,name,region");
+    if (!orgs || orgs.length <= 1) return DEMO_PROVIDERS;
+    // Map live orgs into the provider shape (counts per org).
+    const out: ProviderDemo[] = [];
+    for (const o of orgs) {
+      const [props, members, residents, displays] = await Promise.all([
+        s.from("properties").select("id", { count: "exact", head: true }).eq("org_id", o.id),
+        s.from("org_members").select("id", { count: "exact", head: true }).eq("org_id", o.id),
+        s.from("residents").select("id", { count: "exact", head: true }).eq("org_id", o.id),
+        s.from("displays").select("id", { count: "exact", head: true }).eq("org_id", o.id),
+      ]);
+      const short = o.name.split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+      out.push({ id: o.id, short, name: o.name, tier: "EMPRESA", color: "#009999", since: "—", yardi: "synced", status: "active", properties: props.count ?? 0, users: members.count ?? 0, tenants: residents.count ?? 0, players: displays.count ?? 0, compliance: 100, roles: [] });
+    }
+    return out;
+  } catch { return DEMO_PROVIDERS; }
+}
+
+export async function getPlatformUsers(): Promise<PlatformUserDemo[]> {
+  const s = await db();
+  if (!s) return DEMO_PLATFORM_USERS;
+  try {
+    const { data: orgs } = await s.from("organizations").select("id,name");
+    if (!orgs || orgs.length <= 1) return DEMO_PLATFORM_USERS;
+    const orgName = new Map(orgs.map((o) => [o.id, o.name]));
+    const { data } = await s.from("org_members").select("org_id,full_name,email,role,status");
+    if (!data?.length) return DEMO_PLATFORM_USERS;
+    return data.map((m) => ({ name: m.full_name ?? m.email ?? "—", email: m.email ?? "—", provider: orgName.get(m.org_id) ?? "—", providerColor: "#009999", role: m.role ?? "viewer", properties: "—", lastLogin: "—", status: (m.status === "suspended" ? "Suspended" : m.status === "invited" ? "Invited" : "Active") as PlatformUserDemo["status"] }));
+  } catch { return DEMO_PLATFORM_USERS; }
+}
+
+export async function getPlayerFleet(): Promise<PlayerDemo[]> {
+  const s = await db();
+  if (!s) return DEMO_FLEET;
+  try {
+    const { data: orgs } = await s.from("organizations").select("id");
+    if (!orgs || orgs.length <= 1) return DEMO_FLEET;
+    const { data } = await s.from("displays").select("id,name,location,status,properties(name)");
+    if (!data?.length) return DEMO_FLEET;
+    return data.map((d) => ({ id: d.id, model: "H200W", provider: "—", property: propName(d.properties as PropRef), location: d.location ?? "—", status: (d.status as PlayerDemo["status"]) ?? "online", uptime: 99, firmware: "v4.2.1", display: "1920×1080", orientation: "landscape", lastSeen: "—" }));
+  } catch { return DEMO_FLEET; }
+}
+
+export async function getTenantPortalConfig(): Promise<PortalConfig> {
+  const s = await db();
+  if (!s) return DEFAULT_PORTAL;
+  try {
+    const { data } = await s.from("tenant_portal_config").select("settings").maybeSingle();
+    if (!data?.settings || typeof data.settings !== "object") return DEFAULT_PORTAL;
+    return { ...DEFAULT_PORTAL, ...(data.settings as Partial<PortalConfig>) };
+  } catch { return DEFAULT_PORTAL; }
+}
