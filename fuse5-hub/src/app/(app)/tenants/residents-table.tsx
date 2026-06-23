@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ResidentRow, PropertyOption } from "@/lib/queries";
 import { saveResident, deleteResident, type ResidentInput } from "./actions";
+import { ResidentProfile } from "./resident-profile";
 
 const LANGS = ["English", "French", "Spanish", "Mandarin", "Portuguese", "Arabic"];
 const CHANNELS: { k: string; l: string }[] = [{ k: "email", l: "Email" }, { k: "sms", l: "SMS" }, { k: "whatsapp", l: "WhatsApp" }];
@@ -23,6 +24,7 @@ export function ResidentsTable({ residents, properties, canEdit }: {
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "moved_out">("all");
+  const [viewing, setViewing] = useState<ResidentRow | null>(null);
 
   const needle = q.trim().toLowerCase();
   const filtered = residents.filter((r) => {
@@ -84,7 +86,7 @@ export function ResidentsTable({ residents, properties, canEdit }: {
             {filtered.map((r) => (
               <tr key={r.id}>
                 <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.unit}</td>
-                <td style={{ color: "var(--f5-text)" }}>{r.name}</td>
+                <td><button type="button" onClick={() => setViewing(r)} style={{ background: "none", border: "none", padding: 0, color: "var(--f5-teal,#00CCCC)", fontWeight: 600, cursor: "pointer", textAlign: "left" }}>{r.name}</button></td>
                 <td>{r.propertyName}</td>
                 <td>{r.language}</td>
                 <td style={{ textTransform: "capitalize" }}>{r.preferredChannel}</td>
@@ -165,6 +167,8 @@ export function ResidentsTable({ residents, properties, canEdit }: {
           </div>
         </div>
       )}
+
+      {viewing && <ResidentProfile resident={viewing} onClose={() => setViewing(null)} />}
     </>
   );
 }
