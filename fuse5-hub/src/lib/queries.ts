@@ -168,6 +168,10 @@ export function describeRule(rule: unknown): string {
   if (r.status) return `Status is ${String(r.status) === "moved_out" ? "Moved Out" : "Active"}`;
   if (r.property_id) return "Residents of a specific property";
   if (r.arrears_days) return `Arrears over ${String(r.arrears_days)} days`;
+  if (r.risk) {
+    const RISK_LABEL: Record<string, string> = { arrears: "Predicted arrears-risk", low_engagement: "Low engagement", non_responder: "Non-responders", renewal: "Renewal-likely" };
+    return `${RISK_LABEL[String(r.risk)] ?? "Predictive"} (modeled)`;
+  }
   return "Custom rule";
 }
 
