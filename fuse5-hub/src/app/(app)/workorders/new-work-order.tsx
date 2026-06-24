@@ -26,6 +26,7 @@ export function NewWorkOrder({ properties, fieldsByType, segments }: {
   const [vals, setVals] = useState<Record<string, string>>({ imageCategory: "default" });
   const [noticeType, setNoticeType] = useState("general");
   const [segIds, setSegIds] = useState<string[]>([]);
+  const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
 
   const fields = fieldsByType[noticeType] ?? fieldsByType["general"] ?? [];
   const noticeFields = fields.filter((f) => f.group === "notice" && f.enabled);
@@ -43,7 +44,7 @@ export function NewWorkOrder({ properties, fieldsByType, segments }: {
 
     startTransition(async () => {
       const r = await createWorkOrderWithDrafts({
-        propertyId, title, category, channels, noticeType, targetSegmentIds: segIds,
+        propertyId, title, category, channels, noticeType, targetSegmentIds: segIds, priority,
         facts: {
           operationTitle: vals.operationTitle || title,
           dateTime: vals.dateText ?? "",
@@ -87,6 +88,13 @@ export function NewWorkOrder({ properties, fieldsByType, segments }: {
               </select>
             </div>
           )}
+        </div>
+
+        <label className="f5-label" style={{ marginTop: 8 }}>Priority</label>
+        <div className="f5-chips" style={{ margin: 0 }}>
+          {(["low", "medium", "high", "urgent"] as const).map((p) => (
+            <span key={p} className={`f5-chip${priority === p ? " active" : ""}`} style={{ textTransform: "capitalize", ...(priority === p && p === "urgent" ? { borderColor: "var(--f5-red)", color: "var(--f5-red)" } : {}) }} onClick={() => setPriority(p)}>{p === "urgent" ? "🔴 Urgent" : p}</span>
+          ))}
         </div>
 
         <label className="f5-label">Title <span style={{ color: "var(--f5-red)" }}>*</span></label>

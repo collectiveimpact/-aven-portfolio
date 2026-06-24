@@ -75,6 +75,7 @@ export interface CreateWOInput {
   facts: NoticeFacts;
   noticeType?: string;
   targetSegmentIds?: string[];
+  priority?: "low" | "medium" | "high" | "urgent";
 }
 export interface CreateWOResult { ok: boolean; woId?: string; drafts?: Draft[]; mode?: "live" | "stub"; error?: string }
 
@@ -94,7 +95,7 @@ export async function createWorkOrderWithDrafts(input: CreateWOInput): Promise<C
   const { drafts, mode } = await generateDrafts(input.facts, input.channels);
   const { data, error } = await supabase.from("work_orders").insert({
     org_id: me.orgId, property_id: input.propertyId || null, unit: input.facts.affected || null,
-    title: input.title, category: input.category || "Notice", priority: "medium", status: "open",
+    title: input.title, category: input.category || "Notice", priority: input.priority ?? "medium", status: "open",
     channels: input.channels, drafts, notice_status: "draft",
     notice_type: input.noticeType ?? "general",
     target: { scope: (input.targetSegmentIds?.length ? "both" : "property"), segmentIds: input.targetSegmentIds ?? [] },

@@ -67,11 +67,13 @@ export default async function WorkOrdersPage({
         </div>
       </div>
 
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(6,1fr)", marginTop: 18 }}>
         <div className="f5-card"><div className="f5-kpi-label">Open</div><div className="f5-kpi-value f5-warn">{open}</div><div className="f5-kpi-sub">awaiting assignment</div></div>
         <div className="f5-card"><div className="f5-kpi-label">In Progress</div><div className="f5-kpi-value">{inProgress}</div><div className="f5-kpi-sub">crews dispatched</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Overdue</div><div className="f5-kpi-value f5-down">{overdue}</div><div className="f5-kpi-sub"><span className="f5-down">past SLA</span> high &amp; urgent</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Overdue</div><div className="f5-kpi-value f5-down">{overdue}</div><div className="f5-kpi-sub"><span className="f5-down">past SLA</span></div></div>
         <div className="f5-card"><div className="f5-kpi-label">Resolved</div><div className="f5-kpi-value">{resolved}</div><div className="f5-kpi-sub">closed out</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Avg Resolution</div><div className="f5-kpi-value">4.2d</div><div className="f5-kpi-sub"><span className="f5-up">▲ 8%</span> faster</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Cost This Month</div><div className="f5-kpi-value">$28.4K</div><div className="f5-kpi-sub">labour + parts</div></div>
       </div>
 
       <div className="f5-section-title">Queue</div>
