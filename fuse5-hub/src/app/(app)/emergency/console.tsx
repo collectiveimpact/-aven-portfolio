@@ -7,6 +7,16 @@ import type { SendBroadcastResult } from "@/app/(app)/compose/actions";
 import { FANOUT_TEMPLATES, type Severity } from "@/lib/fanouts";
 
 const TYPES = ["Fire / Evacuation", "Water / Utility", "Severe Weather", "Security"];
+// One-click incident launchers — prefill type + message for the most common emergencies.
+const QUICK_INCIDENTS: { key: string; label: string; icon: string; type: string; msg: string }[] = [
+  { key: "fire", label: "Fire", icon: "🔥", type: "Fire / Evacuation", msg: "FIRE EMERGENCY: Evacuate immediately via the nearest stairwell. Do NOT use elevators. Assemble at the designated muster point. Do not re-enter until cleared by fire services." },
+  { key: "gas", label: "Gas Leak", icon: "🛢", type: "Security", msg: "GAS LEAK: Evacuate the building now. Do not use light switches, elevators, or electronics. Call Enbridge 1-866-763-5427 from outside. Assemble at the muster point." },
+  { key: "flood", label: "Flood", icon: "🌊", type: "Water / Utility", msg: "FLOODING: Move to higher floors and avoid affected areas. Do not use elevators. Follow staff instructions. Water service may be interrupted." },
+  { key: "power", label: "Power Outage", icon: "🔌", type: "Water / Utility", msg: "POWER OUTAGE: We are aware of a building-wide outage and crews are responding. Elevators are out of service — use stairs with caution. Updates to follow." },
+  { key: "elevator", label: "Elevator", icon: "🛗", type: "Water / Utility", msg: "ELEVATOR OUTAGE: An elevator is out of service. Please use alternate elevators or stairs. Residents needing assistance, contact the office." },
+  { key: "security", label: "Security", icon: "🛡", type: "Security", msg: "SECURITY ALERT: For your safety, remain in your unit with doors locked until further notice. Do not open the door to anyone you don't know. Call 911 for emergencies." },
+  { key: "general", label: "General", icon: "📢", type: "Severe Weather", msg: "BUILDING NOTICE: Please be advised of an important update affecting all residents. Details and instructions follow." },
+];
 const SEV_ORDER: Severity[] = ["emergency", "planned", "info"];
 const SEV_LABEL: Record<Severity, string> = { emergency: "Emergency", planned: "Planned", info: "Service notice" };
 
@@ -49,7 +59,16 @@ export function EmergencyConsole() {
         simultaneously. Use only for genuine emergencies affecting resident safety.
       </div>
 
-      <div className="f5-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}>
+      {/* One-click incident launchers */}
+      <label className="f5-label" style={{ marginTop: 12 }}>One-click incident</label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {QUICK_INCIDENTS.map((q) => (
+          <button key={q.key} type="button" className="f5-btn" style={{ fontSize: 12, padding: "6px 10px" }} onClick={() => { setType(q.type); setMessage(q.msg); setResult(null); }}>{q.icon} {q.label}</button>
+        ))}
+        <button type="button" className="f5-btn" style={{ fontSize: 12, padding: "6px 10px", marginLeft: "auto", color: "var(--f5-green,#34d399)" }} onClick={() => { setMessage("ALL CLEAR: The emergency has been resolved. Normal building operations have resumed. Thank you for your cooperation."); setType("Severe Weather"); setResult(null); }}>✓ All Clear</button>
+      </div>
+
+      <div className="f5-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 12 }}>
         <div>
           <label className="f5-label" htmlFor="severity">Severity</label>
           <select id="severity" className="f5-select" defaultValue="critical">
