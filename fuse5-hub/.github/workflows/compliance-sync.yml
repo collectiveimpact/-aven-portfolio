@@ -1,0 +1,25 @@
+name: Compliance Score Sync
+
+# Portable daily auto-pull of RentSafeTO / Hamilton scores. Use this if you are
+# NOT on Vercel (Vercel users get the same via vercel.json crons). It simply
+# calls the deployed agent endpoint with the shared CRON_SECRET.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   APP_BASE_URL   e.g. https://hub.fuse5.ca   (no trailing slash)
+#   CRON_SECRET    must match the deployed app's CRON_SECRET env var
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC daily
+  workflow_dispatch: {} # allow manual "Run workflow"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger compliance-sync agent
+        run: |
+          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST "${{ secrets.APP_BASE_URL }}/api/agents/compliance-sync" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP $code"; cat /tmp/resp.json
+          test "$code" = "200"

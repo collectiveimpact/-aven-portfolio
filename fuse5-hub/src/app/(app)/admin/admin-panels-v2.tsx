@@ -233,6 +233,7 @@ export function ComplianceSettingsPanel() {
   const [live, setLive] = useState<Map<string, { score: number | null; status: SyncStatus }>>(new Map());
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [syncErr, setSyncErr] = useState<string | null>(null);
+  const [syncMeta, setSyncMeta] = useState<string | null>(null);
 
   function runSync() {
     setSyncErr(null);
@@ -242,6 +243,9 @@ export function ComplianceSettingsPanel() {
       const m = new Map<string, { score: number | null; status: SyncStatus }>();
       for (const res of r.summary.results) m.set(`${res.provider}|${res.framework}`, { score: res.score, status: res.status });
       setLive(m); setSyncedAt(r.summary.syncedAt);
+      const portfolio = r.summary.results.filter((x) => x.addressSource === "portfolio");
+      const buildings = portfolio.reduce((n, x) => n + x.matched, 0);
+      setSyncMeta(portfolio.length ? `${portfolio.map((x) => x.provider).join(", ")} scored from ${buildings} live portfolio building${buildings === 1 ? "" : "s"}` : null);
     });
   }
   // Provider rows with live overrides applied (falls back to the manual baseline).
@@ -288,7 +292,7 @@ export function ComplianceSettingsPanel() {
       <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 6 }}>Audit scores auto-pulled per provider portfolio; platform average is the benchmark each provider is measured against.</div>
       <div style={{ fontSize: 11, color: "var(--f5-text-dim)", marginBottom: 12 }}>
         {syncErr ? <span style={{ color: "var(--f5-red)" }}>⚠ {syncErr}</span>
-          : syncedAt ? <>✓ Live — synced {new Date(syncedAt).toLocaleString()} · Source: City of Toronto Open Data (RentSafeTO, ArcGIS) · Hamilton SAB: manual until a public feed is connected</>
+          : syncedAt ? <>✓ Live — synced {new Date(syncedAt).toLocaleString()}{syncMeta ? ` · ${syncMeta}` : ""} · Source: City of Toronto Open Data (RentSafeTO, ArcGIS) · Hamilton SAB: manual until a public feed is connected</>
           : <>Showing last-known scores. Click <strong>Sync from Open Data</strong> to pull live RentSafeTO scores from City of Toronto. A scheduled agent (/api/agents/compliance-sync) can auto-pull daily.</>}
       </div>
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>

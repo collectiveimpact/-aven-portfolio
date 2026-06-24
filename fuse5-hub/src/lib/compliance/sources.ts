@@ -74,12 +74,14 @@ export async function fetchRentSafeByAddress(address: string, timeoutMs = 12000)
 }
 
 // Pull scores for many addresses (small concurrency to be polite to the API).
-export async function fetchRentSafeScores(addresses: string[], concurrency = 4): Promise<BuildingScore[]> {
-  const out: BuildingScore[] = [];
+// Returns results ALIGNED to the input addresses (null = no match) so callers
+// can map building → result by index.
+export async function fetchRentSafeScores(addresses: string[], concurrency = 4): Promise<(BuildingScore | null)[]> {
+  const out: (BuildingScore | null)[] = [];
   for (let i = 0; i < addresses.length; i += concurrency) {
     const batch = addresses.slice(i, i + concurrency);
     const got = await Promise.all(batch.map((a) => fetchRentSafeByAddress(a)));
-    for (const g of got) if (g) out.push(g);
+    out.push(...got);
   }
   return out;
 }
