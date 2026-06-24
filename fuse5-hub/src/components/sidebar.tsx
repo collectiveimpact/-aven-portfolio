@@ -18,6 +18,7 @@ const GROUPS: { group: string; items: Item[] }[] = [
     group: "Communicate",
     items: [
       { href: "/compose", label: "Compose", ico: "✎" },
+      { href: "/journeys", label: "Journeys", ico: "⑂" },
       { href: "/inbox", label: "Inbox", ico: "✉" },
       { href: "/templates", label: "Templates", ico: "❏" },
       { href: "/channels", label: "Channels", ico: "📡" },

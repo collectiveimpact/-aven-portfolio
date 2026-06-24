@@ -4,6 +4,7 @@ import type { F5Role } from "@/lib/rbac";
 import { resolveFields, type ResolvedField, type FieldOverride } from "@/lib/wo-fields";
 import { DEMO_PROVIDERS, DEMO_PLATFORM_USERS, DEMO_FLEET, DEFAULT_PORTAL, type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type PortalConfig } from "@/lib/platform";
 import { DEMO_FALLBACK } from "@/lib/env";
+import { JOURNEY_TEMPLATES, type Journey } from "@/lib/journeys";
 
 // Demo fallback for EMPTY/errored backed reads: canned demo rows in demo mode,
 // real (empty) value in production. The no-backend (`!s`) path stays demo always.
@@ -649,4 +650,20 @@ export async function getIntegrations(): Promise<IntegrationRow[]> {
       return { ...c, status: (row.status as IntegrationStatus) ?? c.status, settings };
     });
   } catch { return INTEGRATION_CATALOG; }
+}
+
+export async function getJourneys(): Promise<Journey[]> {
+  // Demo fallback: two journeys seeded from the template library so the page is
+  // populated before any are created.
+  const demo: Journey[] = [
+    { id: "demo-move-in", name: JOURNEY_TEMPLATES[0].name, trigger: JOURNEY_TEMPLATES[0].trigger, status: "active", steps: JOURNEY_TEMPLATES[0].steps, enrolled: 42, updatedAt: "2026-06-12" },
+    { id: "demo-arrears", name: JOURNEY_TEMPLATES[2].name, trigger: JOURNEY_TEMPLATES[2].trigger, status: "draft", steps: JOURNEY_TEMPLATES[2].steps, enrolled: 0, updatedAt: "2026-06-18" },
+  ];
+  const s = await db();
+  if (!s) return demo;
+  try {
+    const { data } = await s.from("journeys").select("id,name,trigger,status,steps,enrolled,updated_at").order("updated_at", { ascending: false });
+    if (!data?.length) return fb(demo, []);
+    return data.map((j) => ({ id: j.id, name: j.name, trigger: j.trigger ?? {}, status: (j.status ?? "draft") as Journey["status"], steps: j.steps ?? [], enrolled: j.enrolled ?? 0, updatedAt: new Date(j.updated_at).toISOString().slice(0, 10) }));
+  } catch { return fb(demo, []); }
 }
