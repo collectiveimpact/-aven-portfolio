@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   F5_ROLE_CARDS, F5_STAFF, ENV_EMOJI, SYSTEM_INTEGRATIONS,
   MASTER_TEMPLATES, TEMPLATE_CATEGORIES, TEMPLATE_STATS, CHANNEL_ICON,
   APPROVAL_QUEUE, APPROVAL_STAGES, CATEGORY_TIERS, TIER_META,
   COMPLIANCE_FRAMEWORKS, PROVIDER_COMPLIANCE, complianceBenchmark, BILLING_MRR, BILLING_SUMMARY,
-  type ApprovalStatus,
+  type ApprovalStatus, type ProviderCompliance,
 } from "@/lib/platform-admin";
+import { syncComplianceScores } from "./compliance-actions";
+import type { SyncStatus } from "@/lib/compliance/agent";
 
 const fg = "var(--f5-text)";
 const dim = "var(--f5-text-muted)";
@@ -223,9 +225,36 @@ function ScoreCell({ score, frameworkId, benchmark }: { score: number | null; fr
     </span>
   );
 }
+const SYNC_DOT: Record<SyncStatus, string> = { ok: "var(--f5-green,#34d399)", partial: "#f59e0b", no_feed: "var(--f5-text-muted)", error: "var(--f5-red,#f87171)" };
 export function ComplianceSettingsPanel() {
   const fwName = (id: string) => COMPLIANCE_FRAMEWORKS.find((f) => f.id === id)?.name ?? id;
-  const bench = complianceBenchmark();
+  const [pending, startTransition] = useTransition();
+  // Live scores pulled by the agent this session: key `${provider}|${framework}` → {score,status}.
+  const [live, setLive] = useState<Map<string, { score: number | null; status: SyncStatus }>>(new Map());
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [syncErr, setSyncErr] = useState<string | null>(null);
+
+  function runSync() {
+    setSyncErr(null);
+    startTransition(async () => {
+      const r = await syncComplianceScores();
+      if (!r.ok || !r.summary) { setSyncErr(r.error ?? "Sync failed."); return; }
+      const m = new Map<string, { score: number | null; status: SyncStatus }>();
+      for (const res of r.summary.results) m.set(`${res.provider}|${res.framework}`, { score: res.score, status: res.status });
+      setLive(m); setSyncedAt(r.summary.syncedAt);
+    });
+  }
+  // Provider rows with live overrides applied (falls back to the manual baseline).
+  const liveScore = (p: ProviderCompliance, fw: "rentsafeto" | "hamilton-sab", base: number | null) =>
+    live.get(`${p.provider}|${fw}`)?.score ?? base;
+  const rows: ProviderCompliance[] = PROVIDER_COMPLIANCE.map((p) => ({
+    ...p,
+    rentSafeScore: liveScore(p, "rentsafeto", p.rentSafeScore),
+    hamiltonScore: liveScore(p, "hamilton-sab", p.hamiltonScore),
+  }));
+  const bench = complianceBenchmark(rows);
+  const statusOf = (provider: string, fw: string): SyncStatus | null => live.get(`${provider}|${fw}`)?.status ?? null;
+
   return (
     <>
       <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 14 }}>Compliance frameworks and per-provider assignment.</div>
@@ -250,8 +279,18 @@ export function ComplianceSettingsPanel() {
         ))}
       </div>
 
-      <div className="f5-section-title">Provider Score Benchmark</div>
-      <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 12 }}>Latest audit score pulled from each provider&apos;s portfolio. Platform average is the benchmark each provider is measured against.</div>
+      <div className="f5-section-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>Provider Score Benchmark</span>
+        <button className="f5-btn primary" onClick={runSync} disabled={pending} style={{ fontSize: 12, padding: "6px 12px" }}>
+          {pending ? "Syncing…" : "⟳ Sync from Open Data"}
+        </button>
+      </div>
+      <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 6 }}>Audit scores auto-pulled per provider portfolio; platform average is the benchmark each provider is measured against.</div>
+      <div style={{ fontSize: 11, color: "var(--f5-text-dim)", marginBottom: 12 }}>
+        {syncErr ? <span style={{ color: "var(--f5-red)" }}>⚠ {syncErr}</span>
+          : syncedAt ? <>✓ Live — synced {new Date(syncedAt).toLocaleString()} · Source: City of Toronto Open Data (RentSafeTO, ArcGIS) · Hamilton SAB: manual until a public feed is connected</>
+          : <>Showing last-known scores. Click <strong>Sync from Open Data</strong> to pull live RentSafeTO scores from City of Toronto. A scheduled agent (/api/agents/compliance-sync) can auto-pull daily.</>}
+      </div>
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
         <div className="f5-card">
           <div className="f5-kpi-label">RentSafeTO — platform avg</div>
@@ -265,8 +304,8 @@ export function ComplianceSettingsPanel() {
         </div>
         <div className="f5-card">
           <div className="f5-kpi-label">Providers reporting</div>
-          <div className="f5-kpi-value">{PROVIDER_COMPLIANCE.length}</div>
-          <div className="f5-kpi-sub">{PROVIDER_COMPLIANCE.filter((p) => p.enabled).length} active assignments</div>
+          <div className="f5-kpi-value">{rows.length}</div>
+          <div className="f5-kpi-sub">{rows.filter((p) => p.enabled).length} active assignments</div>
         </div>
       </div>
 
@@ -275,17 +314,27 @@ export function ComplianceSettingsPanel() {
         <table className="f5-table">
           <thead><tr><th>Provider</th><th>Properties</th><th>Tier</th><th>Primary Framework</th><th>RentSafeTO Score</th><th>Hamilton SAB Score</th><th>Status</th></tr></thead>
           <tbody>
-            {PROVIDER_COMPLIANCE.map((p) => (
+            {rows.map((p) => { const rsStatus = statusOf(p.provider, "rentsafeto"); const hStatus = statusOf(p.provider, "hamilton-sab"); return (
               <tr key={p.provider}>
                 <td style={{ color: fg, fontWeight: 600 }}>{p.provider}</td>
                 <td>{p.properties}</td>
                 <td><span className="f5-badge">{p.tier}</span></td>
                 <td>{fwName(p.framework)}</td>
-                <td><ScoreCell score={p.rentSafeScore} frameworkId="rentsafeto" benchmark={bench.rentSafe} /></td>
-                <td><ScoreCell score={p.hamiltonScore} frameworkId="hamilton-sab" benchmark={bench.hamilton} /></td>
+                <td>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    {rsStatus && <span title={`live: ${rsStatus}`} style={{ width: 7, height: 7, borderRadius: 99, background: SYNC_DOT[rsStatus], display: "inline-block" }} />}
+                    <ScoreCell score={p.rentSafeScore} frameworkId="rentsafeto" benchmark={bench.rentSafe} />
+                  </span>
+                </td>
+                <td>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    {hStatus && <span title={`live: ${hStatus}`} style={{ width: 7, height: 7, borderRadius: 99, background: SYNC_DOT[hStatus], display: "inline-block" }} />}
+                    <ScoreCell score={p.hamiltonScore} frameworkId="hamilton-sab" benchmark={bench.hamilton} />
+                  </span>
+                </td>
                 <td><span className={`f5-badge ${p.enabled ? "ok" : "warn"}`}>{p.enabled ? "Enabled" : "Disabled"}</span></td>
               </tr>
-            ))}
+            ); })}
             <tr style={{ borderTop: "2px solid var(--f5-border)" }}>
               <td style={{ color: dim, fontWeight: 700 }}>Platform benchmark</td>
               <td colSpan={3} style={{ color: dim, fontSize: 12 }}>average across reporting providers</td>

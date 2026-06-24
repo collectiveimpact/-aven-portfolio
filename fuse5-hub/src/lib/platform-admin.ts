@@ -137,12 +137,16 @@ export const COMPLIANCE_FRAMEWORKS: ComplianceFramework[] = [
 export interface ProviderCompliance {
   provider: string; properties: number; tier: string; framework: string; enabled: boolean;
   rentSafeScore: number | null; hamiltonScore: number | null;
+  city: string;          // jurisdiction the buildings sit in (drives which feed applies)
+  addresses: string[];   // building addresses the agent pulls live scores for
 }
+// rentSafeScore / hamiltonScore here are the LAST-KNOWN (manual) baselines shown
+// until the agent syncs live values from the open-data feeds (see lib/compliance).
 export const PROVIDER_COMPLIANCE: ProviderCompliance[] = [
-  { provider: "WoodGreen", properties: 5, tier: "EMPRESA", framework: "rentsafeto", enabled: true, rentSafeScore: 91, hamiltonScore: 76 },
-  { provider: "HNHC", properties: 8, tier: "PLATO", framework: "hamilton-sab", enabled: true, rentSafeScore: 68, hamiltonScore: 82 },
-  { provider: "Kiwanis", properties: 3, tier: "ORO", framework: "hamilton-sab", enabled: true, rentSafeScore: 74, hamiltonScore: 71 },
-  { provider: "Neighbours", properties: 2, tier: "ORO", framework: "rentsafeto", enabled: false, rentSafeScore: 88, hamiltonScore: null },
+  { provider: "WoodGreen", properties: 5, tier: "EMPRESA", framework: "rentsafeto", enabled: true, rentSafeScore: 91, hamiltonScore: null, city: "Toronto", addresses: ["2526 DANFORTH AVE", "2575 DANFORTH AVE"] },
+  { provider: "HNHC", properties: 8, tier: "PLATO", framework: "hamilton-sab", enabled: true, rentSafeScore: null, hamiltonScore: 82, city: "Hamilton", addresses: ["1550 UPPER JAMES ST"] },
+  { provider: "Kiwanis", properties: 3, tier: "ORO", framework: "hamilton-sab", enabled: true, rentSafeScore: null, hamiltonScore: 71, city: "Hamilton", addresses: ["20 HESS ST S"] },
+  { provider: "Neighbours", properties: 2, tier: "ORO", framework: "rentsafeto", enabled: false, rentSafeScore: 88, hamiltonScore: null, city: "Toronto", addresses: ["1306 WESTON RD", "12 BUTTONWOOD AVE"] },
 ];
 
 // Platform benchmark = average of each available framework score across providers.

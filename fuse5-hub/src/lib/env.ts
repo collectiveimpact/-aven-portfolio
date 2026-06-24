@@ -10,6 +10,11 @@ export const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? "";
 export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN ?? "";
 export const TWILIO_FROM = process.env.TWILIO_FROM ?? "";
+// Service-role key + cron secret enable headless agents (e.g. the scheduled
+// compliance-score sync) to authenticate and write without a user session.
+export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+export const CRON_SECRET = process.env.CRON_SECRET ?? "";
+export const COMPLIANCE_SYNC_ORG_ID = process.env.COMPLIANCE_SYNC_ORG_ID ?? "";
 export const hasAI = Boolean(ANTHROPIC_API_KEY);
 export const hasEmail = Boolean(RESEND_API_KEY);
 export const hasSms = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM);
