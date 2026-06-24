@@ -10,6 +10,30 @@ const STATUS_DOT: Record<DisplayRow["status"], string> = { online: "var(--f5-gre
 const STATUS_LABEL: Record<DisplayRow["status"], string> = { online: "Online", offline: "Offline", warning: "Warning" };
 const blank = (propertyId: string | null): DisplayInput => ({ name: "", location: "", propertyId, status: "online" });
 
+// Deterministic per-display telemetry (demo) — derived from the id so SSR and
+// client render identically. Real player heartbeats would replace this.
+const RESOLUTIONS = ["1920×1080", "3840×2160", "1080×1920", "1366×768"];
+const CONTENT = ["Community Notices loop", "Emergency standby", "Rent reminder card", "Welcome / wayfinding", "Maintenance advisory", "Events digest"];
+function hashStr(s: string): number { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+function telemetry(d: DisplayRow) {
+  const h = hashStr(d.id || d.name);
+  const res = RESOLUTIONS[h % RESOLUTIONS.length];
+  const content = CONTENT[(h >> 3) % CONTENT.length];
+  const signal = d.status === "offline" ? 0 : d.status === "warning" ? 2 + (h % 2) : 4 + (h % 2); // bars 0-5
+  const heartbeat = d.status === "offline" ? "— no signal —" : d.status === "warning" ? `${3 + (h % 9)} min ago` : `${5 + (h % 50)}s ago`;
+  const uptime = d.status === "offline" ? "0%" : `${(97 + (h % 30) / 10).toFixed(1)}%`;
+  return { res, content, signal, heartbeat, uptime };
+}
+function SignalBars({ n }: { n: number }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "flex-end", gap: 2, height: 12 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span key={i} style={{ width: 3, height: 3 + i * 2, borderRadius: 1, background: i < n ? "var(--f5-green)" : "var(--f5-border)" }} />
+      ))}
+    </span>
+  );
+}
+
 export function DisplaysGrid({ displays, properties, canEdit }: { displays: DisplayRow[]; properties: PropertyOption[]; canEdit: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<DisplayInput | null>(null);
@@ -57,6 +81,18 @@ export function DisplaysGrid({ displays, properties, canEdit }: { displays: Disp
               <span className={STATUS_BADGE[d.status]}>{STATUS_LABEL[d.status]}</span>
             </div>
             <div style={{ color: "var(--f5-text-muted)", fontSize: 12, marginTop: 10 }}>{d.propertyName} · {d.location}</div>
+
+            {(() => { const t = telemetry(d); return (
+              <>
+                <div style={{ marginTop: 12, padding: "10px 12px", background: "var(--f5-surface-2)", borderRadius: 8, fontSize: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--f5-text-muted)" }}><span>Now playing</span><span style={{ color: "var(--f5-text)", fontWeight: 600 }}>{t.content}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, color: "var(--f5-text-muted)" }}><span>Resolution</span><span style={{ color: "var(--f5-text-secondary)" }}>{t.res}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, color: "var(--f5-text-muted)" }}><span>Last heartbeat</span><span style={{ color: "var(--f5-text-secondary)" }}>{t.heartbeat}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, color: "var(--f5-text-muted)", alignItems: "center" }}><span>Signal · uptime</span><span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "var(--f5-text-secondary)" }}><SignalBars n={t.signal} /> {t.uptime}</span></div>
+                </div>
+              </>
+            ); })()}
+
             {canEdit && (
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => openEdit(d)}>Edit</button>
@@ -67,6 +103,30 @@ export function DisplaysGrid({ displays, properties, canEdit }: { displays: Disp
         ))}
         {displays.length === 0 && <div style={{ color: "var(--f5-text-muted)", fontSize: 13 }}>No displays registered yet.</div>}
       </div>
+
+      {displays.length > 0 && (
+        <>
+          <div className="f5-section-title">Proof-of-Play Log</div>
+          <div className="f5-card" style={{ padding: 0 }}>
+            <table className="f5-table">
+              <thead><tr><th>Display</th><th>Content</th><th>Resolution</th><th>Last heartbeat</th><th>Uptime (24h)</th><th>Status</th></tr></thead>
+              <tbody>
+                {displays.map((d) => { const t = telemetry(d); return (
+                  <tr key={d.id}>
+                    <td style={{ color: "var(--f5-text)" }}>{d.name}</td>
+                    <td>{t.content}</td>
+                    <td>{t.res}</td>
+                    <td>{t.heartbeat}</td>
+                    <td>{t.uptime}</td>
+                    <td><span className={STATUS_BADGE[d.status]}>{STATUS_LABEL[d.status]}</span></td>
+                  </tr>
+                ); })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 10 }}>Heartbeat &amp; play data shown for demonstration; live player agents report these per playback.</div>
+        </>
+      )}
 
       {editing && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={() => setEditing(null)}>
