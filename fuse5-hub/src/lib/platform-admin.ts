@@ -130,13 +130,29 @@ export const COMPLIANCE_FRAMEWORKS: ComplianceFramework[] = [
     categoryGroups: [{ group: "high-risk", count: 6, weight: 64 }, { group: "moderate-risk", count: 4, weight: 24 }, { group: "cosmetic", count: 3, weight: 14 }],
   },
 ];
-export interface ProviderCompliance { provider: string; properties: number; tier: string; framework: string; enabled: boolean }
+// Per-provider compliance assignment + the audit scores the platform pulls in
+// from each provider's portfolio (RentSafeTO building-audit score and Hamilton
+// SAB by-law score). These feed the cross-provider Score Benchmark. A null
+// score means that jurisdiction's framework doesn't apply to the provider.
+export interface ProviderCompliance {
+  provider: string; properties: number; tier: string; framework: string; enabled: boolean;
+  rentSafeScore: number | null; hamiltonScore: number | null;
+}
 export const PROVIDER_COMPLIANCE: ProviderCompliance[] = [
-  { provider: "WoodGreen", properties: 5, tier: "EMPRESA", framework: "rentsafeto", enabled: true },
-  { provider: "HNHC", properties: 8, tier: "PLATO", framework: "hamilton-sab", enabled: true },
-  { provider: "Kiwanis", properties: 3, tier: "ORO", framework: "hamilton-sab", enabled: true },
-  { provider: "Neighbours", properties: 2, tier: "ORO", framework: "rentsafeto", enabled: false },
+  { provider: "WoodGreen", properties: 5, tier: "EMPRESA", framework: "rentsafeto", enabled: true, rentSafeScore: 91, hamiltonScore: 76 },
+  { provider: "HNHC", properties: 8, tier: "PLATO", framework: "hamilton-sab", enabled: true, rentSafeScore: 68, hamiltonScore: 82 },
+  { provider: "Kiwanis", properties: 3, tier: "ORO", framework: "hamilton-sab", enabled: true, rentSafeScore: 74, hamiltonScore: 71 },
+  { provider: "Neighbours", properties: 2, tier: "ORO", framework: "rentsafeto", enabled: false, rentSafeScore: 88, hamiltonScore: null },
 ];
+
+// Platform benchmark = average of each available framework score across providers.
+export function complianceBenchmark(rows: ProviderCompliance[] = PROVIDER_COMPLIANCE) {
+  const avg = (xs: (number | null)[]) => {
+    const v = xs.filter((x): x is number => x != null);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+  };
+  return { rentSafe: avg(rows.map((r) => r.rentSafeScore)), hamilton: avg(rows.map((r) => r.hamiltonScore)) };
+}
 
 /* ---------- Billing (platform-operator MRR) ---------- */
 export interface BillingRow { provider: string; tier: string; mrr: number; properties: number; players: number; renewal: string; status: string }

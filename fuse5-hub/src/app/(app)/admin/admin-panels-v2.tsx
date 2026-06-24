@@ -5,7 +5,7 @@ import {
   F5_ROLE_CARDS, F5_STAFF, ENV_EMOJI, SYSTEM_INTEGRATIONS,
   MASTER_TEMPLATES, TEMPLATE_CATEGORIES, TEMPLATE_STATS, CHANNEL_ICON,
   APPROVAL_QUEUE, APPROVAL_STAGES, CATEGORY_TIERS, TIER_META,
-  COMPLIANCE_FRAMEWORKS, PROVIDER_COMPLIANCE, BILLING_MRR, BILLING_SUMMARY,
+  COMPLIANCE_FRAMEWORKS, PROVIDER_COMPLIANCE, complianceBenchmark, BILLING_MRR, BILLING_SUMMARY,
   type ApprovalStatus,
 } from "@/lib/platform-admin";
 
@@ -203,8 +203,29 @@ export function ApprovalWorkflowPanel() {
 /* ---------------- Compliance Settings ---------------- */
 const GROUP_LABEL: Record<string, string> = { "high-risk": "High Risk", "moderate-risk": "Moderate Risk", "cosmetic": "Cosmetic" };
 const GROUP_COLOR: Record<string, string> = { "high-risk": "#f87171", "moderate-risk": "#f59e0b", "cosmetic": "var(--f5-text-muted)" };
+// Colour a score against a framework's green/yellow thresholds.
+function scoreColor(score: number | null, frameworkId: string): string {
+  if (score == null) return dim;
+  const f = COMPLIANCE_FRAMEWORKS.find((x) => x.id === frameworkId);
+  const green = f?.thresholds.green ?? 85, yellow = f?.thresholds.yellow ?? 60;
+  return score >= green ? "var(--f5-green,#34d399)" : score >= yellow ? "#f59e0b" : "var(--f5-red,#f87171)";
+}
+function ScoreCell({ score, frameworkId, benchmark }: { score: number | null; frameworkId: string; benchmark: number | null }) {
+  if (score == null) return <span style={{ color: dim }}>N/A</span>;
+  const delta = benchmark != null ? score - benchmark : null;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <span style={{ fontWeight: 700, color: scoreColor(score, frameworkId) }}>{score}</span>
+      <span style={{ width: 60, height: 5, borderRadius: 99, background: "var(--f5-border)", display: "inline-block", position: "relative" }}>
+        <span style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${score}%`, maxWidth: "100%", borderRadius: 99, background: scoreColor(score, frameworkId) }} />
+      </span>
+      {delta != null && <span style={{ fontSize: 11, color: delta >= 0 ? "var(--f5-green,#34d399)" : "var(--f5-red,#f87171)" }}>{delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}</span>}
+    </span>
+  );
+}
 export function ComplianceSettingsPanel() {
   const fwName = (id: string) => COMPLIANCE_FRAMEWORKS.find((f) => f.id === id)?.name ?? id;
+  const bench = complianceBenchmark();
   return (
     <>
       <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 14 }}>Compliance frameworks and per-provider assignment.</div>
@@ -229,10 +250,30 @@ export function ComplianceSettingsPanel() {
         ))}
       </div>
 
-      <div className="f5-section-title">Provider Framework Assignment</div>
+      <div className="f5-section-title">Provider Score Benchmark</div>
+      <div className="f5-page-sub" style={{ marginTop: -6, marginBottom: 12 }}>Latest audit score pulled from each provider&apos;s portfolio. Platform average is the benchmark each provider is measured against.</div>
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
+        <div className="f5-card">
+          <div className="f5-kpi-label">RentSafeTO — platform avg</div>
+          <div className="f5-kpi-value" style={{ color: scoreColor(bench.rentSafe, "rentsafeto") }}>{bench.rentSafe ?? "—"}{bench.rentSafe != null ? "" : ""}</div>
+          <div className="f5-kpi-sub">benchmark across providers</div>
+        </div>
+        <div className="f5-card">
+          <div className="f5-kpi-label">Hamilton SAB — platform avg</div>
+          <div className="f5-kpi-value" style={{ color: scoreColor(bench.hamilton, "hamilton-sab") }}>{bench.hamilton ?? "—"}</div>
+          <div className="f5-kpi-sub">benchmark across providers</div>
+        </div>
+        <div className="f5-card">
+          <div className="f5-kpi-label">Providers reporting</div>
+          <div className="f5-kpi-value">{PROVIDER_COMPLIANCE.length}</div>
+          <div className="f5-kpi-sub">{PROVIDER_COMPLIANCE.filter((p) => p.enabled).length} active assignments</div>
+        </div>
+      </div>
+
+      <div className="f5-section-title">Provider Framework Assignment &amp; Scores</div>
       <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="f5-table">
-          <thead><tr><th>Provider</th><th>Properties</th><th>Tier</th><th>Framework</th><th>Status</th></tr></thead>
+          <thead><tr><th>Provider</th><th>Properties</th><th>Tier</th><th>Primary Framework</th><th>RentSafeTO Score</th><th>Hamilton SAB Score</th><th>Status</th></tr></thead>
           <tbody>
             {PROVIDER_COMPLIANCE.map((p) => (
               <tr key={p.provider}>
@@ -240,12 +281,22 @@ export function ComplianceSettingsPanel() {
                 <td>{p.properties}</td>
                 <td><span className="f5-badge">{p.tier}</span></td>
                 <td>{fwName(p.framework)}</td>
+                <td><ScoreCell score={p.rentSafeScore} frameworkId="rentsafeto" benchmark={bench.rentSafe} /></td>
+                <td><ScoreCell score={p.hamiltonScore} frameworkId="hamilton-sab" benchmark={bench.hamilton} /></td>
                 <td><span className={`f5-badge ${p.enabled ? "ok" : "warn"}`}>{p.enabled ? "Enabled" : "Disabled"}</span></td>
               </tr>
             ))}
+            <tr style={{ borderTop: "2px solid var(--f5-border)" }}>
+              <td style={{ color: dim, fontWeight: 700 }}>Platform benchmark</td>
+              <td colSpan={3} style={{ color: dim, fontSize: 12 }}>average across reporting providers</td>
+              <td style={{ fontWeight: 700, color: scoreColor(bench.rentSafe, "rentsafeto") }}>{bench.rentSafe ?? "—"}</td>
+              <td style={{ fontWeight: 700, color: scoreColor(bench.hamilton, "hamilton-sab") }}>{bench.hamilton ?? "—"}</td>
+              <td />
+            </tr>
           </tbody>
         </table>
       </div>
+      <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 8 }}>▲/▼ shows each provider&apos;s gap to the platform benchmark. Scores colour against each framework&apos;s green (≥{COMPLIANCE_FRAMEWORKS.find((f) => f.id === "rentsafeto")?.thresholds.green}) / yellow thresholds. N/A = framework not assigned to that provider&apos;s jurisdiction.</div>
     </>
   );
 }
