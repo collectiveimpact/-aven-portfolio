@@ -326,6 +326,46 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
             onChange={(e) => setBody(e.target.value)}
           />
 
+          {(subject || body) && channels.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div className="f5-section-title" style={{ margin: "0 0 8px", fontSize: 12 }}>Channel preview — how each channel renders this message</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10 }}>
+                {channels.includes("email") && (
+                  <div className="f5-card" style={{ padding: 12, background: "var(--f5-surface-2)" }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "var(--f5-teal)" }}>✉️ Email</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6, color: "var(--f5-text)" }}>{subject || "(no subject)"}</div>
+                    <div style={{ fontSize: 12, color: "var(--f5-text-secondary)", marginTop: 4, whiteSpace: "pre-wrap", maxHeight: 130, overflow: "auto" }}>{body}</div>
+                  </div>
+                )}
+                {channels.includes("sms") && (() => {
+                  const sms = `${subject ? subject + ": " : ""}${body}`; const over = sms.length > 160;
+                  return (
+                    <div className="f5-card" style={{ padding: 12, background: "var(--f5-surface-2)" }}>
+                      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "var(--f5-green,#34d399)" }}>💬 SMS</div>
+                      <div style={{ fontSize: 12, color: "var(--f5-text)", marginTop: 6, background: "rgba(52,211,153,0.12)", borderRadius: 10, padding: "8px 10px", whiteSpace: "pre-wrap" }}>{sms.slice(0, 320)}</div>
+                      <div style={{ fontSize: 11, marginTop: 6, color: over ? "var(--f5-red,#f87171)" : "var(--f5-text-muted)" }}>{sms.length} chars · {over ? `${Math.ceil(sms.length / 153)} SMS segments` : "1 SMS"}{over ? " (consider shortening)" : ""}</div>
+                    </div>
+                  );
+                })()}
+                {channels.includes("display") && (
+                  <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+                    <div style={{ background: "#0a0e14", padding: 14, minHeight: 96 }}>
+                      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#60a5fa" }}>🖥️ Display</div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "#fff", marginTop: 6 }}>{subject || "Notice"}</div>
+                      <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>{(body || "").slice(0, 90)}{(body || "").length > 90 ? "…" : ""}</div>
+                    </div>
+                  </div>
+                )}
+                {channels.includes("whatsapp") && (
+                  <div className="f5-card" style={{ padding: 12, background: "var(--f5-surface-2)" }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#25D366" }}>🟢 WhatsApp</div>
+                    <div style={{ fontSize: 12, color: "var(--f5-text)", marginTop: 6, background: "rgba(37,211,102,0.12)", borderRadius: 10, padding: "8px 10px", whiteSpace: "pre-wrap" }}>{`${subject ? subject + "\n" : ""}${body}`.slice(0, 320)}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <label style={{ ...radio(casl), marginTop: 14 }}>
             <input type="checkbox" checked={casl} onChange={(e) => setCasl(e.target.checked)} />
             All recipients have opted in (CASL compliant)
