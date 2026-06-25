@@ -56,6 +56,7 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | ContentRow["type"]>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
+  const [view, setView] = useState<"gallery" | "list">("gallery");
 
   const catCount = (k: string) => items.filter((c) => categoryOf(c.title) === k).length;
   const needle = q.trim().toLowerCase();
@@ -118,9 +119,42 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
             <span key={t} className={`f5-chip${typeFilter === t ? " active" : ""}`} onClick={() => setTypeFilter(t)}>{t === "all" ? "All" : TYPE_LABEL[t]}</span>
           ))}
         </div>
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {items.length}</span>
+        <div className="f5-chips" style={{ margin: 0, marginLeft: "auto" }}>
+          <span className={`f5-chip${view === "gallery" ? " active" : ""}`} onClick={() => setView("gallery")}>▦ Gallery</span>
+          <span className={`f5-chip${view === "list" ? " active" : ""}`} onClick={() => setView("list")}>☰ List</span>
+        </div>
+        <span style={{ fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {items.length}</span>
       </div>
 
+      {view === "gallery" && (
+        <div className="f5-grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 14 }}>
+          {filtered.length === 0 && <div style={{ color: "var(--f5-text-muted)", fontSize: 13 }}>No assets match.</div>}
+          {filtered.map((c) => { const cat = categoryOf(c.title); return (
+            <div key={c.id} className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ position: "relative", aspectRatio: "16 / 9", background: CAT_COLOR[cat] }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/content-thumbs/${thumbSlug(c.title)}.jpg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                <span className="f5-badge" style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.55)", color: CAT_COLOR[cat], borderColor: "transparent" }}>{CAT_LABEL[cat]}</span>
+                <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 11, background: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 7px", borderRadius: 99 }}>{duration(c.durationS)}</span>
+              </div>
+              <div style={{ padding: "10px 12px" }}>
+                <div title={c.title} style={{ color: "var(--f5-text)", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                  <span className={TYPE_BADGE[c.type]}>{TYPE_LABEL[c.type]}</span>
+                  {canEdit && (
+                    <span style={{ display: "flex", gap: 6 }}>
+                      <button className="f5-btn" style={{ padding: "3px 9px", fontSize: 11 }} onClick={() => openEdit(c)}>Edit</button>
+                      <button className="f5-btn" style={{ padding: "3px 9px", fontSize: 11, color: "var(--f5-red)" }} onClick={() => remove(c)} disabled={pending}>Delete</button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ); })}
+        </div>
+      )}
+
+      {view === "list" && (
       <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="f5-table">
           <thead>
@@ -154,6 +188,7 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
           </tbody>
         </table>
       </div>
+      )}
 
       {editing && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={() => setEditing(null)}>
