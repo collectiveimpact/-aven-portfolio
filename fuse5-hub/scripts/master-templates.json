@@ -1,0 +1,635 @@
+[
+ {
+  "name": "Emergency Contacts",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "EMERGENCY: Police / Fire / Ambulance \u2014 911. {{org}} office (Mon-Fri 8:30am-5pm): {{office_phone}}. After-hours emergency: {{afterhours_phone}}. Gas smell? Enbridge Emergency: 1-866-763-5427 \u2014 leave the building first."
+ },
+ {
+  "name": "Fire Watch \u2014 Active",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "FIRE WATCH in effect at {{building}}. The fire alarm system is temporarily offline; trained staff are patrolling. If you see smoke or fire, leave immediately and call 911. Do not use elevators."
+ },
+ {
+  "name": "Fire Evacuation Plan",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "If the fire alarm sounds: leave by the nearest exit stairwell, do NOT use elevators, and assemble at the muster point: {{muster_point}}. Do not re-enter until cleared by Fire Services. Residents needing assistance to evacuate, contact the office to be added to our list."
+ },
+ {
+  "name": "Fire Safety Equipment Testing",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Scheduled fire-alarm and equipment testing at {{building}} on {{date}}, {{time}}. You may hear alarms during this window \u2014 this is a TEST. No action needed unless staff advise otherwise."
+ },
+ {
+  "name": "Extreme Heat Alert",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "HEAT WARNING. Stay hydrated, avoid the sun midday, and check on neighbours. Nearest cooling location: {{cooling_location}}. If you feel dizzy, nauseous or have a rapid heartbeat, call 911."
+ },
+ {
+  "name": "Extreme Cold Alert",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "EXTREME COLD WARNING. Dress in layers and limit time outdoors. Nearest warming station: {{warming_location}}. If your unit has no heat, report it to {{office_phone}} immediately."
+ },
+ {
+  "name": "Gas Leak \u2014 Evacuate",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "GAS LEAK: Leave the building NOW. Do not use light switches, elevators, or phones inside. Once outside, call Enbridge Emergency 1-866-763-5427 and 911. Assemble at {{muster_point}}."
+ },
+ {
+  "name": "Building Security Alert",
+  "category": "Emergency & Safety",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "SECURITY NOTICE at {{building}}: For your safety, keep unit and entry doors locked and do not let unknown persons in. Report concerns to {{office_phone}} or call 911 in an emergency."
+ },
+ {
+  "name": "How to Submit a Work Order",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Need a repair? Submit a work order any of these ways: call the building line {{office_phone}}, email {{office_email}}, or visit the office during business hours. Please describe the issue and your unit number."
+ },
+ {
+  "name": "Maintenance Service Standards",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Our repair response targets: Emergency (health/safety) 24-48 hrs; Priority repairs within {{priority_days}} days; Routine maintenance as scheduled. Timing can be affected by parts, weather, and workload. Charges may apply for damage from misuse or vandalism."
+ },
+ {
+  "name": "On-Call / After-Hours Service",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "For after-hours emergencies (no heat, flood, no power, lockout) call {{afterhours_phone}}. On-call hours: 5:00pm-7:00am, weekends and holidays. Non-emergencies will be handled the next business day."
+ },
+ {
+  "name": "Planned Service Disruption",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "PLANNED service disruption at {{building}}: {{service}} will be unavailable on {{date}} from {{time}}. Please plan ahead. We apologize for the inconvenience \u2014 questions: {{office_phone}}."
+ },
+ {
+  "name": "Unplanned Service Disruption",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "We are aware of an unplanned {{service}} disruption at {{building}} and crews are responding. Updates to follow. Thank you for your patience \u2014 {{office_phone}}."
+ },
+ {
+  "name": "Water Shut-Off",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "WATER SHUT-OFF at {{building}} on {{date}}, {{time}}. Please store water in advance for drinking and cooking. Water will be restored as soon as work is complete."
+ },
+ {
+  "name": "Electrical Shut-Down",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "POWER SHUT-DOWN at {{building}} on {{date}}, {{time}} for {{reason}}. Elevators and hallway lighting may be affected. Please prepare accordingly."
+ },
+ {
+  "name": "Elevator Out of Service",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "The elevator at {{building}} is out of service. Repairs are underway and we expect it back by {{eta}}. Residents needing assistance, please call {{office_phone}}."
+ },
+ {
+  "name": "Common Repairs \u2014 What Staff Check",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Common repair issues our staff fix: P-trap leaks, fan-coil units, drywall damage, and faucet/toilet repairs. Submit a work order and we'll schedule the right trade."
+ },
+ {
+  "name": "Preventative Maintenance Visit",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Scheduled preventative maintenance in your unit at {{building}} on {{date}}. Staff will check smoke detectors, plumbing and HVAC. Please ensure access to the kitchen sink and fan-coil area."
+ },
+ {
+  "name": "Pest Control & Treatment",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Pest treatment is scheduled for {{building}} / unit {{unit}} on {{date}}. Preparation instructions will be provided \u2014 please follow them so treatment is effective. Report any pest activity to {{office_phone}}."
+ },
+ {
+  "name": "Bedbug Treatment Prep",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Bedbug treatment for unit {{unit}} on {{date}}. Please launder and bag bedding/clothing, pull furniture from walls, and clear closets. Do NOT discard furniture without staff guidance. Full prep sheet attached."
+ },
+ {
+  "name": "Waste Diversion \u2014 Know Before You Throw",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Help keep {{building}} clean: Garbage, Recycling (Blue Bin) and Organics (Green Bin) each go in their own chute/room. When in doubt, check the signage. Thank you for sorting right!"
+ },
+ {
+  "name": "Bulk Item Pickup",
+  "category": "Operations & Waste",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "BULK ITEM pickup at {{building}} is {{date}}. Bring large items (furniture, appliances) to {{location}} the night before. Do not block hallways or exits. Electronics and hazardous waste must NOT go in bulk pickup."
+ },
+ {
+  "name": "Rent Payment Reminder",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Friendly reminder: rent is due on the 1st of each month. Pay by pre-authorized debit, online, or at the office. Questions about your account? Call {{office_phone}}."
+ },
+ {
+  "name": "Rent Arrears \u2014 We Can Help",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Behind on rent? Please talk to us early \u2014 we have payment plan options and can connect you to financial supports. Contact your Housing Worker at {{office_phone}} before a notice is issued."
+ },
+ {
+  "name": "Payment Plans",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "If you can't pay your full rent on time, a payment plan may be available. Contact your Housing Worker at {{office_phone}} to set one up and avoid further action."
+ },
+ {
+  "name": "How Your Rent (RGI) Is Calculated",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Rent-Geared-to-Income (RGI) is based on your household's income. Generally, you pay about 30% of monthly household income toward rent. Your rent is reviewed annually \u2014 keep your income information up to date."
+ },
+ {
+  "name": "RGI \u2014 Reporting Requirements",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": true,
+  "body": "RGI tenants must: file income tax every year, report income changes between annual reviews, declare all assets, and pursue income you're entitled to. Failing to report can affect your subsidy. Questions: {{office_phone}}."
+ },
+ {
+  "name": "Annual Review \u2014 Documents Required",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": true,
+  "body": "For your annual RGI review, provide for everyone 18+ in your home: Notice of Assessment (NOA), CRA Proof of Income, ID/status documents, recent Ontario Works/ODSP statement, proof of full-time school enrolment, and verification of any new assets. Submit by the date in your review letter."
+ },
+ {
+  "name": "Over-Housed Notice",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Our records show your unit may be larger than your household size permits (over-housed). You may be asked to transfer to a right-sized unit. Your Housing Worker will contact you \u2014 questions: {{office_phone}}."
+ },
+ {
+  "name": "Annual Market Rent Increase",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Notice: market rent will increase by {{percent}}% effective {{date}}. Your updated rent amount is shown on your notice. Questions about your account? Call {{office_phone}}."
+ },
+ {
+  "name": "Free Tax Clinic",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "TAX SEASON: File your taxes for FREE at the {{org}} Tax Clinic. Filing taxes keeps your benefits and RGI subsidy current. Dates & booking: {{tax_clinic_info}}."
+ },
+ {
+  "name": "How to Access Your NOA",
+  "category": "Financial",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Need your Notice of Assessment (NOA) for your rent review? Get it from CRA My Account online, the CRA app, or by calling 1-800-959-8281. Staff can help \u2014 ask at the office."
+ },
+ {
+  "name": "Financial Literacy Supports",
+  "category": "Health & Wellness",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "{{org}} offers free financial coaching, budgeting help, and benefits navigation. Build your financial confidence \u2014 ask staff or call {{office_phone}} to connect."
+ },
+ {
+  "name": "Tenant Obligations",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "As a tenant you agree to: pay rent in full and on time, keep your home reasonably clean, repair damage you or your guests cause, be reasonably quiet, follow building rules and by-laws (including occupancy limits), and honour your lease."
+ },
+ {
+  "name": "Pet Policy",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Pets are welcome if they follow City of Toronto animal by-laws and don't damage property or disturb neighbours. Stoop & scoop, keep pets leashed in common areas, and no smoking in stairwells. Aggressive or nuisance animals may not be permitted."
+ },
+ {
+  "name": "Reasons for Eviction",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Tenancies can be ended for: non-payment or persistent late rent; misrepresenting income; no longer qualifying for subsidy (e.g., owning a home); not submitting income verification; damage; interfering with others' reasonable enjoyment; overcrowding; illegal acts; or impairing others' safety. Talk to us early to avoid this."
+ },
+ {
+  "name": "Preventing Eviction",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "If you've received a notice, act fast \u2014 most issues can be resolved. Pay arrears or correct the issue before the date on the notice, and contact your Housing Worker at {{office_phone}}. Help is available."
+ },
+ {
+  "name": "How to Avoid Getting Notices",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Avoid notices: pay rent on time, keep your unit clean and undamaged, sort your waste, keep noise down, and follow building rules. Questions about a rule? Ask staff before it becomes an issue."
+ },
+ {
+  "name": "Noise & Disturbances",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "You and your neighbours are entitled to quiet enjoyment of your homes. Please keep noise down, especially {{quiet_hours}}, and ensure guests do the same. Repeated disturbances may lead to enforcement."
+ },
+ {
+  "name": "Absent From Unit Policy",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Planning to be away from your unit for an extended period? You must notify {{org}} in writing. Your unit must remain your principal residence to keep your tenancy and subsidy. Questions: {{office_phone}}."
+ },
+ {
+  "name": "Internal Transfer Process",
+  "category": "Leasing & Move",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Interested in transferring to another unit? Transfers are based on eligibility and availability. Speak to your Housing Worker at {{office_phone}} to learn the criteria and join the transfer list."
+ },
+ {
+  "name": "Move-Out Process",
+  "category": "Leasing & Move",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Moving out? Give {{org}} 60 days written notice. Clean your unit, report damage, and return ALL keys/fobs to the office. You are financially responsible for removal of belongings left behind and for any damage you caused."
+ },
+ {
+  "name": "Annual Unit Inspections",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Annual unit inspections at {{building}} begin {{date}}. Staff will check smoke/CO detectors, plumbing, and the general condition of your unit. We'll provide notice of your inspection date and time."
+ },
+ {
+  "name": "Unit Inspection \u2014 What to Expect",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "During your inspection, staff will: walk through the unit, test smoke/CO detectors, check plumbing, and take photos for our records. Please clear access to the kitchen sink and fan-coil area beforehand."
+ },
+ {
+  "name": "LTB Forms & Information",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Need a Landlord and Tenant Board (LTB) form or information about your rights? Forms are at tribunalsontario.ca/ltb. Staff can point you to the right form \u2014 ask at the office."
+ },
+ {
+  "name": "Tenant Insurance Reminder",
+  "category": "Rules & Conduct",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "{{org}} insures the building, not your belongings. We strongly recommend tenant (contents) insurance to protect against fire, theft and water damage. Many policies cost just a few dollars a month."
+ },
+ {
+  "name": "Welcome to Your New Home",
+  "category": "Leasing & Move",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Welcome to {{org}}! Your building office is open {{office_hours}} at {{office_phone}}. Submit repairs by phone or email, pay rent on the 1st, and watch the lobby display for news. We're glad you're here."
+ },
+ {
+  "name": "Booking Amenity Space",
+  "category": "Amenities",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Want to book the community/amenity room at {{building}}? Reservations are first-come, first-served and may require a deposit. Contact the office at {{office_phone}} to check availability and rules."
+ },
+ {
+  "name": "Laundry Room Hours",
+  "category": "Amenities",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Laundry room hours at {{building}}: {{laundry_hours}}. Please be courteous \u2014 remove your laundry promptly and report any machine issues to {{office_phone}}."
+ },
+ {
+  "name": "Community Programs",
+  "category": "Health & Wellness",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "{{org}} offers free community programs \u2014 services, employment help, and childcare. Get involved and connect with your neighbours. Details: {{office_phone}} or ask staff."
+ },
+ {
+  "name": "Significant Dates & Holidays",
+  "category": "Community",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Dates to remember this month at {{building}}: {{dates}}. Office holiday hours: {{holiday_hours}}. Wishing you and your family well!"
+ },
+ {
+  "name": "Annual Tenant Survey",
+  "category": "Community",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Your voice matters! Complete the {{org}} Annual Tenant Survey by {{date}} and help us improve your building and services. Scan the QR code on the lobby display or ask staff for a paper copy."
+ },
+ {
+  "name": "Building Staff Contact Info",
+  "category": "Maintenance & Rules",
+  "channels": [
+   "display",
+   "email"
+  ],
+  "mandatory": false,
+  "body": "Your building team at {{building}}: Housing Manager {{manager}}, Maintenance Supervisor {{maint_super}}, Housing Worker {{worker}}. Office hours: {{office_hours}}. Phone: {{office_phone}}."
+ },
+ {
+  "name": "Building Improvements / Capital Plan",
+  "category": "Community",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Coming to {{building}} this year: {{projects}}. These improvements enhance safety, comfort and energy efficiency. We'll post timelines and any disruptions in advance. Thank you for your patience."
+ },
+ {
+  "name": "RentSafeTO Information",
+  "category": "Regulatory",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": true,
+  "body": "{{building}} participates in the City of Toronto RentSafeTO program. You can view our most recent building evaluation and standards info, and contact the RentSafeTO team by calling 311."
+ },
+ {
+  "name": "Accessibility Equipment",
+  "category": "Accessibility",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Accessibility features at {{building}} include {{features}} (ramps, door buttons, railings). If you need an accommodation, contact the office at {{office_phone}} \u2014 we're here to help."
+ },
+ {
+  "name": "Request Translated Materials",
+  "category": "Accessibility",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Need this information in another language? Scan the QR code on the display or contact the office at {{office_phone}} to request translated materials."
+ },
+ {
+  "name": "RentCafe Tenant Portal \u2014 Coming Soon",
+  "category": "Community",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "Coming soon to {{org}}: the RentCafe Tenant Portal! Submit and track work orders, pay rent online, and upload documents \u2014 all from your phone. Watch for your launch details."
+ },
+ {
+  "name": "Telephone Triage System \u2014 Now Live",
+  "category": "Community",
+  "channels": [
+   "display",
+   "email",
+   "sms"
+  ],
+  "mandatory": false,
+  "body": "{{org}}'s new telephone system is live! Call {{office_phone}} for streamlined service: faster routing to housing staff, follow-up on your requests, and timely support."
+ }
+]
