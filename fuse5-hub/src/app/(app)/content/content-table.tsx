@@ -68,6 +68,7 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
   const [typeFilter, setTypeFilter] = useState<"all" | ContentRow["type"]>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
   const [view, setView] = useState<"gallery" | "list">("gallery");
+  const [playing, setPlaying] = useState<{ title: string; slug: string } | null>(null);
 
   const catCount = (k: string) => items.filter((c) => categoryOf(c.title) === k).length;
   const needle = q.trim().toLowerCase();
@@ -142,9 +143,15 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
           {filtered.length === 0 && <div style={{ color: "var(--f5-text-muted)", fontSize: 13 }}>No assets match.</div>}
           {filtered.map((c) => { const cat = categoryOf(c.title); return (
             <div key={c.id} className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-              <div style={{ position: "relative", aspectRatio: "16 / 9", background: CAT_COLOR[cat] }}>
+              <div style={{ position: "relative", aspectRatio: "16 / 9", background: CAT_COLOR[cat], cursor: c.type === "video" ? "pointer" : "default" }}
+                onClick={c.type === "video" ? () => setPlaying({ title: c.title, slug: thumbSlug(c.title) }) : undefined}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`/content-thumbs/${thumbSlug(c.title)}.jpg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                {c.type === "video" && (
+                  <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ width: 44, height: 44, borderRadius: 99, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, border: "2px solid rgba(255,255,255,0.85)" }}>▶</span>
+                  </span>
+                )}
                 <span className="f5-badge" style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.55)", color: CAT_COLOR[cat], borderColor: "transparent" }}>{CAT_LABEL[cat]}</span>
                 <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 11, background: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 7px", borderRadius: 99 }}>{duration(c.durationS)}</span>
               </div>
@@ -228,6 +235,19 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
               <button className="f5-btn primary" disabled={pending} onClick={save}>{pending ? "Saving…" : editing.id ? "Save Changes" : "Add Asset"}</button>
               <button className="f5-btn" onClick={() => setEditing(null)}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {playing && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={() => setPlaying(null)}>
+          <div style={{ width: 880, maxWidth: "96vw" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <strong style={{ color: "#fff" }}>{playing.title}</strong>
+              <button className="f5-btn" onClick={() => setPlaying(null)}>✕ Close</button>
+            </div>
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video src={`/content-videos/${playing.slug}.mp4`} controls autoPlay style={{ width: "100%", borderRadius: 10, background: "#000" }} />
           </div>
         </div>
       )}
