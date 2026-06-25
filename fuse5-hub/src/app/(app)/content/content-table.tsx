@@ -14,6 +14,30 @@ const TYPES: { k: ContentInput["type"]; l: string }[] = [
 const TYPE_LABEL: Record<ContentRow["type"], string> = { image: "Image", video: "Video", notice: "Notice", playlist: "Playlist" };
 const TYPE_BADGE: Record<ContentRow["type"], string> = { image: "f5-badge", video: "f5-badge", notice: "f5-badge warn", playlist: "f5-badge ok" };
 
+// Categories derived from the WoodGreen creative prefix codes (AL/MED/MR/OP/PR/WG).
+const CATS: { k: string; l: string }[] = [
+  { k: "all", l: "All" },
+  { k: "MED", l: "Tenant Education" },
+  { k: "MR", l: "Maintenance & Rules" },
+  { k: "OP", l: "Operations & Waste" },
+  { k: "AL", l: "Alerts" },
+  { k: "PR", l: "Regulatory" },
+  { k: "WG", l: "Videos" },
+  { k: "OTHER", l: "Other" },
+];
+const CAT_LABEL: Record<string, string> = Object.fromEntries(CATS.map((c) => [c.k, c.l]));
+const CAT_COLOR: Record<string, string> = { MED: "var(--f5-teal)", MR: "#f59e0b", OP: "#34d399", AL: "var(--f5-red,#f87171)", PR: "#a78bfa", WG: "#60a5fa", OTHER: "var(--f5-text-muted)" };
+function categoryOf(title: string): string {
+  const m = title.trim().match(/^([A-Z]{2,3})\s*\d/);
+  if (m && CAT_LABEL[m[1]]) return m[1];
+  if (/^wg/i.test(title.trim())) return "WG";
+  return "OTHER";
+}
+// Matches the slug used when the thumbnails were extracted from the .nvc export.
+function thumbSlug(s: string): string {
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 function duration(s: number | null): string {
   if (s === null) return "—";
   if (s < 60) return `${s}s`;
@@ -31,9 +55,12 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | ContentRow["type"]>("all");
+  const [catFilter, setCatFilter] = useState<string>("all");
 
+  const catCount = (k: string) => items.filter((c) => categoryOf(c.title) === k).length;
   const needle = q.trim().toLowerCase();
   const filtered = items.filter((c) => {
+    if (catFilter !== "all" && categoryOf(c.title) !== catFilter) return false;
     if (typeFilter !== "all" && c.type !== typeFilter) return false;
     if (!needle) return true;
     return c.title.toLowerCase().includes(needle);
@@ -69,6 +96,21 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
+      {/* Category filters (derived from the creative prefix codes) */}
+      <div className="f5-chips" style={{ marginBottom: 10 }}>
+        {CATS.map((cat) => {
+          const n = cat.k === "all" ? items.length : catCount(cat.k);
+          if (cat.k !== "all" && n === 0) return null;
+          return (
+            <span key={cat.k} className={`f5-chip${catFilter === cat.k ? " active" : ""}`} onClick={() => setCatFilter(cat.k)}
+              style={catFilter === cat.k && cat.k !== "all" ? { borderColor: CAT_COLOR[cat.k], color: CAT_COLOR[cat.k] } : undefined}>
+              {cat.k !== "all" && <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 99, background: CAT_COLOR[cat.k], marginRight: 6, verticalAlign: "middle" }} />}
+              {cat.l} <span style={{ opacity: 0.6 }}>{n}</span>
+            </span>
+          );
+        })}
+      </div>
+
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
         <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search assets…" style={{ maxWidth: 320 }} />
         <div className="f5-chips" style={{ margin: 0 }}>
@@ -82,13 +124,22 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
       <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Title</th><th>Type</th><th>Duration</th><th>Updated</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr><th style={{ width: 80 }}></th><th>Title</th><th>Category</th><th>Type</th><th>Duration</th><th>Updated</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={canEdit ? 5 : 4} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No assets match.</td></tr>}
-            {filtered.map((c) => (
+            {filtered.length === 0 && <tr><td colSpan={canEdit ? 7 : 6} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No assets match.</td></tr>}
+            {filtered.map((c) => { const cat = categoryOf(c.title); return (
               <tr key={c.id}>
+                <td style={{ width: 80 }}>
+                  <div style={{ width: 72, height: 40, borderRadius: 6, overflow: "hidden", border: "1px solid var(--f5-border)", background: CAT_COLOR[cat] }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/content-thumbs/${thumbSlug(c.title)}.jpg`} alt="" width={72} height={40}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  </div>
+                </td>
                 <td style={{ color: "var(--f5-text)" }}>{c.title}</td>
+                <td><span className="f5-badge" style={{ color: CAT_COLOR[cat] }}>{CAT_LABEL[cat]}</span></td>
                 <td><span className={TYPE_BADGE[c.type]}>{TYPE_LABEL[c.type]}</span></td>
                 <td>{duration(c.durationS)}</td>
                 <td>{c.updatedAt}</td>
@@ -99,7 +150,7 @@ export function ContentTable({ items, canEdit }: { items: ContentRow[]; canEdit:
                   </td>
                 )}
               </tr>
-            ))}
+            ); })}
           </tbody>
         </table>
       </div>
