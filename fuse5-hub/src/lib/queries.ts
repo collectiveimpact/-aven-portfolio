@@ -4,6 +4,8 @@ import type { F5Role } from "@/lib/rbac";
 import { resolveFields, type ResolvedField, type FieldOverride } from "@/lib/wo-fields";
 import { DEMO_PROVIDERS, DEMO_PLATFORM_USERS, DEMO_FLEET, DEFAULT_PORTAL, type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type PortalConfig } from "@/lib/platform";
 import { DEMO_FALLBACK } from "@/lib/env";
+// Real WoodGreen content library (103 creatives mined from the NoviSign .nvc exports).
+import WOODGREEN_CONTENT from "@/lib/woodgreen-content.json";
 import { JOURNEY_TEMPLATES, type Journey } from "@/lib/journeys";
 
 // Demo fallback for EMPTY/errored backed reads: canned demo rows in demo mode,
@@ -197,12 +199,7 @@ export async function getCalendar(): Promise<CalendarRow[]> {
 
 // ---- demo fallbacks (used only when backend is off) ----
 const DEMO = {
-  content: [
-    { id: "c-01", title: "Welcome Loop — Lobby", type: "playlist", durationS: 120, updatedAt: "2026-05-30" },
-    { id: "c-02", title: "Fire Safety Notice", type: "notice", durationS: 15, updatedAt: "2026-05-29" },
-    { id: "c-03", title: "Community BBQ — June 14", type: "image", durationS: 10, updatedAt: "2026-05-28" },
-    { id: "c-04", title: "Amenities Tour", type: "video", durationS: 90, updatedAt: "2026-05-21" },
-  ] as ContentRow[],
+  content: WOODGREEN_CONTENT as ContentRow[],
   residents: [
     { id: "r1", unit: "204", name: "Amara Okafor", propertyName: "WoodGreen — Danforth", propertyId: null, email: "a.okafor@example.org", phone: "416-555-1001", language: "English", preferredChannel: "email", status: "active" },
     { id: "r2", unit: "207", name: "Jean-Luc Tremblay", propertyName: "WoodGreen — Danforth", propertyId: null, email: "jl.tremblay@example.org", phone: "416-555-1002", language: "French", preferredChannel: "sms", status: "active" },

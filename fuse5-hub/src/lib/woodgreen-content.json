@@ -1,0 +1,723 @@
+[
+  {
+    "id": "wg-001",
+    "title": "AL02 - Cooling stations",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-002",
+    "title": "AL03 - Heat alert",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-003",
+    "title": "MED 10 - Reasons for eviction - Copy",
+    "type": "video",
+    "durationS": 25,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-004",
+    "title": "MED 24 - Saving energy",
+    "type": "video",
+    "durationS": 25,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-005",
+    "title": "MED02 - Submit work order",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-006",
+    "title": "MED06 - Rent Payment",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-007",
+    "title": "MED06 - Rent Payment - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-008",
+    "title": "MED07 - Unit Inspection",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-009",
+    "title": "MED08 - Tenant Obligations",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-010",
+    "title": "MED09 - Maintenance & Repair Standards",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-011",
+    "title": "MED11 - Annual review documents",
+    "type": "notice",
+    "durationS": 25,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-012",
+    "title": "MED12 - RGI Calculation Requirements",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-013",
+    "title": "MED13 - Preventing eviction",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-014",
+    "title": "MED14 - How to avoid notices - Copy",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-015",
+    "title": "MED15 - 2024 Tax season",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-016",
+    "title": "MED15 - 2024 Tax season - Copy",
+    "type": "video",
+    "durationS": 47,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-017",
+    "title": "MED15 - Tax Clinic",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-018",
+    "title": "MED16 -  Common repairs",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-019",
+    "title": "MED17 - Payment Plans",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-020",
+    "title": "MED18 - Save water",
+    "type": "video",
+    "durationS": 12,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-021",
+    "title": "MED19 - Pet policy",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-022",
+    "title": "MED20 - Booking amenity space",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-023",
+    "title": "MED21 - WoodGreen investments in its communities",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-024",
+    "title": "MED22 -  How is RGI calculated",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-025",
+    "title": "MED23 - LTB Forms",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-026",
+    "title": "MED25 - Financial empowerment services",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-027",
+    "title": "MED26 - How to access NOA",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-028",
+    "title": "MED27 - How to deal with rent arrears",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-029",
+    "title": "MED28 - Internal Transfers",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-030",
+    "title": "MED29 - Policy Changes",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-031",
+    "title": "MED30 - Ontario Works - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-032",
+    "title": "MED30 - Tax clinic eligibility",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-033",
+    "title": "MED32 - Absent from unit policy",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-034",
+    "title": "MED33 - Annual unit inspections",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-035",
+    "title": "MED34 - BCA",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-036",
+    "title": "MED35 - Changes to RGI Eligibility",
+    "type": "notice",
+    "durationS": 25,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-037",
+    "title": "MR10 -  Financial education",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-038",
+    "title": "MR10 -  Happy New year - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-039",
+    "title": "MR11 - Event - Copy - Copy (2)",
+    "type": "notice",
+    "durationS": 25,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-040",
+    "title": "MR11 - Memorial",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-041",
+    "title": "MR12 - On call service",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-042",
+    "title": "MR12A - On call what to expect",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-043",
+    "title": "MR13 - Laundry",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-044",
+    "title": "MR13 - Laundry hours - Copy",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-045",
+    "title": "MR13 - Laundry hours - Copy - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-046",
+    "title": "MR14 - Community programs",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-047",
+    "title": "MR14 - Community programs - Copy - Copy",
+    "type": "notice",
+    "durationS": 16,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-048",
+    "title": "MR14 - Community programs - Copy - Copy - Copy",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-049",
+    "title": "MR14 - Community programs - Copy - Copy - Copy (1)",
+    "type": "notice",
+    "durationS": 16,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-050",
+    "title": "MR14 - Community programs - Copy - Copy - Copy - Copy",
+    "type": "notice",
+    "durationS": 17,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-051",
+    "title": "MR15 - Enforement of policies",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-052",
+    "title": "MR16 - Noise and disturbances",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-053",
+    "title": "MR19 - Who to call",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-054",
+    "title": "MR1B - Toronto City - Copy",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-055",
+    "title": "MR2 - Emergency Enbridge GAS",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-056",
+    "title": "MR2 - Emergency Enbridge GAS - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-057",
+    "title": "MR2 - Emergency police, fire, ambulance",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-058",
+    "title": "MR9 - Moveout process",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-059",
+    "title": "OP2 - Boiler - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-060",
+    "title": "OP3 - Construction",
+    "type": "notice",
+    "durationS": 30,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-061",
+    "title": "OP3 - Construction  - Copy",
+    "type": "notice",
+    "durationS": 30,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-062",
+    "title": "OP3 - Construction  - Copy - Copy",
+    "type": "notice",
+    "durationS": 30,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-063",
+    "title": "OP3 - Water - Copy",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-064",
+    "title": "OP4 - Pest inspections - Copy",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-065",
+    "title": "OP5 - Black Plastic",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-066",
+    "title": "OP5 - Blue bin glass",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-067",
+    "title": "OP5 - Blue bin preparation",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-068",
+    "title": "OP5 - Green bin compost",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-069",
+    "title": "OP5 - Green bin home waste",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-070",
+    "title": "OP7 - CEO SLIDE",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-071",
+    "title": "OP7 - Cleaning Schedule - Copy - Copy",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-072",
+    "title": "OP7 - Keep noise to a minimum",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-073",
+    "title": "BBQ invitation",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-074",
+    "title": "Breakfast",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-075",
+    "title": "Calendar of events",
+    "type": "notice",
+    "durationS": 60,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-076",
+    "title": "Come sing with us",
+    "type": "notice",
+    "durationS": 60,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-077",
+    "title": "Dining open-FoodSquad",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-078",
+    "title": "Eye Care",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-079",
+    "title": "Hearing aid testing session",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-080",
+    "title": "March special events",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-081",
+    "title": "News",
+    "type": "notice",
+    "durationS": 90,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-082",
+    "title": "Notice",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-083",
+    "title": "PSW",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-084",
+    "title": "PSW",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-085",
+    "title": "PSW - ASSISTED LIVING SERVICES PROGRAM",
+    "type": "notice",
+    "durationS": 15,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-086",
+    "title": "Pest control tips",
+    "type": "video",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-087",
+    "title": "Reception desk",
+    "type": "notice",
+    "durationS": 30,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-088",
+    "title": "Reception desk - Copy",
+    "type": "notice",
+    "durationS": 30,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-089",
+    "title": "Security",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-090",
+    "title": "Security - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-091",
+    "title": "Security - Copy - Copy",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-092",
+    "title": "Senior Month Celebration",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-093",
+    "title": "Seniors' Active Living",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-094",
+    "title": "Staff profile",
+    "type": "video",
+    "durationS": 90,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-095",
+    "title": "Tax Clinic",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-096",
+    "title": "Vending Machine",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-097",
+    "title": "Vending Machine",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-098",
+    "title": "Yard Sale",
+    "type": "notice",
+    "durationS": 20,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-099",
+    "title": "draft - Copy (1)",
+    "type": "notice",
+    "durationS": 10,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-100",
+    "title": "PR3 - Info RentSafeTO",
+    "type": "video",
+    "durationS": 36,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-101",
+    "title": "WG video 1",
+    "type": "video",
+    "durationS": 26,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-102",
+    "title": "WG video 2",
+    "type": "video",
+    "durationS": 25,
+    "updatedAt": "2026-06-24"
+  },
+  {
+    "id": "wg-103",
+    "title": "WG video 3",
+    "type": "video",
+    "durationS": 32,
+    "updatedAt": "2026-06-24"
+  }
+]

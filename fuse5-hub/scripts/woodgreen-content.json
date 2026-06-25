@@ -1,0 +1,620 @@
+[
+  {
+    "title": "AL02 - Cooling stations",
+    "code": "AL",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "AL03 - Heat alert",
+    "code": "AL",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED 10 - Reasons for eviction - Copy",
+    "code": "MED",
+    "duration": 25,
+    "type": "video"
+  },
+  {
+    "title": "MED 24 - Saving energy",
+    "code": "MED",
+    "duration": 25,
+    "type": "video"
+  },
+  {
+    "title": "MED02 - Submit work order",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED06 - Rent Payment",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED06 - Rent Payment - Copy",
+    "code": "MED",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MED07 - Unit Inspection",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED08 - Tenant Obligations",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED09 - Maintenance & Repair Standards",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED11 - Annual review documents",
+    "code": "MED",
+    "duration": 25,
+    "type": "notice"
+  },
+  {
+    "title": "MED12 - RGI Calculation Requirements",
+    "code": "MED",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MED13 - Preventing eviction",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED14 - How to avoid notices - Copy",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED15 - 2024 Tax season",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED15 - 2024 Tax season - Copy",
+    "code": "MED",
+    "duration": 47,
+    "type": "video"
+  },
+  {
+    "title": "MED15 - Tax Clinic",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED16 -  Common repairs",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED17 - Payment Plans",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED18 - Save water",
+    "code": "MED",
+    "duration": 12,
+    "type": "video"
+  },
+  {
+    "title": "MED19 - Pet policy",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED20 - Booking amenity space",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED21 - WoodGreen investments in its communities",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED22 -  How is RGI calculated",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED23 - LTB Forms",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED25 - Financial empowerment services",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED26 - How to access NOA",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED27 - How to deal with rent arrears",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED28 - Internal Transfers",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED29 - Policy Changes",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED30 - Ontario Works - Copy",
+    "code": "MED",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MED30 - Tax clinic eligibility",
+    "code": "MED",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "MED32 - Absent from unit policy",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED33 - Annual unit inspections",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED34 - BCA",
+    "code": "MED",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MED35 - Changes to RGI Eligibility",
+    "code": "MED",
+    "duration": 25,
+    "type": "notice"
+  },
+  {
+    "title": "MR10 -  Financial education",
+    "code": "MR",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MR10 -  Happy New year - Copy",
+    "code": "MR",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MR11 - Event - Copy - Copy (2)",
+    "code": "MR",
+    "duration": 25,
+    "type": "notice"
+  },
+  {
+    "title": "MR11 - Memorial",
+    "code": "MR",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MR12 - On call service",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR12A - On call what to expect",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR13 - Laundry",
+    "code": "MR",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MR13 - Laundry hours - Copy",
+    "code": "MR",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "MR13 - Laundry hours - Copy - Copy",
+    "code": "MR",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MR14 - Community programs",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR14 - Community programs - Copy - Copy",
+    "code": "MR",
+    "duration": 16,
+    "type": "notice"
+  },
+  {
+    "title": "MR14 - Community programs - Copy - Copy - Copy",
+    "code": "MR",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "MR14 - Community programs - Copy - Copy - Copy (1)",
+    "code": "MR",
+    "duration": 16,
+    "type": "notice"
+  },
+  {
+    "title": "MR14 - Community programs - Copy - Copy - Copy - Copy",
+    "code": "MR",
+    "duration": 17,
+    "type": "notice"
+  },
+  {
+    "title": "MR15 - Enforement of policies",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR16 - Noise and disturbances",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR19 - Who to call",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR1B - Toronto City - Copy",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR2 - Emergency Enbridge GAS",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR2 - Emergency Enbridge GAS - Copy",
+    "code": "MR",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "MR2 - Emergency police, fire, ambulance",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "MR9 - Moveout process",
+    "code": "MR",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP2 - Boiler - Copy",
+    "code": "OP",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "OP3 - Construction",
+    "code": "OP",
+    "duration": 30,
+    "type": "notice"
+  },
+  {
+    "title": "OP3 - Construction  - Copy",
+    "code": "OP",
+    "duration": 30,
+    "type": "notice"
+  },
+  {
+    "title": "OP3 - Construction  - Copy - Copy",
+    "code": "OP",
+    "duration": 30,
+    "type": "notice"
+  },
+  {
+    "title": "OP3 - Water - Copy",
+    "code": "OP",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "OP4 - Pest inspections - Copy",
+    "code": "OP",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "OP5 - Black Plastic",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP5 - Blue bin glass",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP5 - Blue bin preparation",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP5 - Green bin compost",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP5 - Green bin home waste",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP7 - CEO SLIDE",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "OP7 - Cleaning Schedule - Copy - Copy",
+    "code": "OP",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "OP7 - Keep noise to a minimum",
+    "code": "OP",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "BBQ invitation",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Breakfast",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Calendar of events",
+    "code": "OTHER",
+    "duration": 60,
+    "type": "notice"
+  },
+  {
+    "title": "Come sing with us",
+    "code": "OTHER",
+    "duration": 60,
+    "type": "notice"
+  },
+  {
+    "title": "Dining open-FoodSquad",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Eye Care",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Hearing aid testing session",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "March special events",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "News",
+    "code": "OTHER",
+    "duration": 90,
+    "type": "notice"
+  },
+  {
+    "title": "Notice",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "PSW",
+    "code": "OTHER",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "PSW",
+    "code": "OTHER",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "PSW - ASSISTED LIVING SERVICES PROGRAM",
+    "code": "OTHER",
+    "duration": 15,
+    "type": "notice"
+  },
+  {
+    "title": "Pest control tips",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "video"
+  },
+  {
+    "title": "Reception desk",
+    "code": "OTHER",
+    "duration": 30,
+    "type": "notice"
+  },
+  {
+    "title": "Reception desk - Copy",
+    "code": "OTHER",
+    "duration": 30,
+    "type": "notice"
+  },
+  {
+    "title": "Security",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Security - Copy",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Security - Copy - Copy",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Senior Month Celebration",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Seniors' Active Living",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Staff profile",
+    "code": "OTHER",
+    "duration": 90,
+    "type": "video"
+  },
+  {
+    "title": "Tax Clinic",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Vending Machine",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Vending Machine",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "Yard Sale",
+    "code": "OTHER",
+    "duration": 20,
+    "type": "notice"
+  },
+  {
+    "title": "draft - Copy (1)",
+    "code": "OTHER",
+    "duration": 10,
+    "type": "notice"
+  },
+  {
+    "title": "PR3 - Info RentSafeTO",
+    "code": "PR",
+    "duration": 36,
+    "type": "video"
+  },
+  {
+    "title": "WG video 1",
+    "code": "WG",
+    "duration": 26,
+    "type": "video"
+  },
+  {
+    "title": "WG video 2",
+    "code": "WG",
+    "duration": 25,
+    "type": "video"
+  },
+  {
+    "title": "WG video 3",
+    "code": "WG",
+    "duration": 32,
+    "type": "video"
+  }
+]
