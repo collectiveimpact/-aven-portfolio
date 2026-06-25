@@ -27,3 +27,26 @@ export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO === "true" || process.env.NO
 // EMPTY. ON for local/dev (rich demo); OFF in production so a real org with no
 // data renders true empty states instead of fake rows. Follows IS_DEMO.
 export const DEMO_FALLBACK = process.env.DEMO_FALLBACK === "true" || (process.env.DEMO_FALLBACK !== "false" && IS_DEMO);
+
+// Yardi Voyager Web Services (paid interface license). When all are present the
+// direct-API connector activates; otherwise the app falls back to file ETL import.
+export const YARDI_BASE_URL = process.env.YARDI_BASE_URL ?? "";          // e.g. https://www.yardiasp14.com/12345voyager_prod
+export const YARDI_USERNAME = process.env.YARDI_USERNAME ?? "";
+export const YARDI_PASSWORD = process.env.YARDI_PASSWORD ?? "";
+export const YARDI_DATABASE = process.env.YARDI_DATABASE ?? "";
+export const YARDI_SERVER = process.env.YARDI_SERVER ?? "";
+export const YARDI_PLATFORM = process.env.YARDI_PLATFORM ?? "SQL Server";
+export const YARDI_INTERFACE_ENTITY = process.env.YARDI_INTERFACE_ENTITY ?? "";
+export const YARDI_INTERFACE_LICENSE = process.env.YARDI_INTERFACE_LICENSE ?? "";
+export const hasYardiApi = Boolean(YARDI_BASE_URL && YARDI_USERNAME && YARDI_PASSWORD && YARDI_DATABASE);
+
+export interface YardiCreds {
+  baseUrl: string; username: string; password: string; database: string;
+  server: string; platform: string; interfaceEntity: string; interfaceLicense: string;
+}
+export function yardiCreds(): YardiCreds {
+  return {
+    baseUrl: YARDI_BASE_URL, username: YARDI_USERNAME, password: YARDI_PASSWORD, database: YARDI_DATABASE,
+    server: YARDI_SERVER, platform: YARDI_PLATFORM, interfaceEntity: YARDI_INTERFACE_ENTITY, interfaceLicense: YARDI_INTERFACE_LICENSE,
+  };
+}

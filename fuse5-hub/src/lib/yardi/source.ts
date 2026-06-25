@@ -10,6 +10,8 @@
 
 import { parseTable } from "./parse";
 import { normalizeUpload, type NormalizeResult } from "./normalize";
+import { hasYardiApi } from "@/lib/env";
+import { getPropertyConfigurations, getResidentData } from "./api";
 
 export type SourceMode = "file" | "sftp" | "api";
 
@@ -48,22 +50,25 @@ export interface YardiApiConfig {
 
 export class ApiSource implements YardiDataSource {
   readonly mode = "api" as const;
-  constructor(private cfg: Partial<YardiApiConfig> = {}) {}
+  constructor(private propertyCode?: string) {}
   async available() {
-    if (!this.cfg.baseUrl || !this.cfg.username || !this.cfg.password) {
-      return { ok: false, reason: "Yardi API not configured. Needs endpoint + credentials (paid Yardi interface license)." };
+    if (!hasYardiApi) {
+      return { ok: false, reason: "Yardi API not configured. Set YARDI_* env (paid Yardi interface license + provisioned credentials)." };
     }
-    return { ok: false, reason: "Yardi API connector is scaffolded but not yet implemented. Use file upload for now." };
+    return { ok: true };
   }
-  async fetch(): Promise<NormalizeResult> {
-    // TODO(api): once credentials + interface license exist, call the relevant
-    // ItfServiceRequests / ResidentData / PropertyData endpoint, transform the
-    // XML/JSON response into { headers, rows }, then hand to normalizeUpload().
-    return {
-      ok: false,
-      error: "Direct Yardi API pull is not enabled yet. Upload the ETL file, or configure the API connector once a Yardi interface license is in place.",
-      records: [], rowErrors: [], warnings: [],
-    };
+  async fetch({ tableKey }: { tableKey?: string } = {}): Promise<NormalizeResult> {
+    const avail = await this.available();
+    if (!avail.ok) return { ok: false, error: avail.reason, records: [], rowErrors: [], warnings: [] };
+    // Map the requested entity to the right Voyager web-service call.
+    const key = (tableKey ?? "").toLowerCase();
+    const isResident = key.includes("res") || key.includes("tenant");
+    const call = isResident ? await getResidentData(this.propertyCode ?? "") : await getPropertyConfigurations();
+    if (!call.ok || !call.table) {
+      return { ok: false, error: call.error ?? "Yardi API returned no data.", records: [], rowErrors: [], warnings: [] };
+    }
+    // Hand the live rows to the same normalizer the file importer uses.
+    return normalizeUpload(null, "yardi-api", call.table.headers, call.table.rows, tableKey);
   }
 }
 
@@ -78,9 +83,9 @@ export class SftpSource implements YardiDataSource {
   }
 }
 
-export function getSource(mode: SourceMode, cfg?: Partial<YardiApiConfig>): YardiDataSource {
+export function getSource(mode: SourceMode, propertyCode?: string): YardiDataSource {
   switch (mode) {
-    case "api": return new ApiSource(cfg);
+    case "api": return new ApiSource(propertyCode);
     case "sftp": return new SftpSource();
     default: return new FileSource();
   }

@@ -3,7 +3,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { canAdmin } from "@/lib/rbac";
-import { FileSource } from "@/lib/yardi/source";
+import { hasYardiApi } from "@/lib/env";
+import { FileSource, ApiSource } from "@/lib/yardi/source";
+import type { NormalizeResult } from "@/lib/yardi/normalize";
 import type { TargetEntity } from "@/lib/yardi/tables";
 
 const ENTITY_TABLE: Record<TargetEntity, string> = {
@@ -118,25 +120,30 @@ export async function commitImport(form: FormData): Promise<ImportResult> {
   if (!norm.ok || !norm.entity) return { ok: false, error: norm.error ?? "Could not read file." };
   if (!norm.records.length) return { ok: false, error: "No valid rows to import." };
 
+  return commitNormalized(supabase, me.orgId, me.id, norm, `from ${file.filename}`);
+}
+
+type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>;
+
+// Shared upsert path for both file import and direct Yardi API sync.
+async function commitNormalized(supabase: Db, orgId: string, actorId: string, norm: NormalizeResult, source: string): Promise<ImportResult> {
+  if (!norm.entity) return { ok: false, error: "No entity resolved." };
   const table = ENTITY_TABLE[norm.entity];
 
-  // property linking for residents / work orders
   let resolveProp: ((code: string) => string | null) | null = null;
   if (norm.entity !== "property") {
-    const { data: props } = await supabase.from("properties").select("id,name,external_id").eq("org_id", me.orgId);
+    const { data: props } = await supabase.from("properties").select("id,name,external_id").eq("org_id", orgId);
     resolveProp = buildPropMap(props ?? []);
   }
 
-  // count existing for insert/update reporting
   const ids = norm.records.map((r) => r.externalId);
-  const { data: existing } = await supabase.from(table).select("external_id").eq("org_id", me.orgId).in("external_id", ids);
+  const { data: existing } = await supabase.from(table).select("external_id").eq("org_id", orgId).in("external_id", ids);
   const have = new Set((existing ?? []).map((r) => r.external_id));
   const updated = norm.records.filter((r) => have.has(r.externalId)).length;
   const inserted = norm.records.length - updated;
 
-  // build upsert rows
   const rows = norm.records.map((r) => {
-    const row: Record<string, unknown> = { org_id: me.orgId, external_id: r.externalId, ...r.fields };
+    const row: Record<string, unknown> = { org_id: orgId, external_id: r.externalId, ...r.fields };
     if (norm.entity === "property" && (row.units === null || row.units === undefined)) row.units = 0;
     if (resolveProp && r.propertyCode) {
       const pid = resolveProp(r.propertyCode);
@@ -145,7 +152,6 @@ export async function commitImport(form: FormData): Promise<ImportResult> {
     return row;
   });
 
-  // upsert in batches on (org_id, external_id)
   const BATCH = 500;
   for (let i = 0; i < rows.length; i += BATCH) {
     const { error } = await supabase.from(table).upsert(rows.slice(i, i + BATCH), { onConflict: "org_id,external_id" });
@@ -153,9 +159,31 @@ export async function commitImport(form: FormData): Promise<ImportResult> {
   }
 
   await supabase.from("audit_log").insert({
-    org_id: me.orgId, actor_id: me.id, action: "Yardi Import",
-    detail: `${norm.tableLabel}: ${inserted} added, ${updated} updated${norm.rowErrors.length ? `, ${norm.rowErrors.length} skipped` : ""} (from ${file.filename})`,
+    org_id: orgId, actor_id: actorId, action: "Yardi Import",
+    detail: `${norm.tableLabel}: ${inserted} added, ${updated} updated${norm.rowErrors.length ? `, ${norm.rowErrors.length} skipped` : ""} (${source})`,
   });
 
   return { ok: true, inserted, updated, invalid: norm.rowErrors.length, entity: norm.entity };
+}
+
+export interface YardiApiSyncResult { ok: boolean; error?: string; configured: boolean; inserted?: number; updated?: number; entity?: TargetEntity }
+
+// Direct Yardi Voyager API sync (no file). Activates when YARDI_* env is set;
+// otherwise returns configured:false so the UI can point the user to file import.
+export async function syncFromYardiApi(tableKey: string): Promise<YardiApiSyncResult> {
+  if (!hasYardiApi) return { ok: false, configured: false, error: "Yardi API not configured. Add YARDI_* credentials (interface license), or use file import." };
+
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, configured: false, error: "No backend." };
+  const me = await getCurrentUser();
+  if (!me?.orgId) return { ok: false, configured: true, error: "No organization." };
+  if (!me.role || !canAdmin(me.role)) return { ok: false, configured: true, error: "Only an Org Admin can sync from Yardi." };
+
+  const norm = await new ApiSource().fetch({ tableKey });
+  if (!norm.ok || !norm.entity) return { ok: false, configured: true, error: norm.error ?? "Yardi API returned no usable data." };
+  if (!norm.records.length) return { ok: false, configured: true, error: "Yardi returned no rows for this entity." };
+
+  const res = await commitNormalized(supabase, me.orgId, me.id, norm, "Yardi Voyager API");
+  if (!res.ok) return { ok: false, configured: true, error: res.error };
+  return { ok: true, configured: true, inserted: res.inserted, updated: res.updated, entity: res.entity };
 }
