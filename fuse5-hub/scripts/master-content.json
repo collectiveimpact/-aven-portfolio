@@ -1,0 +1,278 @@
+[
+  {
+    "code": "EM",
+    "title": "EM1 - Flood / water emergency",
+    "category": "Emergency & Safety",
+    "duration": 10
+  },
+  {
+    "code": "EM",
+    "title": "EM2 - Power outage",
+    "category": "Emergency & Safety",
+    "duration": 10
+  },
+  {
+    "code": "EM",
+    "title": "EM3 - Elevator out of service",
+    "category": "Emergency & Safety",
+    "duration": 10
+  },
+  {
+    "code": "EM",
+    "title": "EM4 - Building lockdown / security",
+    "category": "Emergency & Safety",
+    "duration": 10
+  },
+  {
+    "code": "EM",
+    "title": "EM5 - Severe weather warning",
+    "category": "Emergency & Safety",
+    "duration": 10
+  },
+  {
+    "code": "EM",
+    "title": "EM6 - Boil water advisory",
+    "category": "Emergency & Safety",
+    "duration": 12
+  },
+  {
+    "code": "EM",
+    "title": "EM7 - Fire evacuation & muster point",
+    "category": "Emergency & Safety",
+    "duration": 12
+  },
+  {
+    "code": "EM",
+    "title": "EM8 - Gas leak \u2014 evacuate now",
+    "category": "Emergency & Safety",
+    "duration": 10
+  },
+  {
+    "code": "LS",
+    "title": "LS1 - Welcome to your new home",
+    "category": "Leasing & Move",
+    "duration": 15
+  },
+  {
+    "code": "LS",
+    "title": "LS2 - Lease renewal reminder",
+    "category": "Leasing & Move",
+    "duration": 12
+  },
+  {
+    "code": "LS",
+    "title": "LS3 - Notice of entry",
+    "category": "Leasing & Move",
+    "duration": 10
+  },
+  {
+    "code": "LS",
+    "title": "LS4 - Move-out checklist",
+    "category": "Leasing & Move",
+    "duration": 15
+  },
+  {
+    "code": "LS",
+    "title": "LS5 - Key & fob handover",
+    "category": "Leasing & Move",
+    "duration": 10
+  },
+  {
+    "code": "LS",
+    "title": "LS6 - Unit transfer process",
+    "category": "Leasing & Move",
+    "duration": 12
+  },
+  {
+    "code": "RC",
+    "title": "RC1 - Smoking policy",
+    "category": "Rules & Conduct",
+    "duration": 10
+  },
+  {
+    "code": "RC",
+    "title": "RC2 - Parking rules & permits",
+    "category": "Rules & Conduct",
+    "duration": 10
+  },
+  {
+    "code": "RC",
+    "title": "RC3 - Guest & visitor policy",
+    "category": "Rules & Conduct",
+    "duration": 10
+  },
+  {
+    "code": "RC",
+    "title": "RC4 - Balcony & BBQ safety",
+    "category": "Rules & Conduct",
+    "duration": 10
+  },
+  {
+    "code": "RC",
+    "title": "RC5 - Quiet hours & noise",
+    "category": "Rules & Conduct",
+    "duration": 10
+  },
+  {
+    "code": "RC",
+    "title": "RC6 - Common area etiquette",
+    "category": "Rules & Conduct",
+    "duration": 10
+  },
+  {
+    "code": "HW",
+    "title": "HW1 - Mental health resources",
+    "category": "Health & Wellness",
+    "duration": 15
+  },
+  {
+    "code": "HW",
+    "title": "HW2 - Flu & vaccine clinic",
+    "category": "Health & Wellness",
+    "duration": 12
+  },
+  {
+    "code": "HW",
+    "title": "HW3 - Seniors programs",
+    "category": "Health & Wellness",
+    "duration": 12
+  },
+  {
+    "code": "HW",
+    "title": "HW4 - Wellness check-in",
+    "category": "Health & Wellness",
+    "duration": 10
+  },
+  {
+    "code": "HW",
+    "title": "HW5 - Harm reduction & naloxone",
+    "category": "Health & Wellness",
+    "duration": 12
+  },
+  {
+    "code": "HW",
+    "title": "HW6 - Food bank & meal programs",
+    "category": "Health & Wellness",
+    "duration": 12
+  },
+  {
+    "code": "HW",
+    "title": "HW7 - Crisis support line",
+    "category": "Health & Wellness",
+    "duration": 10
+  },
+  {
+    "code": "AM",
+    "title": "AM1 - Laundry room hours",
+    "category": "Amenities",
+    "duration": 10
+  },
+  {
+    "code": "AM",
+    "title": "AM2 - Community room booking",
+    "category": "Amenities",
+    "duration": 10
+  },
+  {
+    "code": "AM",
+    "title": "AM3 - Fitness room rules",
+    "category": "Amenities",
+    "duration": 10
+  },
+  {
+    "code": "AM",
+    "title": "AM4 - Community events calendar",
+    "category": "Amenities",
+    "duration": 15
+  },
+  {
+    "code": "AM",
+    "title": "AM5 - Community garden",
+    "category": "Amenities",
+    "duration": 10
+  },
+  {
+    "code": "AM",
+    "title": "AM6 - Bike storage",
+    "category": "Amenities",
+    "duration": 10
+  },
+  {
+    "code": "AC",
+    "title": "AC1 - Accessibility & AODA",
+    "category": "Accessibility",
+    "duration": 12
+  },
+  {
+    "code": "AC",
+    "title": "AC2 - Translation & language services",
+    "category": "Accessibility",
+    "duration": 12
+  },
+  {
+    "code": "AC",
+    "title": "AC3 - Accommodation requests",
+    "category": "Accessibility",
+    "duration": 10
+  },
+  {
+    "code": "AC",
+    "title": "AC4 - Service animals policy",
+    "category": "Accessibility",
+    "duration": 10
+  },
+  {
+    "code": "AC",
+    "title": "AC5 - Multilingual welcome",
+    "category": "Accessibility",
+    "duration": 12
+  },
+  {
+    "code": "SO",
+    "title": "SO1 - Winter heating & safety",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  },
+  {
+    "code": "SO",
+    "title": "SO2 - Snow removal schedule",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  },
+  {
+    "code": "SO",
+    "title": "SO3 - Holiday office hours",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  },
+  {
+    "code": "SO",
+    "title": "SO4 - Scheduled water shutoff",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  },
+  {
+    "code": "SO",
+    "title": "SO5 - Elevator maintenance",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  },
+  {
+    "code": "SO",
+    "title": "SO6 - Fire alarm testing",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  },
+  {
+    "code": "SO",
+    "title": "SO7 - Spring cleanup / bulky waste",
+    "category": "Seasonal & Ops",
+    "duration": 12
+  },
+  {
+    "code": "SO",
+    "title": "SO8 - Office closure notice",
+    "category": "Seasonal & Ops",
+    "duration": 10
+  }
+]

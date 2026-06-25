@@ -20,13 +20,24 @@ const CATS: { k: string; l: string }[] = [
   { k: "MED", l: "Tenant Education" },
   { k: "MR", l: "Maintenance & Rules" },
   { k: "OP", l: "Operations & Waste" },
+  { k: "EM", l: "Emergency & Safety" },
+  { k: "LS", l: "Leasing & Move" },
+  { k: "RC", l: "Rules & Conduct" },
+  { k: "HW", l: "Health & Wellness" },
+  { k: "AM", l: "Amenities" },
+  { k: "AC", l: "Accessibility" },
+  { k: "SO", l: "Seasonal & Ops" },
   { k: "AL", l: "Alerts" },
   { k: "PR", l: "Regulatory" },
   { k: "WG", l: "Videos" },
   { k: "OTHER", l: "Other" },
 ];
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATS.map((c) => [c.k, c.l]));
-const CAT_COLOR: Record<string, string> = { MED: "var(--f5-teal)", MR: "#f59e0b", OP: "#34d399", AL: "var(--f5-red,#f87171)", PR: "#a78bfa", WG: "#60a5fa", OTHER: "var(--f5-text-muted)" };
+const CAT_COLOR: Record<string, string> = {
+  MED: "var(--f5-teal)", MR: "#f59e0b", OP: "#34d399", AL: "var(--f5-red,#f87171)", PR: "#a78bfa", WG: "#60a5fa",
+  EM: "#ef4444", LS: "#14b8a6", RC: "#f59e0b", HW: "#ec4899", AM: "#60a5fa", AC: "#a78bfa", SO: "#34d399",
+  OTHER: "var(--f5-text-muted)",
+};
 function categoryOf(title: string): string {
   const m = title.trim().match(/^([A-Z]{2,3})\s*\d/);
   if (m && CAT_LABEL[m[1]]) return m[1];
