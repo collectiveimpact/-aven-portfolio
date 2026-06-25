@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { JOURNEY_TEMPLATES, TRIGGER_TYPES, type Journey } from "@/lib/journeys";
+import type { ComposeTemplate } from "@/lib/queries";
 import { JourneyBuilder } from "./journey-builder";
 import { createFromTemplate, setJourneyStatus, deleteJourney } from "./actions";
 
@@ -11,7 +12,7 @@ const dim = "var(--f5-text-muted)";
 
 const blankJourney = (): Journey => ({ id: "new", name: "", trigger: { type: "manual", label: "Manual enroll" }, status: "draft", steps: [], enrolled: 0, updatedAt: "" });
 
-export function JourneysClient({ journeys, canEdit }: { journeys: Journey[]; canEdit: boolean }) {
+export function JourneysClient({ journeys, templates, canEdit }: { journeys: Journey[]; templates: ComposeTemplate[]; canEdit: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Journey | null>(null);
   const [pending, start] = useTransition();
@@ -79,7 +80,7 @@ export function JourneysClient({ journeys, canEdit }: { journeys: Journey[]; can
         ))}
       </div>
 
-      {editing && <JourneyBuilder journey={editing} onClose={() => setEditing(null)} />}
+      {editing && <JourneyBuilder journey={editing} templates={templates} onClose={() => setEditing(null)} />}
     </>
   );
 }

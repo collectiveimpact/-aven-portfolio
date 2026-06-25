@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CHANNEL_LABEL, TRIGGER_TYPES, newStepId, type Journey, type Step, type Trigger, type Channel } from "@/lib/journeys";
+import type { ComposeTemplate } from "@/lib/queries";
 import { saveJourney, setJourneyStatus } from "./actions";
 
 const fg = "var(--f5-text)";
@@ -25,7 +26,7 @@ const blankStep = (type: Step["type"]): Step =>
   : type === "delay" ? { id: newStepId(), type: "delay", value: 3, unit: "days" }
   : { id: newStepId(), type: "split", label: "Condition", condition: "", yes: [], no: [] };
 
-export function JourneyBuilder({ journey, onClose }: { journey: Journey; onClose: () => void }) {
+export function JourneyBuilder({ journey, templates, onClose }: { journey: Journey; templates: ComposeTemplate[]; onClose: () => void }) {
   const router = useRouter();
   const [name, setName] = useState(journey.name);
   const [trigger, setTrigger] = useState<Trigger>(journey.trigger);
@@ -87,7 +88,7 @@ export function JourneyBuilder({ journey, onClose }: { journey: Journey; onClose
           <span style={{ marginLeft: "auto", fontSize: 12, color: dim, alignSelf: "center" }}>{steps.length} steps</span>
         </div>
 
-        {editing && <StepEditor step={editing} onChange={(p) => { update(editing.id, p); setEditing({ ...editing, ...p } as Step); }} onClose={() => setEditing(null)} />}
+        {editing && <StepEditor step={editing} templates={templates} onChange={(p) => { update(editing.id, p); setEditing({ ...editing, ...p } as Step); }} onClose={() => setEditing(null)} />}
         {editTrigger && <TriggerEditor trigger={trigger} onChange={setTrigger} onClose={() => setEditTrigger(false)} />}
       </div>
     </div>
@@ -171,13 +172,26 @@ function AddMenu({ onAdd, root }: { onAdd: (t: Step["type"]) => void; root?: boo
   );
 }
 
-function StepEditor({ step, onChange, onClose }: { step: Step; onChange: (p: Partial<Step>) => void; onClose: () => void }) {
+function StepEditor({ step, templates, onChange, onClose }: { step: Step; templates: ComposeTemplate[]; onChange: (p: Partial<Step>) => void; onClose: () => void }) {
+  const VALID: Channel[] = ["email", "sms", "display", "whatsapp"];
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
       <div className="f5-card" style={{ width: 460, maxWidth: "96vw" }} onClick={(e) => e.stopPropagation()}>
         <div className="f5-section-title" style={{ marginTop: 0, textTransform: "capitalize" }}>{step.type} step</div>
         {step.type === "message" && (<>
-          <label className="f5-label">Channel</label>
+          {templates.length > 0 && (<>
+            <label className="f5-label">Start from a template</label>
+            <select className="f5-select" value="" onChange={(e) => {
+              const t = templates.find((x) => x.id === e.target.value);
+              if (!t) return;
+              const ch = (t.channels.find((c) => VALID.includes(c as Channel)) as Channel) || "auto";
+              onChange({ subject: t.name, body: t.body, channel: ch });
+            }}>
+              <option value="">— Load a template… —</option>
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </>)}
+          <label className="f5-label" style={{ marginTop: 8 }}>Channel</label>
           <select className="f5-select" value={step.channel} onChange={(e) => onChange({ channel: e.target.value as Channel })}>{(Object.keys(CHANNEL_LABEL) as Channel[]).map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}</select>
           <label className="f5-label" style={{ marginTop: 8 }}>Subject</label>
           <input className="f5-input" value={step.subject} onChange={(e) => onChange({ subject: e.target.value })} placeholder="Message subject" />
