@@ -7,6 +7,7 @@ import { DEMO_FALLBACK } from "@/lib/env";
 // Real WoodGreen content library (103 creatives mined from the NoviSign .nvc exports).
 import WOODGREEN_CONTENT from "@/lib/woodgreen-content.json";
 import type { BuilderQuestion } from "@/lib/surveys/question";
+import { aggregate, type AnswerMap, type SurveyResults } from "@/lib/surveys/results";
 import { JOURNEY_TEMPLATES, type Journey } from "@/lib/journeys";
 
 // Demo fallback for EMPTY/errored backed reads: canned demo rows in demo mode,
@@ -117,6 +118,20 @@ export async function getSurveyDetail(id: string): Promise<SurveyDetail | null> 
     if (!data) return null;
     const q = Array.isArray(data.questions) ? (data.questions as BuilderQuestion[]) : [];
     return { id: data.id, title: data.title, status: data.status as SurveyRow["status"], sent: data.sent ?? 0, responses: data.responses ?? 0, description: data.description ?? "", questions: q };
+  } catch { return null; }
+}
+
+export interface SurveyResultsBundle { title: string; status: SurveyRow["status"]; sent: number; results: SurveyResults }
+export async function getSurveyResults(id: string): Promise<SurveyResultsBundle | null> {
+  const s = await db();
+  if (!s) return null;
+  try {
+    const { data: survey } = await s.from("surveys").select("title,status,sent,questions").eq("id", id).maybeSingle();
+    if (!survey) return null;
+    const { data: resp } = await s.from("survey_responses").select("answers").eq("survey_id", id);
+    const questions = Array.isArray(survey.questions) ? (survey.questions as BuilderQuestion[]) : [];
+    const rows = (resp ?? []).map((r) => (r.answers ?? {}) as AnswerMap);
+    return { title: survey.title, status: survey.status as SurveyRow["status"], sent: survey.sent ?? 0, results: aggregate(questions, rows) };
   } catch { return null; }
 }
 

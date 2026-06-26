@@ -88,6 +88,8 @@ export function SurveyBuilder({ survey, canEdit }: { survey: SurveyDetail; canEd
         )}
       </div>
 
+      <ShareBar id={survey.id} responses={survey.responses} />
+
       {/* BUILD MODE */}
       {mode === "build" && (
         <>
@@ -180,6 +182,26 @@ export function SurveyBuilder({ survey, canEdit }: { survey: SurveyDetail; canEd
 }
 
 const btn: React.CSSProperties = { padding: "2px 8px", fontSize: 12, minWidth: 30 };
+
+// Field & collect: the shareable resident link + a jump to live results. Share the
+// link via Compose, a Journey step, signage QR or kiosk; responses flow into Results.
+function ShareBar({ id, responses }: { id: string; responses: number }) {
+  const [copied, setCopied] = useState(false);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const link = `${origin}/s/${id}`;
+  return (
+    <div className="f5-card" style={{ marginTop: 14, borderLeft: "3px solid var(--f5-teal)" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ fontWeight: 700, color: "var(--f5-text)" }}>Field &amp; collect</div>
+        <input readOnly className="f5-input" value={link} style={{ flex: 1, minWidth: 220, fontSize: 12 }} onFocus={(e) => e.currentTarget.select()} />
+        <button className="f5-btn" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? "Copied ✓" : "Copy link"}</button>
+        <a className="f5-btn" href={link} target="_blank" rel="noreferrer">Open form ↗</a>
+        <Link className="f5-btn primary" href={`/surveys/${id}/results`}>Results ({responses})</Link>
+      </div>
+      <div style={{ fontSize: 12, color: dim, marginTop: 8 }}>Share this link via Compose, a Journey step, signage QR or kiosk. Residents answer without logging in, and responses aggregate into Results automatically.</div>
+    </div>
+  );
+}
 
 // Respondent-facing rendering of a single question (the live preview).
 function Respondent({ q }: { q: BuilderQuestion }) {

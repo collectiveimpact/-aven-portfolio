@@ -10,6 +10,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except static assets / images / video / the API.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|m4v)$).*)"],
+  // Run on all routes except static assets / images / video / the API / the public
+  // survey-response pages (/s/… — residents fill these out without logging in).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|s/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|m4v)$).*)"],
 };
