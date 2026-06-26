@@ -17,7 +17,7 @@ export function UseTemplateButton() {
         start(async () => {
           const r = await createFromResidentTemplate();
           if (!r.ok) { setErr(r.error ?? "Could not create."); return; }
-          router.push("/surveys"); router.refresh();
+          router.push(r.id ? `/surveys/${r.id}` : "/surveys"); router.refresh();
         });
       }}>{pending ? "Creating…" : "Use this template"}</button>
       {err && <span style={{ color: "var(--f5-red)", fontSize: 12, alignSelf: "center" }}>{err}</span>}

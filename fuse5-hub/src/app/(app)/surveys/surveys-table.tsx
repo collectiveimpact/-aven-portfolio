@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { SurveyRow } from "@/lib/queries";
-import { saveSurvey, deleteSurvey, type SurveyInput } from "./actions";
+import Link from "next/link";
+import { saveSurvey, deleteSurvey, createBlankSurvey, type SurveyInput } from "./actions";
 
 const statusBadge: Record<SurveyRow["status"], string> = { live: "ok", closed: "warn", draft: "bad" };
 const statusLabel: Record<SurveyRow["status"], string> = { live: "Live", closed: "Closed", draft: "Draft" };
@@ -41,7 +42,16 @@ export function SurveysTable({ surveys, canEdit }: { surveys: SurveyRow[]; canEd
     <>
       <div className="f5-section-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>All Surveys</span>
-        {canEdit && <button className="f5-btn primary" onClick={openAdd}>+ New Survey</button>}
+        {canEdit && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="f5-btn" onClick={openAdd}>+ Quick add</button>
+            <button className="f5-btn primary" disabled={pending} onClick={() => startTransition(async () => {
+              const r = await createBlankSurvey();
+              if (!r.ok || !r.id) { setError(r.error ?? "Could not create."); return; }
+              router.push(`/surveys/${r.id}`);
+            })}>＋ Build a Survey</button>
+          </div>
+        )}
       </div>
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
@@ -70,7 +80,8 @@ export function SurveysTable({ surveys, canEdit }: { surveys: SurveyRow[]; canEd
                   </td>
                   {canEdit && (
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                      <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => openEdit(s)}>Edit</button>
+                      <Link className="f5-btn" style={{ padding: "4px 10px", fontSize: 12 }} href={`/surveys/${s.id}`}>Build</Link>
+                      <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12, marginLeft: 6 }} onClick={() => openEdit(s)}>Edit</button>
                       <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12, marginLeft: 6, color: "var(--f5-red)" }} onClick={() => remove(s)} disabled={pending}>Delete</button>
                     </td>
                   )}

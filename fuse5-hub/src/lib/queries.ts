@@ -6,6 +6,7 @@ import { DEMO_PROVIDERS, DEMO_PLATFORM_USERS, DEMO_FLEET, DEFAULT_PORTAL, type P
 import { DEMO_FALLBACK } from "@/lib/env";
 // Real WoodGreen content library (103 creatives mined from the NoviSign .nvc exports).
 import WOODGREEN_CONTENT from "@/lib/woodgreen-content.json";
+import type { BuilderQuestion } from "@/lib/surveys/question";
 import { JOURNEY_TEMPLATES, type Journey } from "@/lib/journeys";
 
 // Demo fallback for EMPTY/errored backed reads: canned demo rows in demo mode,
@@ -102,6 +103,21 @@ export async function getSurveys(): Promise<SurveyRow[]> {
     if (!data?.length) return fb(DEMO.surveys, []);
     return data.map((x) => ({ id: x.id, title: x.title, status: x.status as SurveyRow["status"], sent: x.sent ?? 0, responses: x.responses ?? 0 }));
   } catch { return fb(DEMO.surveys, []); }
+}
+
+export interface SurveyDetail extends SurveyRow { description: string; questions: BuilderQuestion[] }
+export async function getSurveyDetail(id: string): Promise<SurveyDetail | null> {
+  const s = await db();
+  if (!s) {
+    const demo = DEMO.surveys.find((x) => x.id === id);
+    return demo ? { ...demo, description: "", questions: [] } : null;
+  }
+  try {
+    const { data } = await s.from("surveys").select("id,title,status,sent,responses,description,questions").eq("id", id).maybeSingle();
+    if (!data) return null;
+    const q = Array.isArray(data.questions) ? (data.questions as BuilderQuestion[]) : [];
+    return { id: data.id, title: data.title, status: data.status as SurveyRow["status"], sent: data.sent ?? 0, responses: data.responses ?? 0, description: data.description ?? "", questions: q };
+  } catch { return null; }
 }
 
 export async function getCompliance(): Promise<ComplianceRow[]> {
