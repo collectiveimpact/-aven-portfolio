@@ -4,7 +4,51 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
 import { buildSignageFeed } from "@/lib/wallboard/feed";
-import { pushSignageDatasource } from "@/lib/wallboard/api";
+import { pushSignageDatasource, assignContentToDevices, rebootDevices, screenshotDevice, setDevicePower, identifyDevice } from "@/lib/wallboard/api";
+
+type ActionResult = { ok: boolean; error?: string; url?: string };
+
+async function guard(): Promise<{ ok: true; orgId: string; actorId: string } | { ok: false; error: string }> {
+  const me = await getCurrentUser();
+  if (!me?.role || !canPublish(me.role)) return { ok: false, error: "Your role cannot control displays." };
+  if (!me.orgId) return { ok: false, error: "No organization." };
+  return { ok: true, orgId: me.orgId, actorId: me.id };
+}
+async function audit(orgId: string, actorId: string, detail: string) {
+  const s = await createClient();
+  if (s) await s.from("audit_log").insert({ org_id: orgId, actor_id: actorId, action: "Display Control", detail });
+}
+
+// Manage Wallboard screens directly from Fuse5. Each is env-gated on
+// WALLBOARD_ACCESS_TOKEN; without it the adapter returns a clear "configure" error.
+export async function assignContentToScreens(deviceIds: string[], contentId: string): Promise<ActionResult> {
+  const g = await guard(); if (!g.ok) return g;
+  const r = await assignContentToDevices(deviceIds, contentId);
+  if (r.ok) await audit(g.orgId, g.actorId, `Assigned content ${contentId} → ${deviceIds.length} screen(s)`);
+  return { ok: r.ok, error: r.error };
+}
+export async function rebootScreens(deviceIds: string[]): Promise<ActionResult> {
+  const g = await guard(); if (!g.ok) return g;
+  const r = await rebootDevices(deviceIds);
+  if (r.ok) await audit(g.orgId, g.actorId, `Rebooted ${deviceIds.length} screen(s)`);
+  return { ok: r.ok, error: r.error };
+}
+export async function screenshotScreen(deviceId: string): Promise<ActionResult> {
+  const g = await guard(); if (!g.ok) return g;
+  const r = await screenshotDevice(deviceId);
+  return { ok: r.ok, error: r.error, url: r.data?.url };
+}
+export async function setScreensPower(deviceIds: string[], on: boolean): Promise<ActionResult> {
+  const g = await guard(); if (!g.ok) return g;
+  const r = await setDevicePower(deviceIds, on);
+  if (r.ok) await audit(g.orgId, g.actorId, `Power ${on ? "ON" : "OFF"} → ${deviceIds.length} screen(s)`);
+  return { ok: r.ok, error: r.error };
+}
+export async function identifyScreen(deviceId: string): Promise<ActionResult> {
+  const g = await guard(); if (!g.ok) return g;
+  const r = await identifyDevice(deviceId);
+  return { ok: r.ok, error: r.error };
+}
 
 // Push the live Fuse5 signage feed into the Wallboard datasource → every screen
 // bound to it updates. Env-gated (WALLBOARD_API_KEY + WALLBOARD_DATASOURCE_ID).

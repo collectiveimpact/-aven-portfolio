@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { getDisplays, getProperties } from "@/lib/queries";
+import { getDisplays, getProperties, getContent } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
 import { hasWallboard, WALLBOARD_DATASOURCE_ID } from "@/lib/env";
@@ -8,12 +8,14 @@ import { getWallboardSignage } from "@/lib/wallboard/signage";
 import { buildSignageFeed } from "@/lib/wallboard/feed";
 import { DisplaysGrid } from "./displays-grid";
 import { WallboardFeed } from "./wallboard-feed";
+import { DeviceControl } from "./device-control";
 
 export default async function DisplaysPage() {
-  const [displays, properties, me, wb, h] = await Promise.all([getDisplays(), getProperties(), getCurrentUser(), getWallboardSignage(), headers()]);
+  const [displays, properties, me, wb, h, content] = await Promise.all([getDisplays(), getProperties(), getCurrentUser(), getWallboardSignage(), headers(), getContent()]);
   const canEdit = me?.role ? canPublish(me.role) : false;
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost:3000"}`;
   const feed = await buildSignageFeed(origin);
+  const contentOptions = content.filter((c) => c.type !== "playlist").slice(0, 60).map((c) => ({ id: c.id, title: c.title }));
 
   // Prefer live Wallboard devices when connected; otherwise the local/demo set.
   const grid = wb.connected && wb.devices.length
@@ -58,6 +60,9 @@ export default async function DisplaysPage() {
         <div className="f5-card"><div className="f5-kpi-label">Uptime %</div><div className="f5-kpi-value">{uptime}%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 0.8%</span> 30-day avg</div></div>
       </div>
 
+      <DeviceControl devices={grid.map((d) => ({ id: d.id, name: d.name, location: d.location, status: d.status }))} content={contentOptions} control={wb.control} canEdit={canEdit} />
+
+      <div style={{ marginTop: 22 }} />
       <DisplaysGrid displays={grid} properties={properties} canEdit={canEdit} />
 
       <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>Data source: {wb.connected ? "Wallboard (live)" : "local"}</div>

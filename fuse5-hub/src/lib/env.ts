@@ -58,4 +58,8 @@ export const WALLBOARD_BASE_URL = process.env.WALLBOARD_BASE_URL ?? "https://app
 export const WALLBOARD_API_KEY = process.env.WALLBOARD_API_KEY ?? "";
 export const WALLBOARD_MCP_URL = process.env.WALLBOARD_MCP_URL ?? "";   // optional MCP server URL for AI control
 export const WALLBOARD_DATASOURCE_ID = process.env.WALLBOARD_DATASOURCE_ID ?? ""; // the Wallboard datasource Fuse5 feeds live signage data into
+// Device/content MANAGEMENT needs an OAuth access token (the scoped API key can't
+// do device CRUD). Set this to manage screens directly from Fuse5.
+export const WALLBOARD_ACCESS_TOKEN = process.env.WALLBOARD_ACCESS_TOKEN ?? "";
 export const hasWallboard = Boolean(WALLBOARD_API_KEY);
+export const hasWallboardControl = Boolean(WALLBOARD_ACCESS_TOKEN);

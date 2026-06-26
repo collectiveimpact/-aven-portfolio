@@ -1,5 +1,5 @@
 import "server-only";
-import { WALLBOARD_BASE_URL, WALLBOARD_API_KEY, WALLBOARD_DATASOURCE_ID, hasWallboard } from "@/lib/env";
+import { WALLBOARD_BASE_URL, WALLBOARD_API_KEY, WALLBOARD_DATASOURCE_ID, WALLBOARD_ACCESS_TOKEN, hasWallboard, hasWallboardControl } from "@/lib/env";
 
 // Wallboard digital-signage adapter — Fuse5's signage partner (wallboard.us).
 // Talks to the Wallboard REST API (OpenAPI, base path /api/v2) with bearer auth.
@@ -18,13 +18,15 @@ export interface WBResult<T> { ok: boolean; error?: string; data?: T; status?: n
 
 function base(): string { return WALLBOARD_BASE_URL.replace(/\/$/, ""); }
 
+// Management calls (/api/v2 device + content) require the OAuth ACCESS TOKEN — the
+// scoped API key cannot perform device/content CRUD.
 async function wb<T>(method: string, path: string, body?: unknown): Promise<WBResult<T>> {
-  if (!hasWallboard) return { ok: false, error: "Wallboard not configured (set WALLBOARD_BASE_URL + WALLBOARD_API_KEY)." };
+  if (!hasWallboardControl) return { ok: false, error: "Wallboard device control not configured (set WALLBOARD_ACCESS_TOKEN)." };
   try {
     const res = await fetch(`${base()}/api/v2${path}`, {
       method,
       headers: {
-        Authorization: `Bearer ${WALLBOARD_API_KEY}`,
+        Authorization: `Bearer ${WALLBOARD_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -86,13 +88,37 @@ export async function publishWallboardContent(input: { name: string; html?: stri
   return { ok: true, data: { id: String((r.data as Record<string, unknown>)?.id ?? "") } };
 }
 
-// Assign a content/playlist to a device (push to a specific screen).
-// NOTE: device/content CRUD above is on the OAuth/session path. A scoped API KEY
-// (Webhook / Proof-of-Play / Datasource read+write) CANNOT call these — use the
-// datasource feed below (or the Wallboard MCP server) for key-based automation.
-export async function assignContentToDevice(deviceId: string, contentId: string): Promise<WBResult<unknown>> {
-  return wb("POST", `/device/${encodeURIComponent(deviceId)}/content`, { contentId });
+// ---- Device control (the OAuth access-token path) -------------------------
+// Manage screens directly from Fuse5: assign content, reboot, screenshot, power.
+// Endpoint paths follow Wallboard's documented device operations — validate vs
+// your tenant's OpenAPI on first connect.
+
+// Assign a content/playlist to one or more devices (push to specific screens).
+export async function assignContentToDevices(deviceIds: string[], contentId: string): Promise<WBResult<unknown>> {
+  return wb("POST", `/device/content`, { deviceIds, contentId });
 }
+
+// Reboot devices.
+export async function rebootDevices(deviceIds: string[]): Promise<WBResult<unknown>> {
+  return wb("POST", `/device/operation/reboot`, { deviceIds });
+}
+
+// Capture a fresh screenshot from a device (returns an image URL when available).
+export async function screenshotDevice(deviceId: string): Promise<WBResult<{ url?: string }>> {
+  return wb("POST", `/device/${encodeURIComponent(deviceId)}/operation/screenshot`, {});
+}
+
+// Power devices on/off (display power, where the hardware supports it).
+export async function setDevicePower(deviceIds: string[], on: boolean): Promise<WBResult<unknown>> {
+  return wb("POST", `/device/operation/power`, { deviceIds, power: on ? "on" : "off" });
+}
+
+// Flash an on-screen identifier so staff can find the physical screen.
+export async function identifyDevice(deviceId: string): Promise<WBResult<unknown>> {
+  return wb("POST", `/device/${encodeURIComponent(deviceId)}/operation/identify`, {});
+}
+
+export { hasWallboardControl };
 
 // ---- Datasource feed (the API-key path) -----------------------------------
 // This is what a Wallboard API key actually authorizes. Fuse5 WRITES a live JSON
