@@ -7,6 +7,7 @@ import { MemberRoles } from "./member-roles";
 import { BillingPanel, OrgSettingsPanel, AuditPanel, PlatformOverviewPanel, AllProvidersPanel, ProviderRolesPanel, ProviderUsersPanel, EnvironmentsPanel, PermissionMatrixPanel, LocationPlayerPanel } from "./panels";
 import { TenantPortalForm } from "./tenant-portal-form";
 import { ImpersonationPanel } from "./impersonation-panel";
+import { ModulesPanel } from "./modules-panel";
 import { FuseRolesPanel, IntegrationsAdminPanel, TemplateLibraryPanel, ApprovalWorkflowPanel, ComplianceSettingsPanel, PlatformBillingTable } from "./admin-panels-v2";
 
 export interface AdminConsoleProps {
@@ -24,11 +25,13 @@ export interface AdminConsoleProps {
   fleet: PlayerDemo[];
   portal: PortalConfig;
   impTargets: ImpersonateTarget[];
+  moduleConfig: string[] | null;
 }
 
 type PanelKey = string;
 const ACCOUNT: { key: PanelKey; label: string }[] = [
   { key: "users-roles", label: "Users & Roles" },
+  { key: "modules", label: "Modules" },
   { key: "billing", label: "License & Billing" },
   { key: "org-settings", label: "Org Settings" },
   { key: "audit", label: "Audit Log" },
@@ -79,6 +82,7 @@ export function AdminConsole(p: AdminConsoleProps) {
       <section style={{ minWidth: 0 }}>
         {active === "users-roles" && <MemberRoles members={p.members} canManage={p.canManage} currentUserId={p.currentUserId} />}
         {active === "billing" && (p.isSuper ? <PlatformBillingTable /> : <BillingPanel sub={p.sub} />)}
+        {active === "modules" && <ModulesPanel initial={p.moduleConfig} canEdit={p.canManage} />}
         {active === "org-settings" && <OrgSettingsPanel orgName={p.orgName} />}
         {active === "audit" && <AuditPanel audit={p.audit} />}
         {active === "platform-overview" && <PlatformOverviewPanel stats={p.stats} providers={p.providers} />}

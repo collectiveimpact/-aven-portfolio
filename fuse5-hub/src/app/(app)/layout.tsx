@@ -5,7 +5,9 @@ import { MobileNavToggle } from "@/components/mobile-nav-toggle";
 import { hasBackend } from "@/lib/env";
 import { DEMO_ORG } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
+import { getEnabledModules } from "@/lib/queries";
 import { ROLE_LABELS } from "@/lib/rbac";
+import { MODULES, resolveEnabled } from "@/lib/modules";
 import { signOut } from "@/app/(auth)/login/actions";
 import { ImpersonationBanner } from "./admin/impersonation-banner";
 import { IMPERSONATE_COOKIE } from "@/lib/platform";
@@ -27,10 +29,12 @@ export default async function AppLayout({
   const user = hasBackend ? await getCurrentUser() : null;
   const orgName = user?.orgName ?? DEMO_ORG;
   const impersonation = await readImpersonation();
+  // No backend → show everything; otherwise the org's activated + role-permitted set.
+  const enabled = hasBackend ? await getEnabledModules() : [...resolveEnabled(MODULES.map((m) => m.key))];
 
   return (
     <div className="f5-shell">
-      <Sidebar />
+      <Sidebar enabled={enabled} role={user?.role ?? null} />
       <div className="f5-main">
         {impersonation && <ImpersonationBanner {...impersonation} />}
         {!hasBackend && (

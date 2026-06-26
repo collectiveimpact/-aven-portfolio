@@ -1,6 +1,7 @@
 import {
   getMembers, getAuditLog, getSubscription,
   getPlatformStats, getPlatformProviders, getPlatformUsers, getPlayerFleet, getTenantPortalConfig,
+  getOrgModuleConfig,
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canAdmin, isGlobal } from "@/lib/rbac";
@@ -15,9 +16,10 @@ export default async function AdminPage() {
   const isSuper = me?.role ? isGlobal(me.role) : false;
   const canManage = me?.role ? canAdmin(me.role) : false;
 
-  const [members, audit, sub, stats, providers, users, fleet, portal] = await Promise.all([
+  const [members, audit, sub, stats, providers, users, fleet, portal, moduleConfig] = await Promise.all([
     getMembers(), getAuditLog(), getSubscription(),
     getPlatformStats(), getPlatformProviders(), getPlatformUsers(), getPlayerFleet(), getTenantPortalConfig(),
+    getOrgModuleConfig(),
   ]);
 
   return (
@@ -40,6 +42,7 @@ export default async function AdminPage() {
         fleet={fleet}
         portal={portal}
         impTargets={DEMO_IMPERSONATE}
+        moduleConfig={moduleConfig}
       />
     </main>
   );

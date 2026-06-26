@@ -8,6 +8,7 @@ import { DEMO_FALLBACK } from "@/lib/env";
 import WOODGREEN_CONTENT from "@/lib/woodgreen-content.json";
 import type { BuilderQuestion } from "@/lib/surveys/question";
 import { aggregate, type AnswerMap, type SurveyResults } from "@/lib/surveys/results";
+import { DEFAULT_ENABLED, resolveEnabled } from "@/lib/modules";
 import { JOURNEY_TEMPLATES, type Journey } from "@/lib/journeys";
 
 // Demo fallback for EMPTY/errored backed reads: canned demo rows in demo mode,
@@ -118,6 +119,28 @@ export async function getSurveyDetail(id: string): Promise<SurveyDetail | null> 
     if (!data) return null;
     const q = Array.isArray(data.questions) ? (data.questions as BuilderQuestion[]) : [];
     return { id: data.id, title: data.title, status: data.status as SurveyRow["status"], sent: data.sent ?? 0, responses: data.responses ?? 0, description: data.description ?? "", questions: q };
+  } catch { return null; }
+}
+
+// Modules enabled for the current user's org, expanded to include core + required
+// modules. Demo/no-backend shows the default starter set. Used by the sidebar.
+export async function getEnabledModules(): Promise<string[]> {
+  const s = await db();
+  if (!s) return [...resolveEnabled(DEFAULT_ENABLED)];
+  try {
+    const { data } = await s.from("organizations").select("enabled_modules").limit(1).maybeSingle();
+    const chosen = Array.isArray(data?.enabled_modules) ? (data!.enabled_modules as string[]) : DEFAULT_ENABLED;
+    return [...resolveEnabled(chosen)];
+  } catch { return [...resolveEnabled(DEFAULT_ENABLED)]; }
+}
+
+// Raw stored selection (NOT expanded) for the admin editor — null means "default".
+export async function getOrgModuleConfig(): Promise<string[] | null> {
+  const s = await db();
+  if (!s) return null;
+  try {
+    const { data } = await s.from("organizations").select("enabled_modules").limit(1).maybeSingle();
+    return Array.isArray(data?.enabled_modules) ? (data!.enabled_modules as string[]) : null;
   } catch { return null; }
 }
 
