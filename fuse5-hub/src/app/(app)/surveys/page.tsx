@@ -27,6 +27,17 @@ export default async function SurveysPage() {
         <div className="f5-card"><div className="f5-kpi-label">Avg Response Rate</div><div className="f5-kpi-value">{avgRate}%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 4.0%</span> vs prior wave</div></div>
       </div>
 
+      <div className="f5-card" style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 700, color: "var(--f5-text)" }}>Resident Satisfaction Survey — template & report</div>
+          <div style={{ fontSize: 12.5, color: "var(--f5-text-muted)", marginTop: 3 }}>41-question instrument (TCHC-modeled) with a 12-month pulse schedule, plus a printable results report. Use it as the model for any resident survey.</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a className="f5-btn" href="/surveys/template">View Survey Template</a>
+          <a className="f5-btn" href="/surveys/report">View Sample Report</a>
+        </div>
+      </div>
+
       <SurveysTable surveys={surveys} canEdit={canEdit} />
     </main>
   );
