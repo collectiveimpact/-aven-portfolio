@@ -5,16 +5,31 @@ import { useRouter } from "next/navigation";
 import { exitImpersonation } from "./impersonation-actions";
 
 // Persistent top banner shown app-wide while impersonating (prototype parity).
+// Mounted by the (app) layout whenever the impersonation cookie is present, so it
+// follows the operator across every page until they exit.
 export function ImpersonationBanner({ name, roleLabel, provider }: { name: string; roleLabel: string; provider: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   function exit() {
-    start(async () => { await exitImpersonation(); router.refresh(); });
+    start(async () => {
+      await exitImpersonation();
+      // Re-fetch the server layout so the banner (and any view-as context) clears.
+      router.refresh();
+    });
   }
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, padding: "8px 16px", background: "var(--f5-gradient-warm, #FFB066)", color: "#1a1206", fontSize: 13, fontWeight: 600 }}>
+    <div
+      role="status"
+      aria-live="polite"
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, padding: "8px 16px", background: "var(--f5-gradient-warm, #FFB066)", color: "#1a1206", fontSize: 13, fontWeight: 600 }}
+    >
       <span>⚠️ Viewing as: <strong>{name}</strong> · {roleLabel} @ {provider}</span>
-      <button onClick={exit} disabled={pending} className="f5-btn" style={{ padding: "3px 12px", fontSize: 12, background: "rgba(0,0,0,0.18)", border: "1px solid rgba(0,0,0,0.25)", color: "#1a1206" }}>
+      <button
+        onClick={exit}
+        disabled={pending}
+        className="f5-btn"
+        style={{ padding: "3px 12px", fontSize: 12, background: "rgba(0,0,0,0.18)", border: "1px solid rgba(0,0,0,0.25)", color: "#1a1206" }}
+      >
         {pending ? "Exiting…" : "✕ Exit Impersonation"}
       </button>
     </div>

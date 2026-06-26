@@ -2,9 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { ResidentRow, PropertyOption } from "@/lib/queries";
+import type { PropertyOption } from "@/lib/queries";
+import type { ResidentWithDemographics } from "@/lib/residents/types";
 import { saveResident, deleteResident, type ResidentInput } from "./actions";
 import { ResidentProfile } from "./resident-profile";
+
+function fmtDate(v: string | null): string {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+}
 
 const LANGS = ["English", "French", "Spanish", "Mandarin", "Portuguese", "Arabic"];
 const CHANNELS: { k: string; l: string }[] = [{ k: "email", l: "Email" }, { k: "sms", l: "SMS" }, { k: "whatsapp", l: "WhatsApp" }];
@@ -14,7 +22,7 @@ const blank = (propertyId: string | null): ResidentInput => ({
 });
 
 export function ResidentsTable({ residents, properties, canEdit }: {
-  residents: ResidentRow[];
+  residents: ResidentWithDemographics[];
   properties: PropertyOption[];
   canEdit: boolean;
 }) {
@@ -24,17 +32,17 @@ export function ResidentsTable({ residents, properties, canEdit }: {
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "moved_out">("all");
-  const [viewing, setViewing] = useState<ResidentRow | null>(null);
+  const [viewing, setViewing] = useState<ResidentWithDemographics | null>(null);
 
   const needle = q.trim().toLowerCase();
   const filtered = residents.filter((r) => {
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (!needle) return true;
-    return [r.name, r.unit, r.propertyName, r.language, r.email, r.phone].some((v) => (v ?? "").toLowerCase().includes(needle));
+    return [r.name, r.unit, r.propertyName, r.language, r.email, r.phone, r.demographics?.supportAgency ?? ""].some((v) => (v ?? "").toLowerCase().includes(needle));
   });
 
   function openAdd() { setError(null); setEditing(blank(properties[0]?.id ?? null)); }
-  function openEdit(r: ResidentRow) {
+  function openEdit(r: ResidentWithDemographics) {
     setError(null);
     setEditing({ id: r.id, propertyId: r.propertyId, unit: r.unit === "—" ? "" : r.unit, name: r.name, email: r.email, phone: r.phone, language: r.language === "—" ? "English" : r.language, preferredChannel: r.preferredChannel, status: r.status });
   }
@@ -47,7 +55,7 @@ export function ResidentsTable({ residents, properties, canEdit }: {
       setEditing(null); router.refresh();
     });
   }
-  function remove(r: ResidentRow) {
+  function remove(r: ResidentWithDemographics) {
     if (!confirm(`Remove ${r.name}? This cannot be undone.`)) return;
     startTransition(async () => {
       const res = await deleteResident(r.id);
@@ -67,7 +75,7 @@ export function ResidentsTable({ residents, properties, canEdit }: {
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, unit, property, language…" style={{ maxWidth: 320 }} />
+        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, unit, property, language, agency…" style={{ maxWidth: 340 }} />
         <div className="f5-chips" style={{ margin: 0 }}>
           {(["all", "active", "moved_out"] as const).map((s) => (
             <span key={s} className={`f5-chip${statusFilter === s ? " active" : ""}`} onClick={() => setStatusFilter(s)}>{s === "all" ? "All" : s === "active" ? "Active" : "Moved Out"}</span>
@@ -79,17 +87,19 @@ export function ResidentsTable({ residents, properties, canEdit }: {
       <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Unit</th><th>Name</th><th>Property</th><th>Language</th><th>Preferred</th><th>Status</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr><th>Unit</th><th>Name</th><th>Property</th><th>Language</th><th>Household</th><th>Support Agency</th><th>Last Contacted</th><th>Status</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={canEdit ? 7 : 6} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No residents match.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={canEdit ? 9 : 8} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No residents match.</td></tr>}
             {filtered.map((r) => (
               <tr key={r.id}>
                 <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.unit}</td>
                 <td><button type="button" onClick={() => setViewing(r)} style={{ background: "none", border: "none", padding: 0, color: "var(--f5-teal,#00CCCC)", fontWeight: 600, cursor: "pointer", textAlign: "left" }}>{r.name}</button></td>
                 <td>{r.propertyName}</td>
-                <td>{r.language}</td>
-                <td style={{ textTransform: "capitalize" }}>{r.preferredChannel}</td>
+                <td>{r.demographics?.primaryLanguage ?? r.language}</td>
+                <td>{r.demographics?.householdSize != null ? r.demographics.householdSize : "—"}</td>
+                <td style={{ color: "var(--f5-text-muted)" }}>{r.demographics?.supportAgency && r.demographics.supportAgency !== "—" ? r.demographics.supportAgency : "—"}</td>
+                <td style={{ color: "var(--f5-text-muted)" }}>{fmtDate(r.lastContactedAt)}</td>
                 <td><span className={`f5-badge ${r.status === "active" ? "ok" : "warn"}`}>{r.status === "active" ? "Active" : "Moved Out"}</span></td>
                 {canEdit && (
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>

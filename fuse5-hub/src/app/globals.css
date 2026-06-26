@@ -142,3 +142,147 @@ a { color: inherit; text-decoration: none; }
   .f5-topbar { padding: 12px 16px; gap: 10px; }
   .f5-topbar .f5-pill { display: none; }
 }
+
+/* ============================================================= */
+/* MOTION LAYER — global, CSS-only (ported from prototype v8)    */
+/* Subtle + tasteful for a professional housing-ops tool.        */
+/* All animations are disabled under prefers-reduced-motion.     */
+/* ============================================================= */
+
+/* ---- keyframes (cleaned/themed; no hard-coded brand colors) ---- */
+@keyframes f5-sectionEnter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes f5-fadeUp       { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes f5-fadeIn       { from { opacity: 0; transform: translateY(5px);  } to { opacity: 1; transform: translateY(0); } }
+@keyframes f5-cardStagger  { from { opacity: 0; transform: translateY(16px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes f5-slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes f5-toastSlide   { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes f5-pulse        { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes f5-subtlePulse  { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes f5-tealPulse    { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes f5-statusPulse  { 0%, 100% { box-shadow: 0 0 0 0 var(--f5-status-glow); } 50% { box-shadow: 0 0 0 4px transparent; } }
+@keyframes f5-glowPulse    { 0%, 100% { box-shadow: 0 0 6px var(--f5-teal-subtle); } 50% { box-shadow: 0 0 16px var(--f5-teal-border); } }
+@keyframes f5-floatUp      { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes f5-shimmer      { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes f5-progressShimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+@keyframes f5-ripple       { to { transform: scale(4); opacity: 0; } }
+
+/* ---- reusable utility classes (for markup to opt into later) ---- */
+.f5-anim-enter   { animation: f5-fadeUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards; }
+.f5-anim-fade    { animation: f5-fadeIn 0.4s ease both; }
+.f5-anim-section { animation: f5-sectionEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards; }
+.f5-anim-slide   { animation: f5-slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1) both; }
+.f5-anim-toast   { animation: f5-toastSlide 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) both; }
+
+.f5-pulse  { animation: f5-pulse 2s ease-in-out infinite; }
+.f5-float  { animation: f5-floatUp 4s ease-in-out infinite; }
+.f5-glow   { animation: f5-glowPulse 2.6s ease-in-out infinite; }
+
+/* Stagger helper: children fade up in sequence (apply to a container). */
+.f5-stagger > * { animation: f5-cardStagger 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards; }
+.f5-stagger > *:nth-child(1) { animation-delay: 0s; }
+.f5-stagger > *:nth-child(2) { animation-delay: 0.05s; }
+.f5-stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.f5-stagger > *:nth-child(4) { animation-delay: 0.15s; }
+.f5-stagger > *:nth-child(5) { animation-delay: 0.20s; }
+.f5-stagger > *:nth-child(6) { animation-delay: 0.25s; }
+
+/* Shimmer surface — for skeleton/loading placeholders. */
+.f5-shimmer {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--f5-teal) 0%, transparent) 0%,
+    color-mix(in srgb, var(--f5-teal) 8%, transparent) 50%,
+    color-mix(in srgb, var(--f5-teal) 0%, transparent) 100%);
+  background-size: 200% 100%;
+  animation: f5-shimmer 2s ease-in-out infinite;
+}
+
+/* Skeleton block — base surface + traveling shimmer for loading states. */
+.f5-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--f5-surface-2);
+  border-radius: var(--f5-radius-sm);
+}
+.f5-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--f5-text) 8%, transparent) 50%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: f5-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Ripple — opt-in click feedback. Add .f5-ripple to a positioned element
+   and a child <span class="f5-ripple-ink"> positioned at the click point. */
+.f5-ripple { position: relative; overflow: hidden; }
+.f5-ripple-ink {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--f5-teal) 35%, transparent);
+  animation: f5-ripple 0.6s linear;
+}
+
+/* ---- APPLY to existing base classes (works app-wide, no markup edits) ---- */
+
+/* Cards gently fade-up on mount + a subtle hover lift. */
+.f5-card {
+  animation: f5-fadeUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.f5-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--f5-border-hover);
+  box-shadow: var(--f5-shadow-md);
+}
+
+/* Page main content animates in on each route/section render. */
+.f5-content { animation: f5-sectionEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards; }
+
+/* Live "online" status dots — soft pulse to signal a live feed.
+   --f5-status-glow drives the statusPulse ring; falls back to green. */
+.f5-live::before {
+  --f5-status-glow: color-mix(in srgb, var(--f5-green) 40%, transparent);
+  animation: f5-statusPulse 2.2s ease-in-out infinite;
+}
+.f5-dot {
+  --f5-status-glow: color-mix(in srgb, var(--f5-teal) 38%, transparent);
+  animation: f5-tealPulse 2.4s ease-in-out infinite;
+}
+
+/* Animated, shimmering bar fills (charts read as "live"). */
+.f5-bar {
+  background: linear-gradient(90deg, var(--f5-teal-dark), var(--f5-teal), var(--f5-teal-dark));
+  background-size: 200% auto;
+  animation: f5-progressShimmer 3s linear infinite;
+}
+
+/* Buttons: smooth press/hover feel. */
+.f5-btn {
+  transition: transform 0.12s ease, filter 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.f5-btn:active { transform: translateY(1px) scale(0.99); }
+.f5-btn.primary:hover { box-shadow: 0 0 16px var(--f5-teal-subtle); }
+
+/* ============================================================= */
+/* REDUCED MOTION — required: neutralize all of the above.       */
+/* ============================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .f5-card:hover { transform: none; }
+  .f5-btn:active { transform: none; }
+  .f5-bar { background: var(--f5-gradient-teal); }
+  .f5-shimmer,
+  .f5-skeleton::after { animation: none; background: var(--f5-surface-2); }
+}

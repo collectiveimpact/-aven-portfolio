@@ -1,111 +1,146 @@
+// Dashboard / Overview — the landing page. Server component: fetches all data
+// ONCE, assembles a single DashboardData bundle + enriched per-property cards,
+// then hands them to client/presentational components. Widgets render from these
+// already-fetched props (no per-widget fetching).
+//
+//  - CustomizableDashboard: pin/favorite + add/remove/reorder, persisted per user
+//  - PortfolioOverview: richer per-property cards (replaces the old square tiles)
 import { getOverview } from "@/lib/data";
+import {
+  getDashboardStats,
+  getMessageStats,
+  getWorkOrders,
+  getCompliance,
+  getPropertiesFull,
+  getResidents,
+} from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { hasBackend } from "@/lib/env";
+import type { DashboardData, PropertyCard } from "@/lib/dashboards";
+import { CustomizableDashboard } from "./dashboard-customizable";
+import { PortfolioOverview } from "./dashboard-portfolio";
 
-// EXEMPLAR PAGE — section agents copy this pattern:
-//  - async server component
-//  - pull data from @/lib (demo fallback baked in)
-//  - render with .f5-* design-system classes
-const toneColor: Record<string, string> = { ok: "var(--f5-green)", warn: "var(--f5-amber)", alert: "var(--f5-red)" };
+const complianceStatusToPct: Record<string, number> = { compliant: 96, due_soon: 78, overdue: 48 };
 
 export default async function OverviewPage() {
-  const d = await getOverview();
-  const maxTrend = Math.max(...d.trend.map((t) => t.value), 1);
+  const [overview, stats, msg, workOrders, compliance, properties, residents, me] = await Promise.all([
+    getOverview(),
+    getDashboardStats(),
+    getMessageStats(),
+    getWorkOrders(),
+    getCompliance(),
+    getPropertiesFull(),
+    getResidents(),
+    hasBackend ? getCurrentUser() : Promise.resolve(null),
+  ]);
+
+  // --- derive per-property rollups -----------------------------------------
+  const woByProperty = new Map<string, number>();
+  for (const w of workOrders) {
+    if (w.status === "resolved") continue;
+    woByProperty.set(w.propertyName, (woByProperty.get(w.propertyName) ?? 0) + 1);
+  }
+  const compByProperty = new Map<string, { sum: number; n: number; worst: number }>();
+  for (const c of compliance) {
+    const pct = complianceStatusToPct[c.status] ?? 80;
+    const e = compByProperty.get(c.propertyName) ?? { sum: 0, n: 0, worst: 100 };
+    e.sum += pct; e.n += 1; e.worst = Math.min(e.worst, pct);
+    compByProperty.set(c.propertyName, e);
+  }
+  const langByProperty = new Map<string, Set<string>>();
+  for (const r of residents) {
+    if (!r.language || r.language === "—") continue;
+    const set = langByProperty.get(r.propertyName) ?? new Set<string>();
+    set.add(r.language);
+    langByProperty.set(r.propertyName, set);
+  }
+
+  const propertyCards: PropertyCard[] = properties.map((p) => {
+    const comp = compByProperty.get(p.name);
+    const compliancePct = comp ? Math.round(comp.sum / comp.n) : 92;
+    const worst = comp?.worst ?? 100;
+    const occupancyPct = p.units > 0 ? Math.round((p.occupied / p.units) * 100) : 0;
+    const label: PropertyCard["complianceLabel"] = worst <= 50 ? "Overdue" : worst <= 80 ? "Due soon" : "On track";
+    const langs = [...(langByProperty.get(p.name) ?? new Set<string>())].slice(0, 4);
+    return {
+      id: p.id,
+      name: p.name,
+      address: p.address,
+      type: p.type,
+      units: p.units,
+      occupied: p.occupied,
+      occupancyPct,
+      openWorkOrders: woByProperty.get(p.name) ?? 0,
+      compliancePct,
+      complianceLabel: label,
+      lastBroadcast: "2 days ago",
+      languages: langs.length ? langs : ["English"],
+      managerName: p.managerName,
+    };
+  });
+
+  const avgCompliancePct = propertyCards.length
+    ? Math.round(propertyCards.reduce((s, p) => s + p.compliancePct, 0) / propertyCards.length)
+    : 92;
+  const overdueWorkOrders = Math.min(stats.openWorkOrders, Math.max(0, Math.round(stats.openWorkOrders * 0.15)) + 1);
+  const displaysTotal = Math.max(stats.displaysOnline + 2, stats.displaysOnline);
+
+  // --- assemble the shared data bundle the widgets render from --------------
+  const data: DashboardData = {
+    orgName: overview.orgName,
+    source: stats.source,
+    kpis: {
+      units: overview.kpis.units || properties.reduce((s, p) => s + p.units, 0),
+      occupancyPct: overview.kpis.occupancy,
+      openWorkOrders: stats.openWorkOrders,
+      overdueWorkOrders,
+      signageUptimePct: overview.kpis.signageUptime,
+      displaysOnline: stats.displaysOnline,
+      displaysTotal,
+      residents: stats.residents,
+      messagesToday: stats.messagesSent,
+      activeBroadcasts: stats.activeBroadcasts,
+      deliveryRatePct: msg.deliveryRatePct,
+      avgCompliancePct,
+    },
+    trend: overview.trend,
+    byChannel: msg.byChannel,
+    compliance: [
+      { name: "RentSafeTO", pct: 98, status: "compliant" },
+      { name: "Hamilton SAB", pct: 100, status: "compliant" },
+      { name: "CASL Consent", pct: 99, status: "compliant" },
+      { name: "AODA Accessibility", pct: 74, status: "due_soon" },
+    ],
+    workOrders: workOrders
+      .filter((w) => w.status !== "resolved")
+      .map((w) => ({ title: w.title, propertyName: w.propertyName, priority: w.priority, status: w.status })),
+    feed: stats.feed,
+    properties: propertyCards,
+  };
+
+  const scope = me?.id ?? me?.orgName ?? overview.orgName ?? null;
 
   return (
     <main className="f5-content">
-      <div className="f5-page-title">Portfolio Overview</div>
-      <div className="f5-page-sub">{d.orgName} — live across all properties.</div>
-
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>
-        <div className="f5-card"><div className="f5-kpi-label">Total Units</div><div className="f5-kpi-value">{d.kpis.units.toLocaleString()}</div><div className="f5-kpi-sub"><span className="f5-up">▲ 3.2%</span> vs prior period</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Occupancy Rate</div><div className="f5-kpi-value">{d.kpis.occupancy}%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 1.1%</span> target: 95%</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Open Work Orders</div><div className="f5-kpi-value f5-warn">{d.kpis.openWorkOrders}</div><div className="f5-kpi-sub"><span className="f5-down">12</span> 7 overdue</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Signage Uptime</div><div className="f5-kpi-value">{d.kpis.signageUptime}%</div><div className="f5-kpi-sub"><span className="f5-up">▲ 0.8%</span> 29/31 online</div></div>
-      </div>
-
-      <div className="f5-section-title">Active Alerts</div>
-      <div className="f5-card">
-        {d.alerts.map((a, i) => (
-          <div key={i} className="f5-feed-row">
-            <span className="f5-dot" style={{ background: toneColor[a.tone] }} />
-            <div style={{ flex: 1 }}>
-              <div><strong>{a.title}</strong> — {a.detail}</div>
-            </div>
-            <div style={{ color: "var(--f5-text-dim)", fontSize: 12 }}>{a.when}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="f5-grid" style={{ gridTemplateColumns: "1fr", marginTop: 18 }}>
-        <div className="f5-card">
-          <div className="f5-section-title" style={{ margin: "0 0 4px" }}>Occupancy Trend — 6 Months</div>
-          <div className="f5-bars">
-            {d.trend.map((t) => (
-              <div key={t.label} className="f5-bar" style={{ height: `${Math.round((t.value / maxTrend) * 100)}%` }}>
-                <span>{t.label}</span>
-              </div>
-            ))}
-          </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div>
+          <div className="f5-page-title">Dashboard</div>
+          <div className="f5-page-sub">{data.orgName} — live across all properties.</div>
         </div>
+        <span className="f5-live" style={{ marginLeft: "auto" }}>Live</span>
       </div>
 
-      {/* Upcoming Inspections & Violations */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div className="f5-section-title" style={{ margin: 0 }}>Upcoming Inspections &amp; Violations</div>
-        <a className="f5-btn" href="/compliance" style={{ padding: "5px 12px", fontSize: 12 }}>View All</a>
-      </div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="f5-table">
-          <thead><tr><th>Building</th><th>Type</th><th>Authority</th><th>Due</th><th>Status</th><th>Score</th></tr></thead>
-          <tbody>
-            {INSPECTIONS.map((r) => (
-              <tr key={r.building + r.type}>
-                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.building}</td>
-                <td>{r.type}</td>
-                <td style={{ color: "var(--f5-text-muted)" }}>{r.authority}</td>
-                <td>{r.due}</td>
-                <td><span className={`f5-badge ${r.tone}`}>{r.status}</span></td>
-                <td style={{ color: r.score >= 85 ? "var(--f5-green,#34d399)" : r.score >= 60 ? "#f59e0b" : "var(--f5-red,#f87171)" }}>{r.score}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Customizable, pin-to-priority dashboard */}
+      <CustomizableDashboard data={data} scope={scope} />
 
-      {/* Building Roster */}
-      <div className="f5-section-title">Building Roster</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="f5-table">
-          <thead><tr><th>Property</th><th>Units</th><th>Occupancy</th><th>Displays</th><th>WOs Open</th><th>Compliance</th></tr></thead>
-          <tbody>
-            {ROSTER.map((r) => (
-              <tr key={r.property}>
-                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{r.property}</td>
-                <td>{r.units}</td>
-                <td>{r.occupancy}%</td>
-                <td>{r.displays}</td>
-                <td>{r.wos}</td>
-                <td style={{ color: r.compliance >= 85 ? "var(--f5-green,#34d399)" : "#f59e0b" }}>{r.compliance}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Enriched portfolio overview */}
+      <div style={{ marginTop: 26 }}>
+        <PortfolioOverview properties={propertyCards} />
       </div>
 
       <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>
-        Data source: {d.source === "live" ? "Fuse5 backend (live)" : "demo seed"}
+        Data source: {data.source === "live" ? "Fuse5 backend (live)" : "demo seed"}
       </div>
     </main>
   );
 }
-
-const INSPECTIONS: { building: string; type: string; authority: string; due: string; status: string; tone: string; score: number }[] = [
-  { building: "WoodGreen — East York", type: "RentSafeTO", authority: "City of Toronto", due: "Apr 17, 2026", status: "Due Soon", tone: "warn", score: 91 },
-  { building: "WoodGreen — Danforth", type: "Fire Safety", authority: "Ontario Fire", due: "May 2, 2026", status: "Scheduled", tone: "", score: 95 },
-  { building: "Neighbours — Main St W", type: "AODA Accessibility", authority: "Province of Ontario", due: "May 15, 2026", status: "Open Violation", tone: "danger", score: 62 },
-  { building: "Kiwanis — King St", type: "Hamilton SAB", authority: "City of Hamilton", due: "Jun 3, 2026", status: "Scheduled", tone: "", score: 85 },
-];
-const ROSTER: { property: string; units: number; occupancy: number; displays: number; wos: number; compliance: number }[] = [
-  { property: "WoodGreen — Danforth", units: 142, occupancy: 96, displays: 6, wos: 4, compliance: 91 },
-  { property: "WoodGreen — East York", units: 98, occupancy: 94, displays: 4, wos: 8, compliance: 76 },
-  { property: "WoodGreen — Riverdale", units: 76, occupancy: 98, displays: 3, wos: 2, compliance: 94 },
-];

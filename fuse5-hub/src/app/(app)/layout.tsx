@@ -11,6 +11,7 @@ import { MODULES, resolveEnabled } from "@/lib/modules";
 import { signOut } from "@/app/(auth)/login/actions";
 import { ImpersonationBanner } from "./admin/impersonation-banner";
 import { IMPERSONATE_COOKIE } from "@/lib/platform";
+import { ToastProvider } from "@/components/toast";
 
 interface ImpersonationState { name: string; roleLabel: string; provider: string }
 async function readImpersonation(): Promise<ImpersonationState | null> {
@@ -33,6 +34,7 @@ export default async function AppLayout({
   const enabled = hasBackend ? await getEnabledModules() : [...resolveEnabled(MODULES.map((m) => m.key))];
 
   return (
+    <ToastProvider>
     <div className="f5-shell">
       <Sidebar enabled={enabled} role={user?.role ?? null} />
       <div className="f5-main">
@@ -61,5 +63,6 @@ export default async function AppLayout({
         {children}
       </div>
     </div>
+    </ToastProvider>
   );
 }

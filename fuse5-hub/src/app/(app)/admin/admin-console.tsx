@@ -8,6 +8,8 @@ import { BillingPanel, OrgSettingsPanel, AuditPanel, PlatformOverviewPanel, AllP
 import { TenantPortalForm } from "./tenant-portal-form";
 import { ImpersonationPanel } from "./impersonation-panel";
 import { ModulesPanel } from "./modules-panel";
+import { DepartmentsPanel } from "./departments-panel";
+import type { DepartmentRow } from "./actions";
 import { FuseRolesPanel, IntegrationsAdminPanel, TemplateLibraryPanel, ApprovalWorkflowPanel, ComplianceSettingsPanel, PlatformBillingTable } from "./admin-panels-v2";
 
 export interface AdminConsoleProps {
@@ -26,11 +28,16 @@ export interface AdminConsoleProps {
   portal: PortalConfig;
   impTargets: ImpersonateTarget[];
   moduleConfig: string[] | null;
+  canOnboard: boolean;
+  departments: DepartmentRow[];
+  memberDepartments: Record<string, string | null>;
+  departmentCounts: Record<string, number>;
 }
 
 type PanelKey = string;
 const ACCOUNT: { key: PanelKey; label: string }[] = [
   { key: "users-roles", label: "Users & Roles" },
+  { key: "departments", label: "Departments" },
   { key: "modules", label: "Modules" },
   { key: "billing", label: "License & Billing" },
   { key: "org-settings", label: "Org Settings" },
@@ -80,7 +87,8 @@ export function AdminConsole(p: AdminConsoleProps) {
       </nav>
 
       <section style={{ minWidth: 0 }}>
-        {active === "users-roles" && <MemberRoles members={p.members} canManage={p.canManage} currentUserId={p.currentUserId} />}
+        {active === "users-roles" && <MemberRoles members={p.members} canManage={p.canManage} currentUserId={p.currentUserId} departments={p.departments} memberDepartments={p.memberDepartments} canAssignDept={p.canOnboard} />}
+        {active === "departments" && <DepartmentsPanel departments={p.departments} memberCounts={p.departmentCounts} canManage={p.canManage} />}
         {active === "billing" && (p.isSuper ? <PlatformBillingTable /> : <BillingPanel sub={p.sub} />)}
         {active === "modules" && <ModulesPanel initial={p.moduleConfig} canEdit={p.canManage} />}
         {active === "org-settings" && <OrgSettingsPanel orgName={p.orgName} />}

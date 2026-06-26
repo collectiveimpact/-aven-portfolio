@@ -1,23 +1,68 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { PropertyFull } from "@/lib/queries";
+import { FilterBar } from "@/components/filters/FilterBar";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
 import { saveProperty, deleteProperty, type PropertyInput } from "./actions";
 
 const TYPES = ["residential", "mixed-use", "senior", "supportive", "commercial"];
 
 const blank = (): PropertyInput => ({ name: "", address: "", type: "residential", units: 0, managerName: "", managerEmail: "", managerPhone: "" });
 
+// Occupancy band derived from occupied/units — used as a portfolio-health facet.
+type OccBand = "vacant" | "low" | "healthy" | "full";
+function occBand(p: PropertyFull): OccBand {
+  if (!p.units || p.occupied <= 0) return "vacant";
+  const pct = p.occupied / p.units;
+  if (pct >= 0.95) return "full";
+  if (pct >= 0.5) return "healthy";
+  return "low";
+}
+const OCC_OPTIONS: FilterOption[] = [
+  { value: "vacant", label: "Vacant" },
+  { value: "low", label: "Under 50%" },
+  { value: "healthy", label: "50–94%" },
+  { value: "full", label: "95%+" },
+];
+
+const uniqueSorted = (xs: string[]): string[] => [...new Set(xs.filter((x) => x && x !== "—"))].sort((a, b) => a.localeCompare(b));
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
 export function PropertiesTable({ properties, canEdit }: { properties: PropertyFull[]; canEdit: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<PropertyInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState("");
 
-  const needle = q.trim().toLowerCase();
-  const filtered = properties.filter((p) => !needle || [p.name, p.address, p.type, p.managerName, p.managerEmail].some((v) => (v ?? "").toLowerCase().includes(needle)));
+  // Type facet derived from real portfolio data.
+  const typeOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(properties.map((p) => p.type)).map((t) => ({ value: t, label: cap(t) })),
+    [properties],
+  );
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name, address, type, manager…" },
+      { key: "type", label: "Type", kind: "multiselect", options: typeOptions },
+      { key: "occupancy", label: "Occupancy", kind: "segmented", options: OCC_OPTIONS, allLabel: "All" },
+    ],
+    [typeOptions],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+
+  const filtered = useMemo(
+    () =>
+      applyFilters(properties, value, {
+        q: (p) => `${p.name} ${p.address} ${p.type} ${p.managerName} ${p.managerEmail}`,
+        type: (p) => p.type,
+        occupancy: (p) => occBand(p),
+      }),
+    [properties, value],
+  );
 
   function openAdd() { setError(null); setEditing(blank()); }
   function openEdit(p: PropertyFull) {
@@ -52,12 +97,15 @@ export function PropertiesTable({ properties, canEdit }: { properties: PropertyF
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
-        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, address, type, manager…" style={{ maxWidth: 320 }} />
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {properties.length}</span>
-      </div>
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="properties"
+      />
 
-      <div className="f5-card" style={{ padding: 0 }}>
+      <div className="f5-card" style={{ padding: 0, marginTop: 14 }}>
         <table className="f5-table">
           <thead>
             <tr><th>Property</th><th>Type</th><th>Occupancy</th><th>Manager</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>

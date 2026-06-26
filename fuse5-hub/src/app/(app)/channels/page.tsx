@@ -1,30 +1,43 @@
 import { getChannelsConfig } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
-import { canPublish } from "@/lib/rbac";
-import { ChannelsGrid } from "./channels-grid";
+import { canAdmin } from "@/lib/rbac";
+import { ChannelsConsole } from "./channels-console";
 
+// Channels — Delivery Configuration (IT / back-end).
+// This is an admin/IT surface: it wires up the delivery providers (Resend,
+// Twilio, etc.) that sit behind "tenants just get SMS + email". End users never
+// see this — they never configure the plumbing. Admin-only.
 export default async function ChannelsPage() {
   const [channels, me] = await Promise.all([getChannelsConfig(), getCurrentUser()]);
-  const canEdit = me?.role ? canPublish(me.role) : false;
+  const isAdmin = me?.role ? canAdmin(me.role) : false;
 
   return (
     <main className="f5-content">
-      <div className="f5-page-title">Channels</div>
-      <div className="f5-page-sub">Delivery channel configuration, health, and performance.</div>
-
-      {/* Per-channel performance (last 30 days) */}
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>
-        {[
-          { l: "SMS", v: "4,231", s: "99.1% delivered" },
-          { l: "Email", v: "6,482", s: "67.4% open" },
-          { l: "Digital Display", v: "43", s: "players online" },
-          { l: "WhatsApp", v: "2,134", s: "89.2% read" },
-        ].map((c) => (
-          <div key={c.l} className="f5-card"><div className="f5-kpi-label">{c.l}</div><div className="f5-kpi-value">{c.v}</div><div className="f5-kpi-sub">{c.s}</div></div>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div className="f5-page-title" style={{ marginBottom: 0 }}>Channels — Delivery Configuration</div>
+        <span className="f5-badge" style={{ borderColor: "var(--f5-border-hover)", color: "var(--f5-text-muted)" }}>IT / back-end</span>
+      </div>
+      <div className="f5-page-sub">
+        Admin console for the delivery providers behind tenant messaging. Residents simply receive SMS and email —
+        the wiring lives here. Configuration and health are kept separate.
       </div>
 
-      <ChannelsGrid channels={channels} canEdit={canEdit} />
+      {!isAdmin ? (
+        <div className="f5-card" style={{ marginTop: 18, borderColor: "var(--f5-border-hover)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🔒</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--f5-text)" }}>Administrator access required</div>
+              <div style={{ fontSize: 13, color: "var(--f5-text-secondary)", marginTop: 4 }}>
+                Channel delivery configuration is an IT / back-end surface. Ask an administrator to review provider wiring,
+                sender identities, and consent settings.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ChannelsConsole channels={channels} />
+      )}
     </main>
   );
 }

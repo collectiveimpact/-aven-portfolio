@@ -1,40 +1,24 @@
 import Link from "next/link";
-import { getWorkOrders, getProperties, getWoFieldConfig, getSegments, type WorkOrderRow } from "@/lib/queries";
+import { getWorkOrders, getProperties, getWoFieldConfig, getSegments } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
 import { NOTICE_TYPES } from "@/lib/wo-fields";
 import { NewWorkOrder } from "./new-work-order";
 import { YardiImport } from "./yardi-import";
-import { WoStatus } from "./wo-status";
+import { WorkOrdersList } from "./wo-list";
 
-const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
-const NOTICE_BADGE: Record<WorkOrderRow["noticeStatus"], string> = { none: "", draft: "f5-badge warn", pending_review: "f5-badge", approved: "f5-badge", published: "f5-badge ok" };
-const NOTICE_LABEL: Record<WorkOrderRow["noticeStatus"], string> = { none: "—", draft: "Draft", pending_review: "In Review", approved: "Approved", published: "Sent" };
-
-// Work Orders — KPI strip + filter chips + work-order table. Live data.
-type Filter = "all" | "open" | "urgent";
-
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "open", label: "Open" },
-  { key: "urgent", label: "Urgent" },
-];
-
-const PRIORITY_BADGE: Record<WorkOrderRow["priority"], string> = {
-  urgent: "f5-badge bad",
-  high: "f5-badge warn",
-  medium: "f5-badge",
-  low: "f5-badge",
-};
-
+// Work Orders — KPI strip + rich FilterBar + work-order table. Live data.
 export default async function WorkOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [k: string]: string | undefined }>;
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
 }) {
   const sp = await searchParams;
-  const rawFilter = sp.filter;
-  const active: Filter = rawFilter === "open" || rawFilter === "urgent" ? rawFilter : "all";
+  const initialSearch = new URLSearchParams(
+    Object.entries(sp).flatMap(([k, v]) =>
+      v == null ? [] : Array.isArray(v) ? v.map((x) => [k, x] as [string, string]) : [[k, v] as [string, string]],
+    ),
+  ).toString();
 
   const [workOrders, properties, segments, me] = await Promise.all([getWorkOrders(), getProperties(), getSegments(), getCurrentUser()]);
   const canEdit = me?.role ? canPublish(me.role) : false;
@@ -46,12 +30,6 @@ export default async function WorkOrdersPage({
   const inProgress = workOrders.filter((w) => w.status === "in_progress").length;
   const overdue = workOrders.filter((w) => w.status !== "resolved" && (w.priority === "urgent" || w.priority === "high")).length;
   const resolved = workOrders.filter((w) => w.status === "resolved").length;
-
-  const rows = workOrders.filter((w) => {
-    if (active === "open") return w.status === "open";
-    if (active === "urgent") return w.priority === "urgent";
-    return true;
-  });
 
   return (
     <main className="f5-content">
@@ -77,48 +55,7 @@ export default async function WorkOrdersPage({
       </div>
 
       <div className="f5-section-title">Queue</div>
-      <div className="f5-chips" style={{ marginBottom: 14 }}>
-        {FILTERS.map((f) => (
-          <Link
-            key={f.key}
-            href={f.key === "all" ? "/workorders" : `/workorders?filter=${f.key}`}
-            className={`f5-chip${active === f.key ? " active" : ""}`}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </div>
-
-      <div className="f5-card" style={{ padding: 0 }}>
-        <table className="f5-table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Property / Unit</th>
-              <th>Category</th>
-              <th>Channels</th>
-              <th>Notice</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((w) => (
-              <tr key={w.id}>
-                <td style={{ color: "var(--f5-text)" }}>{w.title}</td>
-                <td>{w.propertyName} · {w.unit}</td>
-                <td>{w.category}</td>
-                <td style={{ fontSize: 15, letterSpacing: 2 }}>{w.channels.map((c) => CHANNEL_ICON[c] ?? "•").join(" ") || "—"}</td>
-                <td>{w.noticeStatus === "none" ? <span style={{ color: "var(--f5-text-dim)" }}>—</span> : <span className={NOTICE_BADGE[w.noticeStatus]}>{NOTICE_LABEL[w.noticeStatus]}</span>}</td>
-                <td><span className={PRIORITY_BADGE[w.priority]}>{w.priority}</span></td>
-                <td><WoStatus id={w.id} status={w.status} canEdit={canEdit} /></td>
-                <td><Link href={`/workorders/${w.id}`} className="f5-btn" style={{ padding: "5px 12px", fontSize: 12 }}>Open</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <WorkOrdersList rows={workOrders} canEdit={canEdit} initialSearch={initialSearch} />
 
       <div style={{ color: "var(--f5-text-dim)", fontSize: 11, marginTop: 18 }}>
         Data source: live

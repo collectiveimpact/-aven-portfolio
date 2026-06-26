@@ -1,4 +1,6 @@
-import { getEmergencyLog, type EmergencyLogRow } from "@/lib/queries";
+import { getEmergencyLog, getProperties, type EmergencyLogRow } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { canBroadcast } from "@/lib/rbac";
 import { EmergencyConsole } from "./console";
 
 const STATUS_BADGE: Record<EmergencyLogRow["status"], string> = {
@@ -13,14 +15,19 @@ const STATUS_LABEL: Record<EmergencyLogRow["status"], string> = {
 };
 
 export default async function EmergencyPage() {
-  const log = await getEmergencyLog();
+  const [log, properties, me] = await Promise.all([
+    getEmergencyLog(),
+    getProperties(),
+    getCurrentUser(),
+  ]);
+  const allowBroadcast = !!me?.role && canBroadcast(me.role);
 
   return (
     <main className="f5-content">
       <div className="f5-page-title">Emergency Broadcast</div>
       <div className="f5-page-sub">Reach every resident instantly across all channels.</div>
 
-      <EmergencyConsole />
+      <EmergencyConsole properties={properties} canBroadcast={allowBroadcast} />
 
       <div className="f5-section-title">Recent Emergency Log</div>
       <div className="f5-card" style={{ padding: 0 }}>

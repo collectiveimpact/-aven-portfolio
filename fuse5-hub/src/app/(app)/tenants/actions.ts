@@ -3,6 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { getResidentProfile, type ResidentProfileData } from "@/lib/residents/queries";
+
+// Load the full demographics + history bundle for one resident, on demand when
+// the profile drawer opens (keeps the list payload light).
+export async function loadResidentProfile(id: string): Promise<ResidentProfileData | null> {
+  return getResidentProfile(id);
+}
 
 export interface ResidentInput {
   id?: string;
