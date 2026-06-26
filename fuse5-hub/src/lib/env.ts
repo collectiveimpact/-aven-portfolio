@@ -50,3 +50,11 @@ export function yardiCreds(): YardiCreds {
     server: YARDI_SERVER, platform: YARDI_PLATFORM, interfaceEntity: YARDI_INTERFACE_ENTITY, interfaceLicense: YARDI_INTERFACE_LICENSE,
   };
 }
+
+// Wallboard digital-signage partner (wallboard.us). When set, the Displays section
+// syncs real devices/content from Wallboard and can publish to it; otherwise it runs
+// on local/demo data. Base URL is the tenant API host, e.g. https://app.wallboard.us
+export const WALLBOARD_BASE_URL = process.env.WALLBOARD_BASE_URL ?? "https://app.wallboard.us";
+export const WALLBOARD_API_KEY = process.env.WALLBOARD_API_KEY ?? "";
+export const WALLBOARD_MCP_URL = process.env.WALLBOARD_MCP_URL ?? "";   // optional MCP server URL for AI control
+export const hasWallboard = Boolean(WALLBOARD_API_KEY);

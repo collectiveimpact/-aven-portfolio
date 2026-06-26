@@ -689,6 +689,7 @@ export interface IntegrationRow { provider: string; name: string; ico: string; d
 const INTEGRATION_CATALOG: IntegrationRow[] = [
   { provider: "yardi", name: "Yardi Voyager", ico: "🏢", description: "Import properties, units, residents, and work orders from a Yardi ETL export. Direct API sync with a Yardi interface license.", status: "active", settings: {} },
   { provider: "rentsafeto", name: "RentSafeTO", ico: "✅", description: "Building scores and compliance evaluations from the City of Toronto.", status: "available", settings: {} },
+  { provider: "wallboard", name: "Wallboard Digital Signage", ico: "🖥", description: "Fuse5's digital-display partner. Sync screens, push Content-library assets, and schedule playlists via the Wallboard API (/api/v2, bearer key). Also supports MCP so AI agents can manage signage in natural language.", status: "available", settings: {} },
   { provider: "email", name: "Email Provider", ico: "✉️", description: "Transactional and broadcast email delivery for resident comms.", status: "available", settings: {} },
   { provider: "twilio", name: "Twilio SMS / Voice", ico: "📱", description: "SMS broadcasts and automated voice calls for emergencies.", status: "disconnected", settings: {} },
 ];
