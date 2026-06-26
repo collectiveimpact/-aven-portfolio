@@ -57,4 +57,5 @@ export function yardiCreds(): YardiCreds {
 export const WALLBOARD_BASE_URL = process.env.WALLBOARD_BASE_URL ?? "https://app.wallboard.us";
 export const WALLBOARD_API_KEY = process.env.WALLBOARD_API_KEY ?? "";
 export const WALLBOARD_MCP_URL = process.env.WALLBOARD_MCP_URL ?? "";   // optional MCP server URL for AI control
+export const WALLBOARD_DATASOURCE_ID = process.env.WALLBOARD_DATASOURCE_ID ?? ""; // the Wallboard datasource Fuse5 feeds live signage data into
 export const hasWallboard = Boolean(WALLBOARD_API_KEY);

@@ -1,5 +1,5 @@
 import "server-only";
-import { WALLBOARD_BASE_URL, WALLBOARD_API_KEY, hasWallboard } from "@/lib/env";
+import { WALLBOARD_BASE_URL, WALLBOARD_API_KEY, WALLBOARD_DATASOURCE_ID, hasWallboard } from "@/lib/env";
 
 // Wallboard digital-signage adapter — Fuse5's signage partner (wallboard.us).
 // Talks to the Wallboard REST API (OpenAPI, base path /api/v2) with bearer auth.
@@ -87,6 +87,44 @@ export async function publishWallboardContent(input: { name: string; html?: stri
 }
 
 // Assign a content/playlist to a device (push to a specific screen).
+// NOTE: device/content CRUD above is on the OAuth/session path. A scoped API KEY
+// (Webhook / Proof-of-Play / Datasource read+write) CANNOT call these — use the
+// datasource feed below (or the Wallboard MCP server) for key-based automation.
 export async function assignContentToDevice(deviceId: string, contentId: string): Promise<WBResult<unknown>> {
   return wb("POST", `/device/${encodeURIComponent(deviceId)}/content`, { contentId });
 }
+
+// ---- Datasource feed (the API-key path) -----------------------------------
+// This is what a Wallboard API key actually authorizes. Fuse5 WRITES a live JSON
+// datasource that slides/playlists bind to and render across every screen; reading
+// returns the current data. Endpoint: /api/datasource/{id}/data (Bearer api-key,
+// an HMAC-signed JWT). Wallboard docs: "used by AI assistants and M2M integrations
+// to manage dynamic display data."
+async function wbDatasource<T>(method: string, suffix: string, body?: unknown): Promise<WBResult<T>> {
+  if (!hasWallboard) return { ok: false, error: "Wallboard not configured (WALLBOARD_API_KEY)." };
+  if (!WALLBOARD_DATASOURCE_ID) return { ok: false, error: "Set WALLBOARD_DATASOURCE_ID (the Wallboard datasource Fuse5 feeds)." };
+  try {
+    const res = await fetch(`${base()}/api/datasource/${encodeURIComponent(WALLBOARD_DATASOURCE_ID)}/data${suffix}`, {
+      method,
+      headers: { Authorization: `Bearer ${WALLBOARD_API_KEY}`, "Content-Type": "application/json", Accept: "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    const text = await res.text();
+    let json: unknown = null; try { json = text ? JSON.parse(text) : null; } catch { /* */ }
+    if (!res.ok) return { ok: false, status: res.status, error: `Wallboard ${res.status}: ${text.slice(0, 160)}` };
+    return { ok: true, status: res.status, data: json as T };
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Wallboard datasource request failed." }; }
+}
+
+// Read the live signage datasource (parsed JSON).
+export function readSignageDatasource(): Promise<WBResult<unknown>> {
+  return wbDatasource("GET", "?parseData=true");
+}
+
+// Push the live Fuse5 signage feed → every screen bound to the datasource updates.
+export function pushSignageDatasource(data: unknown): Promise<WBResult<unknown>> {
+  return wbDatasource("PUT", "", { data });
+}
+
+export const wallboardDatasourceReady = Boolean(WALLBOARD_DATASOURCE_ID);

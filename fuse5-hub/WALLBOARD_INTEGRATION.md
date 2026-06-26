@@ -14,15 +14,28 @@ Set on the server (InMotion env / `.env.local`):
 | Var | Example | Purpose |
 |---|---|---|
 | `WALLBOARD_BASE_URL` | `https://app.wallboard.us` | Your tenant API host |
-| `WALLBOARD_API_KEY` | `wb_live_…` | Bearer token (Wallboard → API key) |
+| `WALLBOARD_API_KEY` | `eyJ…` (a JWT) | API key, sent as `Authorization: Bearer` |
+| `WALLBOARD_DATASOURCE_ID` | `ds-uuid-123` | The Wallboard datasource Fuse5 feeds |
 | `WALLBOARD_MCP_URL` | `https://…/mcp` | (optional) MCP server for AI control |
 
-- **Auth:** `Authorization: Bearer <WALLBOARD_API_KEY>`, base path `/api/v2`.
-- **Devices** → the Displays grid (online/offline, current content).
-- **Content / Playlist (simple loop) / Schedules** → publish Fuse5 notices, images
-  and videos to Wallboard; schedule overrides (lunch menus, emergency takeovers).
-- Validate exact endpoint/parameter names against your tenant's OpenAPI on first
-  connect — Wallboard versions some paths.
+**The API key is the integration path — and it's datasource-centric.** Wallboard
+API keys (Settings → Integrations → API Keys) are **HMAC-signed JWTs** with a
+**scope**: `Webhook API Call`, `Proof of Play Read`, **`Internal Datasource Write`**,
+`Datasource Data Read`. A key therefore CANNOT do device/content CRUD (that's the
+OAuth/admin path) — instead, the clean integration is:
+
+- **Fuse5 → Wallboard datasource (write):** `PUT /api/datasource/{WALLBOARD_DATASOURCE_ID}/data`
+  with `{ "data": { …live feed… } }`. Fuse5 publishes a **multi-zone signage feed**
+  (emergency banner, notices ticker, resident-survey QR, KPI strip) — Wallboard
+  slides bind to those fields, so one push refreshes **every screen**. Built by
+  `src/lib/wallboard/feed.ts`; pushed from **Displays → "Push to Wallboard"** (or
+  automatically on an emergency broadcast).
+- **Read:** `GET /api/datasource/{id}/data?parseData=true`.
+- **Proof of Play (read):** which content actually played, where and when — pull for
+  compliance documentation ("emergency notice confirmed on 28 screens").
+- **Webhook API Call:** Wallboard → Fuse5 events.
+- Create the key with **Internal Datasource Write** scope, and a datasource Fuse5
+  owns. Device/content CRUD + scheduling stay on the **OAuth or MCP** path below.
 
 Capabilities Fuse5 can drive once connected (from the current Wallboard platform):
 slide/playlist embedding for multi-zone layouts, **Schedules** (what/when/where, no

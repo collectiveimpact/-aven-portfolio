@@ -1,13 +1,19 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getDisplays, getProperties } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { hasWallboard, WALLBOARD_DATASOURCE_ID } from "@/lib/env";
 import { getWallboardSignage } from "@/lib/wallboard/signage";
+import { buildSignageFeed } from "@/lib/wallboard/feed";
 import { DisplaysGrid } from "./displays-grid";
+import { WallboardFeed } from "./wallboard-feed";
 
 export default async function DisplaysPage() {
-  const [displays, properties, me, wb] = await Promise.all([getDisplays(), getProperties(), getCurrentUser(), getWallboardSignage()]);
+  const [displays, properties, me, wb, h] = await Promise.all([getDisplays(), getProperties(), getCurrentUser(), getWallboardSignage(), headers()]);
   const canEdit = me?.role ? canPublish(me.role) : false;
+  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost:3000"}`;
+  const feed = await buildSignageFeed(origin);
 
   // Prefer live Wallboard devices when connected; otherwise the local/demo set.
   const grid = wb.connected && wb.devices.length
@@ -42,6 +48,8 @@ export default async function DisplaysPage() {
           {wb.mcpUrl && <span className="f5-badge" title={wb.mcpUrl}>MCP enabled</span>}
         </div>
       </div>
+
+      <WallboardFeed feed={feed} configured={hasWallboard && Boolean(WALLBOARD_DATASOURCE_ID)} canEdit={canEdit} />
 
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>
         <div className="f5-card"><div className="f5-kpi-label">Online</div><div className="f5-kpi-value f5-up">{online}</div><div className="f5-kpi-sub">streaming content</div></div>

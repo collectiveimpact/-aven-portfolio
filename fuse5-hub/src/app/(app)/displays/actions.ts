@@ -3,6 +3,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { buildSignageFeed } from "@/lib/wallboard/feed";
+import { pushSignageDatasource } from "@/lib/wallboard/api";
+
+// Push the live Fuse5 signage feed into the Wallboard datasource → every screen
+// bound to it updates. Env-gated (WALLBOARD_API_KEY + WALLBOARD_DATASOURCE_ID).
+export async function pushSignageToWallboard(origin: string): Promise<{ ok: boolean; error?: string; notices?: number }> {
+  const me = await getCurrentUser();
+  if (!me?.role || !canPublish(me.role)) return { ok: false, error: "Your role cannot publish to displays." };
+  const feed = await buildSignageFeed(origin);
+  const r = await pushSignageDatasource(feed);
+  if (!r.ok) return { ok: false, error: r.error };
+  const supabase = await createClient();
+  if (supabase && me.orgId) await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Wallboard Feed Pushed", detail: `${feed.notices.length} notices, survey ${feed.survey ? "on" : "off"}` });
+  return { ok: true, notices: feed.notices.length };
+}
 
 export interface DisplayInput {
   id?: string;
