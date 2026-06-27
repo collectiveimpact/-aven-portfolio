@@ -9,6 +9,7 @@ import {
   mobilityLabel,
   subsidyLabel,
   accessibilityLabel,
+  ageFromDob,
 } from "@/lib/residents/types";
 
 const fg = "var(--f5-text)";
@@ -34,6 +35,15 @@ function Field({ k, v }: { k: string; v: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div style={{ gridColumn: "1 / -1" }} className="f5-section-title">{children}</div>;
+}
+
+// Render a Yardi tri-state (yes/no/unknown) as a coloured badge. "yes" is shown
+// as a warn/alert badge where it represents a need or risk flag (e.g. oxygen,
+// wheelchair) and as a neutral/ok badge otherwise; callers pass `alertOnYes`.
+function YesNo({ v, alertOnYes = false }: { v: string | null; alertOnYes?: boolean }) {
+  if (!v || v === "unknown") return <span style={{ color: dim }}>{v === "unknown" ? "Unknown" : "—"}</span>;
+  if (v === "yes") return <span className={`f5-badge ${alertOnYes ? "warn" : "ok"}`}>Yes</span>;
+  return <span className="f5-badge">No</span>;
 }
 
 const prioClass = (p: string) => (p === "urgent" || p === "high" ? "warn" : p === "resolved" ? "ok" : "");
@@ -130,33 +140,86 @@ export function ResidentProfile({ resident, onClose }: { resident: ResidentWithD
 
           {tab === "Demographics" && (
             <>
-              <SectionTitle>Household</SectionTitle>
+              {/* Mirrors the Yardi "Tenant Demographics" form sections. */}
+              <SectionTitle>Occupant Details</SectionTitle>
+              <Field k="Tenant Name" v={r.name} />
+              <Field k="Age" v={ageFromDob(d?.dateOfBirth ?? null) ?? (d?.ageBand ? `${d.ageBand} (band)` : "—")} />
+              <Field k="Phone #" v={r.phone || "—"} />
+              <Field k="Occupant Type" v={occupantLabel(d?.occupantType ?? null)} />
+              <Field k="Person with Disabilities" v={<YesNo v={d?.personWithDisabilities ?? null} alertOnYes />} />
+              <Field k="Relationship to Main Tenant" v={d?.relationshipToMainTenant || "—"} />
+              <Field k="Emergency Contact" v={d?.emergencyContactPhone || "—"} />
+              <Field k="Name of Contact" v={d?.emergencyContactName ? `${d.emergencyContactName}${d.emergencyContactRelation ? ` (${d.emergencyContactRelation})` : ""}` : "—"} />
+              <Field k="Other Contact" v={d?.otherContact || "—"} />
+              <Field k="Name of Contact (2)" v={d?.otherContactName || "—"} />
+
+              <SectionTitle>Gender</SectionTitle>
+              <Field k="Gender" v={d?.gender || "—"} />
+              <Field k="Sexual Orientation" v={d?.sexualOrientation || "—"} />
+
+              <SectionTitle>Ethnicity &amp; Cultural Diversity</SectionTitle>
+              <Field k="Ethnicity" v={d?.ethnicity || "—"} />
+              <Field k="Indigenous Identity" v={d?.indigenousIdentity || "—"} />
+
+              <SectionTitle>Immigration Status</SectionTitle>
+              <Field k="Newcomer" v={<YesNo v={d?.newcomer ?? null} />} />
+              <Field k="Status in Canada" v={d?.statusInCanada || "—"} />
+
+              <SectionTitle>Mental / Developmental Challenge</SectionTitle>
+              <Field k="Mental Illness" v={<YesNo v={d?.mentalIllness ?? null} alertOnYes />} />
+              <Field k="Dual Diagnosis" v={<YesNo v={d?.dualDiagnosis ?? null} alertOnYes />} />
+              <Field k="Developmental" v={<YesNo v={d?.developmental ?? null} alertOnYes />} />
+              <Field k="Details" v={d?.challengeDetails || "—"} />
+
+              <SectionTitle>Language</SectionTitle>
+              <Field k="Barriers To Communication" v={<YesNo v={d?.barriersToCommunication ?? null} alertOnYes />} />
+              <Field k="Language Spoken" v={d?.languageSpoken || d?.primaryLanguage || r.language} />
+              <Field k="Correspondence Language" v={d?.correspondenceLanguage || d?.primaryLanguage || r.language} />
+              <Field k="Interpreter" v={d?.interpreterRequired ? <span className="f5-badge warn">Required</span> : "Not required"} />
+              <Field k="Language Details" v={d?.languageDetails || "—"} />
+
+              <SectionTitle>General</SectionTitle>
+              <Field k="Smoker" v={<YesNo v={d?.smoker ?? null} />} />
+              <Field k="Oxygen" v={<YesNo v={d?.oxygen ?? null} alertOnYes />} />
+              <Field k="Pets" v={<YesNo v={d?.pets ?? null} />} />
+              <Field k="Tenant Insurance" v={<YesNo v={d?.tenantInsurance ?? null} />} />
+              <Field k="Notes" v={d?.notes || "—"} />
+
+              <SectionTitle>Supportive Services</SectionTitle>
+              <Field k="Supportive Services" v={<YesNo v={d?.supportiveServices ?? null} />} />
+              <Field k="Agency 1" v={d?.agency1 || d?.supportAgency || "—"} />
+              <Field k="Agency 2" v={d?.agency2 || "—"} />
+              <Field k="Caseworker" v={d?.caseWorker || "—"} />
+              <Field k="Caseworker Contact" v={d?.caseWorkerContact || "—"} />
+
+              <SectionTitle>Subsidy</SectionTitle>
+              <Field k="Subsidy Type" v={subsidyLabel(d?.subsidyType ?? null)} />
+              <Field k="Income Band" v={d?.incomeBand ? `$${d.incomeBand}` : "—"} />
+              <Field k="Rent Share" v={d?.rentShare != null ? `$${d.rentShare.toFixed(2)} / mo` : "—"} />
               <Field k="Household Size" v={d?.householdSize != null ? `${d.householdSize} ${d.householdSize === 1 ? "person" : "people"}` : "—"} />
               <Field k="Composition" v={d?.householdComposition || "—"} />
-              <Field k="Dependents" v={d?.dependents != null ? d.dependents : "—"} />
-              <Field k="Age Band" v={d?.ageBand || "—"} />
-
-              <SectionTitle>Income &amp; Subsidy</SectionTitle>
-              <Field k="Income Band" v={d?.incomeBand ? `$${d.incomeBand}` : "—"} />
-              <Field k="Subsidy Type" v={subsidyLabel(d?.subsidyType ?? null)} />
-              <Field k="Rent Share" v={d?.rentShare != null ? `$${d.rentShare.toFixed(2)} / mo` : "—"} />
-
-              <SectionTitle>Support Network</SectionTitle>
-              <Field k="Support Agency" v={d?.supportAgency || "—"} />
-              <Field k="Case Worker" v={d?.caseWorker || "—"} />
-              <Field k="Case Worker Contact" v={d?.caseWorkerContact || "—"} />
 
               <div style={{ gridColumn: "1 / -1", fontSize: 11, color: dim, marginTop: 6 }}>
-                {d?.source === "yardi" ? "Sourced from Yardi Voyager · " : ""}Updated {fmt(d?.updatedAt)}. Banded fields (age, income) carry no raw values.
+                {d?.source === "yardi" ? "Sourced from Yardi · " : ""}Updated {fmt(d?.updatedAt)}. Mirrors the Yardi Tenant Demographics form; DOB is held on file but only the age band surfaces in the directory list.
               </div>
             </>
           )}
 
           {tab === "Accessibility" && (
             <>
-              <Field k="Mobility" v={mobilityLabel(d?.mobility ?? null)} />
+              <SectionTitle>Barriers To Services</SectionTitle>
+              <Field k="Vision Impaired" v={<YesNo v={d?.visionImpaired ?? null} alertOnYes />} />
+              <Field k="Hearing Impaired" v={<YesNo v={d?.hearingImpaired ?? null} alertOnYes />} />
+
+              <SectionTitle>Accessibility</SectionTitle>
+              <Field k="Wheelchair" v={<YesNo v={d?.wheelchair ?? null} alertOnYes />} />
+              <Field k="Mobility Issues" v={mobilityLabel(d?.mobility ?? null)} />
+              <Field k="Walker" v={<YesNo v={d?.walker ?? null} alertOnYes />} />
+              <Field k="Scooter" v={<YesNo v={d?.scooter ?? null} alertOnYes />} />
               <Field k="Service Animal" v={d?.serviceAnimal ? "Yes — registered" : "No"} />
+              <Field k="Accessibility Requirements" v={d?.accessibilityRequirements || "—"} />
               <Field k="Emergency Assembly" v={d?.emergencyAssembly || "Standard assembly point A"} />
+
               <SectionTitle>Notice Accommodations</SectionTitle>
               <div style={{ gridColumn: "1 / -1", display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {d?.accessibilityNeeds?.length

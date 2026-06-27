@@ -34,28 +34,93 @@ const EMERGENCY = [
   { name: "—", rel: "—", phone: "—" },
 ];
 
+// Yardi-form vocabularies for deterministic demo profiles.
+const GENDERS = ["Woman", "Man", "Non-binary", "Woman", "Man", "Prefer not to say"];
+const ORIENTATIONS = ["Heterosexual", "Heterosexual", "Bisexual", "Gay", "Prefer not to say"];
+const ETHNICITIES = ["Black / African / Caribbean", "South Asian", "East Asian", "White / European", "Latin American", "Middle Eastern / West Asian"];
+const INDIGENOUS = ["Not Indigenous", "Not Indigenous", "First Nations", "Métis", "Prefer not to say"];
+const STATUSES = ["Citizen", "Permanent Resident", "Protected Person / Refugee", "Work Permit", "Citizen"];
+const RELATIONSHIPS = ["Self", "Spouse / Partner", "Child", "Parent", "Self"];
+const DOBS = ["1958-04-12", "1971-09-23", "1985-01-30", "1992-07-08", "1966-11-19", "2003-03-02", "1979-06-15"];
+const yn3 = (h: number, mod: number, on: number): "yes" | "no" | "unknown" =>
+  h % mod === on ? "yes" : h % 7 === 0 ? "unknown" : "no";
+
 // Deterministically derive a full demographics layer for demo mode.
 function demoDemographics(r: Pick<ResidentRow, "id" | "name" | "language" | "preferredChannel" | "status">): ResidentDemographics {
   const h = hash(r.id + r.name);
   const size = 1 + (h % 4);
   const em = EMERGENCY[h % EMERGENCY.length];
+  const lang = r.language && r.language !== "—" ? r.language : "English";
+  const mob = MOBILITY[h % MOBILITY.length];
+  const agency = AGENCIES[h % AGENCIES.length];
   return {
     householdSize: size,
     householdComposition: COMPOSITIONS[h % COMPOSITIONS.length],
     occupantType: h % 3 === 0 ? "head_of_household" : "occupant",
     ageBand: AGE_BANDS[h % AGE_BANDS.length],
     dependents: Math.max(0, size - 1 - (h % 2)),
-    primaryLanguage: r.language && r.language !== "—" ? r.language : "English",
+
+    // OCCUPANT DETAILS
+    dateOfBirth: DOBS[h % DOBS.length],
+    personWithDisabilities: mob !== "none" ? "yes" : yn3(h, 5, 1),
+    relationshipToMainTenant: RELATIONSHIPS[h % RELATIONSHIPS.length],
+    otherContact: h % 4 === 0 ? `647-555-0${100 + (h % 800)}` : null,
+    otherContactName: h % 4 === 0 ? "Secondary Contact" : null,
+
+    // GENDER
+    gender: GENDERS[h % GENDERS.length],
+    sexualOrientation: ORIENTATIONS[h % ORIENTATIONS.length],
+
+    // ETHNICITY & CULTURAL DIVERSITY
+    ethnicity: ETHNICITIES[h % ETHNICITIES.length],
+    indigenousIdentity: INDIGENOUS[h % INDIGENOUS.length],
+
+    // IMMIGRATION STATUS
+    newcomer: yn3(h, 4, 1),
+    statusInCanada: STATUSES[h % STATUSES.length],
+
+    // MENTAL/DEVELOPMENTAL CHALLENGE
+    mentalIllness: yn3(h, 6, 1),
+    dualDiagnosis: yn3(h, 11, 1),
+    developmental: yn3(h, 9, 1),
+    challengeDetails: h % 6 === 1 ? "Supported by community mental-health team; quarterly check-ins." : null,
+
+    // LANGUAGE
+    primaryLanguage: lang,
     secondaryLanguages: h % 4 === 0 ? ["English"] : [],
     interpreterRequired: h % 6 === 0,
+    barriersToCommunication: lang !== "English" ? "yes" : yn3(h, 8, 1),
+    languageSpoken: lang,
+    correspondenceLanguage: h % 5 === 0 && lang !== "English" ? "English" : lang,
+    languageDetails: h % 6 === 0 ? "Interpreter (telephone) preferred for complex notices." : null,
+
+    // ACCESSIBILITY / BARRIERS TO SERVICES
     accessibilityNeeds: ACCESS_SETS[h % ACCESS_SETS.length],
-    mobility: MOBILITY[h % MOBILITY.length],
+    mobility: mob,
     serviceAnimal: h % 7 === 0,
     emergencyAssembly: h % 4 === 1 ? "Mobility-assisted assembly point B" : "Standard assembly point A",
+    visionImpaired: ACCESS_SETS[h % ACCESS_SETS.length].includes("audio_notices") ? "yes" : yn3(h, 10, 1),
+    hearingImpaired: ACCESS_SETS[h % ACCESS_SETS.length].includes("visual_alerts") ? "yes" : yn3(h, 9, 2),
+    wheelchair: mob === "wheelchair" ? "yes" : "no",
+    walker: mob === "cane_walker" ? "yes" : "no",
+    scooter: h % 17 === 0 ? "yes" : "no",
+    accessibilityRequirements: mob !== "none" ? "Step-free route to unit; widened doorway." : null,
+
+    // GENERAL
+    smoker: yn3(h, 5, 2),
+    oxygen: h % 13 === 0 ? "yes" : "no",
+    pets: yn3(h, 4, 2),
+    tenantInsurance: h % 3 === 0 ? "yes" : yn3(h, 5, 3),
+
     incomeBand: INCOME_BANDS[h % INCOME_BANDS.length],
     subsidyType: h % 5 === 0 ? "affordable" : "rgi",
     rentShare: 280 + (h % 12) * 35,
-    supportAgency: AGENCIES[h % AGENCIES.length],
+
+    // SUPPORTIVE SERVICES
+    supportiveServices: agency !== "—" ? "yes" : "no",
+    supportAgency: agency,
+    agency1: agency,
+    agency2: h % 4 === 3 ? "Toronto Community Housing — Tenant Services" : null,
     caseWorker: CASE_WORKERS[h % CASE_WORKERS.length],
     caseWorkerContact: h % 5 === 4 ? "—" : `416-555-0${300 + (h % 600)}`,
     emergencyContactName: em.name,
@@ -88,25 +153,78 @@ function demoTenancy(r: Pick<ResidentRow, "id" | "name" | "status">) {
 type DemoRow = Record<string, unknown>;
 
 function mapDemographics(d: DemoRow): ResidentDemographics {
+  const yn = (v: unknown) => (v == null ? null : (v as ResidentDemographics["smoker"]));
   return {
     householdSize: (d.household_size as number) ?? null,
     householdComposition: (d.household_composition as string) ?? null,
     occupantType: (d.occupant_type as ResidentDemographics["occupantType"]) ?? null,
     ageBand: (d.age_band as string) ?? null,
     dependents: (d.dependents as number) ?? null,
+
+    // OCCUPANT DETAILS (Yardi)
+    dateOfBirth: (d.date_of_birth as string) ?? null,
+    personWithDisabilities: yn(d.person_with_disabilities),
+    relationshipToMainTenant: (d.relationship_to_main_tenant as string) ?? null,
+    otherContact: (d.other_contact as string) ?? null,
+    otherContactName: (d.other_contact_name as string) ?? null,
+
+    // GENDER
+    gender: (d.gender as string) ?? null,
+    sexualOrientation: (d.sexual_orientation as string) ?? null,
+
+    // ETHNICITY & CULTURAL DIVERSITY
+    ethnicity: (d.ethnicity as string) ?? null,
+    indigenousIdentity: (d.indigenous_identity as string) ?? null,
+
+    // IMMIGRATION STATUS
+    newcomer: yn(d.newcomer),
+    statusInCanada: (d.status_in_canada as string) ?? null,
+
+    // MENTAL/DEVELOPMENTAL CHALLENGE
+    mentalIllness: yn(d.mental_illness),
+    dualDiagnosis: yn(d.dual_diagnosis),
+    developmental: yn(d.developmental),
+    challengeDetails: (d.challenge_details as string) ?? null,
+
+    // LANGUAGE
     primaryLanguage: (d.primary_language as string) ?? null,
     secondaryLanguages: (d.secondary_languages as string[]) ?? [],
     interpreterRequired: !!d.interpreter_required,
+    barriersToCommunication: yn(d.barriers_to_communication),
+    languageSpoken: (d.language_spoken as string) ?? null,
+    correspondenceLanguage: (d.correspondence_language as string) ?? null,
+    languageDetails: (d.language_details as string) ?? null,
+
+    // ACCESSIBILITY / BARRIERS TO SERVICES
     accessibilityNeeds: (d.accessibility_needs as string[]) ?? [],
     mobility: (d.mobility as ResidentDemographics["mobility"]) ?? null,
     serviceAnimal: !!d.service_animal,
     emergencyAssembly: (d.emergency_assembly as string) ?? null,
+    visionImpaired: yn(d.vision_impaired),
+    hearingImpaired: yn(d.hearing_impaired),
+    wheelchair: yn(d.wheelchair),
+    walker: yn(d.walker),
+    scooter: yn(d.scooter),
+    accessibilityRequirements: (d.accessibility_requirements as string) ?? null,
+
+    // GENERAL
+    smoker: yn(d.smoker),
+    oxygen: yn(d.oxygen),
+    pets: yn(d.pets),
+    tenantInsurance: yn(d.tenant_insurance),
+
     incomeBand: (d.income_band as string) ?? null,
     subsidyType: (d.subsidy_type as ResidentDemographics["subsidyType"]) ?? null,
     rentShare: (d.rent_share as number) ?? null,
+
+    // SUPPORTIVE SERVICES
+    supportiveServices: yn(d.supportive_services),
     supportAgency: (d.support_agency as string) ?? null,
+    agency1: (d.agency_1 as string) ?? (d.support_agency as string) ?? null,
+    agency2: (d.agency_2 as string) ?? null,
     caseWorker: (d.case_worker as string) ?? null,
     caseWorkerContact: (d.case_worker_contact as string) ?? null,
+
     emergencyContactName: (d.emergency_contact_name as string) ?? null,
     emergencyContactPhone: (d.emergency_contact_phone as string) ?? null,
     emergencyContactRelation: (d.emergency_contact_relation as string) ?? null,
