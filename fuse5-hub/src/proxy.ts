@@ -11,6 +11,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Run on all routes except static assets / images / video / the API / the public
-  // survey-response pages (/s/… — residents fill these out without logging in).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|s/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|m4v)$).*)"],
+  // survey-response pages (/s/… — residents fill these out without logging in) /
+  // the resident portal (portal/… — residents sign in with their OWN portal session,
+  // not staff auth, so they must NOT be redirected to the staff /login).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|s/|portal/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|m4v)$).*)"],
 };
