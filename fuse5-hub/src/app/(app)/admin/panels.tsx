@@ -6,6 +6,7 @@ import {
   type ProviderDemo, type PlatformUserDemo, type PlayerDemo, type RoleRow, type PermLevel,
 } from "@/lib/platform";
 import type { PlatformStats, AuditRow, SubscriptionInfo } from "@/lib/queries";
+import type { ProviderRow, RoleTemplateRow, PermissionGrantRow } from "@/lib/admin-store";
 import { recordPlatformAction } from "./providers-actions";
 import { Overlay, OverlayHeader, Saved } from "./admin-prov-ui";
 
@@ -184,9 +185,31 @@ function ProviderDetailDrawer({ provider: p, onClose }: { provider: ProviderDemo
 // editable provider shape held client-side (no provider table in local schema).
 type ProviderEdit = { tier: ProviderDemo["tier"]; yardi: ProviderDemo["yardi"]; compliance: number; framework: string; complianceEnabled: boolean };
 
-export function AllProvidersPanel({ providers }: { providers: ProviderDemo[] }) {
+// Map a persisted providers row → the panel's display shape. The providers table
+// only stores config (tier/yardi/compliance/active); the rich counts + role
+// distribution shown on the card aren't persisted, so we render neutral zeros
+// (a freshly-created provider has no users/properties yet).
+function providerRowToDemo(r: ProviderRow): ProviderDemo {
+  const tier: ProviderDemo["tier"] = r.tier === "PLATO" || r.tier === "EMPRESA" ? r.tier : "ORO";
+  return {
+    id: r.id,
+    short: (r.name || r.key).replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "PR",
+    name: r.name,
+    tier,
+    color: r.color ?? "#009999",
+    since: "—",
+    yardi: r.yardiSync ? "synced" : "none",
+    status: r.active ? "active" : "onboarding",
+    properties: 0, users: 0, tenants: 0, players: 0,
+    compliance: r.complianceTarget ?? 0,
+    roles: [{ name: "Provider Admin", count: 1 }],
+  };
+}
+
+export function AllProvidersPanel({ providers, rows }: { providers: ProviderDemo[]; rows: ProviderRow[] }) {
+  // Seed from real provider rows when present, else the reference/demo set.
   // client-side working set so adds/edits/toggles are visible immediately.
-  const [list, setList] = useState<ProviderDemo[]>(providers);
+  const [list, setList] = useState<ProviderDemo[]>(() => rows.length ? rows.map(providerRowToDemo) : providers);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ProviderDemo | null>(null);
   const [viewing, setViewing] = useState<ProviderDemo | null>(null);
@@ -368,8 +391,43 @@ function PermSelect({ level, onChange }: { level: PermLevel; onChange: (l: PermL
   );
 }
 
-export function ProviderRolesPanel() {
-  const [roles, setRoles] = useState<RoleRow[]>(PROVIDER_ROLES);
+// Build a 12-length perms array (aligned to PERM_MODULES) from a saved role
+// template's permissions blob. Supports either a per-module-key map
+// ({ comms: 3, signage: 2, … }) or a "full"/"level" scalar; falls back to the
+// matching reference template's perms, then to all-None.
+function permsFromTemplate(key: string, permissions: Record<string, unknown>): PermLevel[] {
+  const ref = PROVIDER_ROLES.find((r) => r.key === key);
+  const clamp = (n: unknown): PermLevel => {
+    const v = Number(n);
+    return (v === 1 || v === 2 || v === 3 ? v : 0) as PermLevel;
+  };
+  const hasModuleKeys = PERM_MODULES.some((m) => m.key in permissions);
+  if (hasModuleKeys) {
+    return PERM_MODULES.map((m) =>
+      m.key in permissions ? clamp(permissions[m.key]) : (ref?.perms[PERM_MODULES.indexOf(m)] ?? 0),
+    );
+  }
+  if (ref) return [...ref.perms];
+  return Array(PERM_MODULES.length).fill(0) as PermLevel[];
+}
+
+// Map persisted role-template rows → the panel's RoleRow cards, preserving the
+// reference icon/color/description when the key matches a shipped template.
+function roleTemplateRowToRow(r: RoleTemplateRow): RoleRow {
+  const ref = PROVIDER_ROLES.find((x) => x.key === r.key);
+  return {
+    key: r.key,
+    name: r.label || ref?.name || r.key,
+    icon: ref?.icon ?? "🛡",
+    color: ref?.color ?? "#009999",
+    perms: permsFromTemplate(r.key, r.permissions),
+    description: ref?.description ?? "Custom provider role template.",
+  };
+}
+
+export function ProviderRolesPanel({ rows }: { rows: RoleTemplateRow[] }) {
+  // Seed from saved templates when present, else the shipped reference set.
+  const [roles, setRoles] = useState<RoleRow[]>(() => rows.length ? rows.map(roleTemplateRowToRow) : PROVIDER_ROLES);
   const [editing, setEditing] = useState<RoleRow | null>(null);
   const [creating, setCreating] = useState(false);
   const { flash, run } = usePlatformAction();
@@ -600,9 +658,36 @@ function EditableMatrixRows({ roles, onCycle }: { roles: RoleRow[]; onCycle: (ke
   ))}</>;
 }
 
-export function PermissionMatrixPanel() {
-  const [globalRoles, setGlobalRoles] = useState<RoleRow[]>(F5_GLOBAL_ROLES.map((r) => ({ ...r, perms: [...r.perms] })));
-  const [provRoles, setProvRoles] = useState<RoleRow[]>(PROVIDER_ROLES.map((r) => ({ ...r, perms: [...r.perms] })));
+// Overlay saved permission grants onto a reference role set. Each grant
+// ({ role, moduleKey, level }) sets one matrix cell; roles/modules without a
+// saved grant keep their reference level. When `grants` is empty the result is
+// identical to the reference set (demo/no-backend).
+function applyGrants(base: RoleRow[], grants: PermissionGrantRow[]): RoleRow[] {
+  if (!grants.length) return base.map((r) => ({ ...r, perms: [...r.perms] }));
+  const byRole = new Map<string, PermissionGrantRow[]>();
+  for (const g of grants) {
+    const arr = byRole.get(g.role) ?? [];
+    arr.push(g);
+    byRole.set(g.role, arr);
+  }
+  return base.map((r) => {
+    const perms = [...r.perms];
+    for (const g of byRole.get(r.key) ?? []) {
+      const idx = PERM_MODULES.findIndex((m) => m.key === g.moduleKey);
+      if (idx >= 0) {
+        const lvl = g.level;
+        perms[idx] = (lvl === 1 || lvl === 2 || lvl === 3 ? lvl : 0) as PermLevel;
+      }
+    }
+    return { ...r, perms };
+  });
+}
+
+export function PermissionMatrixPanel({ grants }: { grants: PermissionGrantRow[] }) {
+  // Seed each matrix half from saved grants (overlaid on the reference roles);
+  // empty grants → the reference matrix is shown unchanged.
+  const [globalRoles, setGlobalRoles] = useState<RoleRow[]>(() => applyGrants(F5_GLOBAL_ROLES, grants));
+  const [provRoles, setProvRoles] = useState<RoleRow[]>(() => applyGrants(PROVIDER_ROLES, grants));
   const [selected, setSelected] = useState<string>(PROVIDER_ROLES[0].key);
   const { flash, run } = usePlatformAction();
 

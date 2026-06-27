@@ -7,6 +7,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAdmin, canOnboardUsers, isGlobal } from "@/lib/rbac";
 import { DEMO_IMPERSONATE } from "@/lib/platform";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getProviders, getRoleTemplates, getApprovalWorkflows, getApprovalQueue,
+  getIntegrationConfigs, getPermissionGrants,
+} from "@/lib/admin-store";
 import { AdminConsole } from "./admin-console";
 import type { DepartmentRow } from "./actions";
 
@@ -46,10 +50,14 @@ export default async function AdminPage() {
   const canManage = me?.role ? canAdmin(me.role) : false;
   const canOnboard = me?.role ? canOnboardUsers(me.role) : false;
 
-  const [members, audit, sub, stats, providers, users, fleet, portal, moduleConfig, deptData] = await Promise.all([
+  const [
+    members, audit, sub, stats, providers, users, fleet, portal, moduleConfig, deptData,
+    providerRows, roleTemplateRows, approvalWorkflowRows, approvalQueueRows, integrationConfigRows, permissionGrantRows,
+  ] = await Promise.all([
     getMembers(), getAuditLog(), getSubscription(),
     getPlatformStats(), getPlatformProviders(), getPlatformUsers(), getPlayerFleet(), getTenantPortalConfig(),
     getOrgModuleConfig(), getDepartmentData(),
+    getProviders(), getRoleTemplates(), getApprovalWorkflows(), getApprovalQueue(), getIntegrationConfigs(), getPermissionGrants(),
   ]);
 
   return (
@@ -77,6 +85,12 @@ export default async function AdminPage() {
         departments={deptData.departments}
         memberDepartments={deptData.memberDepartments}
         departmentCounts={deptData.memberCounts}
+        providerRows={providerRows}
+        roleTemplateRows={roleTemplateRows}
+        approvalWorkflowRows={approvalWorkflowRows}
+        approvalQueueRows={approvalQueueRows}
+        integrationConfigRows={integrationConfigRows}
+        permissionGrantRows={permissionGrantRows}
       />
     </main>
   );

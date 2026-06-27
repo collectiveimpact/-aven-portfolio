@@ -454,21 +454,21 @@ export async function getComposeTemplates(): Promise<ComposeTemplate[]> {
   } catch { return []; }
 }
 
-export interface PropertyFull { id: string; name: string; address: string; type: string; units: number; occupied: number; managerName: string; managerEmail: string; managerPhone: string }
+export interface PropertyFull { id: string; name: string; address: string; type: string; units: number; occupied: number; managerName: string; managerEmail: string; managerPhone: string; lat: number | null; lng: number | null }
 export async function getPropertiesFull(): Promise<PropertyFull[]> {
   const s = await db();
   const demo: PropertyFull[] = [
-    { id: "p1", name: "WoodGreen — Danforth", address: "1004 Danforth Ave", type: "residential", units: 142, occupied: 8, managerName: "Tom Bradley", managerEmail: "t.bradley@woodgreen.org", managerPhone: "416-555-2001" },
-    { id: "p2", name: "WoodGreen — East York", address: "850 Coxwell Ave", type: "residential", units: 98, occupied: 8, managerName: "Maria Rodriguez", managerEmail: "m.rodriguez@woodgreen.org", managerPhone: "416-555-2002" },
+    { id: "p1", name: "WoodGreen — Danforth", address: "1004 Danforth Ave", type: "residential", units: 142, occupied: 8, managerName: "Tom Bradley", managerEmail: "t.bradley@woodgreen.org", managerPhone: "416-555-2001", lat: 43.6797, lng: -79.3245 },
+    { id: "p2", name: "WoodGreen — East York", address: "850 Coxwell Ave", type: "residential", units: 98, occupied: 8, managerName: "Maria Rodriguez", managerEmail: "m.rodriguez@woodgreen.org", managerPhone: "416-555-2002", lat: 43.6905, lng: -79.3230 },
   ];
   if (!s) return demo;
   try {
-    const { data: props } = await s.from("properties").select("id,name,address,units,type,manager_name,manager_email,manager_phone").order("name");
+    const { data: props } = await s.from("properties").select("id,name,address,units,type,manager_name,manager_email,manager_phone,lat,lng").order("name");
     if (!props?.length) return demo;
     const { data: res } = await s.from("residents").select("property_id").eq("status", "active");
     const counts = new Map<string, number>();
     for (const r of res ?? []) if (r.property_id) counts.set(r.property_id, (counts.get(r.property_id) ?? 0) + 1);
-    return props.map((p) => ({ id: p.id, name: p.name, address: p.address ?? "—", type: p.type ?? "residential", units: p.units ?? 0, occupied: counts.get(p.id) ?? 0, managerName: p.manager_name ?? "—", managerEmail: p.manager_email ?? "", managerPhone: p.manager_phone ?? "" }));
+    return props.map((p) => ({ id: p.id, name: p.name, address: p.address ?? "—", type: p.type ?? "residential", units: p.units ?? 0, occupied: counts.get(p.id) ?? 0, managerName: p.manager_name ?? "—", managerEmail: p.manager_email ?? "", managerPhone: p.manager_phone ?? "", lat: (p as { lat?: number | null }).lat ?? null, lng: (p as { lng?: number | null }).lng ?? null }));
   } catch { return demo; }
 }
 

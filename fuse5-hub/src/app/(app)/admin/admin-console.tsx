@@ -3,6 +3,10 @@
 import { useState } from "react";
 import type { MemberRow, AuditRow, SubscriptionInfo, PlatformStats } from "@/lib/queries";
 import type { ProviderDemo, PlatformUserDemo, PlayerDemo, PortalConfig, ImpersonateTarget } from "@/lib/platform";
+import type {
+  ProviderRow, RoleTemplateRow, ApprovalWorkflowRow, ApprovalQueueRow,
+  IntegrationConfigRow, PermissionGrantRow,
+} from "@/lib/admin-store";
 import { MemberRoles } from "./member-roles";
 import { BillingPanel, OrgSettingsPanel, AuditPanel, PlatformOverviewPanel, AllProvidersPanel, ProviderRolesPanel, ProviderUsersPanel, EnvironmentsPanel, PermissionMatrixPanel, LocationPlayerPanel } from "./panels";
 import { TenantPortalForm } from "./tenant-portal-form";
@@ -33,6 +37,14 @@ export interface AdminConsoleProps {
   departments: DepartmentRow[];
   memberDepartments: Record<string, string | null>;
   departmentCounts: Record<string, number>;
+  // Real admin-persistence rows (migration 0020). Empty arrays in demo/no-backend
+  // → panels fall back to the static reference data from @/lib/platform[-admin].
+  providerRows: ProviderRow[];
+  roleTemplateRows: RoleTemplateRow[];
+  approvalWorkflowRows: ApprovalWorkflowRow[];
+  approvalQueueRows: ApprovalQueueRow[];
+  integrationConfigRows: IntegrationConfigRow[];
+  permissionGrantRows: PermissionGrantRow[];
 }
 
 type PanelKey = string;
@@ -97,18 +109,18 @@ export function AdminConsole(p: AdminConsoleProps) {
         {active === "org-settings" && <OrgSettingsPanel orgName={p.orgName} />}
         {active === "audit" && <AuditPanel audit={p.audit} />}
         {active === "platform-overview" && <PlatformOverviewPanel stats={p.stats} providers={p.providers} />}
-        {active === "all-providers" && <AllProvidersPanel providers={p.providers} />}
-        {active === "provider-roles" && <ProviderRolesPanel />}
+        {active === "all-providers" && <AllProvidersPanel providers={p.providers} rows={p.providerRows} />}
+        {active === "provider-roles" && <ProviderRolesPanel rows={p.roleTemplateRows} />}
         {active === "provider-users" && <ProviderUsersPanel users={p.users} />}
         {active === "environments" && <EnvironmentsPanel />}
         {active === "impersonation" && <ImpersonationPanel targets={p.impTargets} canImpersonate={p.canImpersonate} />}
-        {active === "permission-matrix" && <PermissionMatrixPanel />}
+        {active === "permission-matrix" && <PermissionMatrixPanel grants={p.permissionGrantRows} />}
         {active === "tenant-portal" && <TenantPortalForm initial={p.portal} canEdit={p.canManage} />}
         {active === "location-player" && <LocationPlayerPanel fleet={p.fleet} />}
         {active === "fuse5-roles" && <FuseRolesPanel />}
-        {active === "integrations" && <IntegrationsAdminPanel />}
+        {active === "integrations" && <IntegrationsAdminPanel configs={p.integrationConfigRows} />}
         {active === "template-library" && <TemplateLibraryPanel />}
-        {active === "approval-workflow" && <ApprovalWorkflowPanel />}
+        {active === "approval-workflow" && <ApprovalWorkflowPanel workflows={p.approvalWorkflowRows} queueRows={p.approvalQueueRows} />}
         {active === "compliance-settings" && <ComplianceSettingsPanel />}
       </section>
     </div>

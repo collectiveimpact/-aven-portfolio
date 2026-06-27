@@ -8,6 +8,7 @@ import {
   COMPLIANCE_FRAMEWORKS, PROVIDER_COMPLIANCE, complianceBenchmark, BILLING_MRR, BILLING_SUMMARY,
   type ApprovalStatus, type ApprovalItem, type MasterTemplate, type SysIntegration, type ProviderCompliance,
 } from "@/lib/platform-admin";
+import type { ApprovalWorkflowRow, ApprovalQueueRow, IntegrationConfigRow } from "@/lib/admin-store";
 import { syncComplianceScores } from "./compliance-actions";
 import {
   logApproval, logBulkApproval, saveApprovalWorkflow,
@@ -185,10 +186,19 @@ const DEFAULT_INTEGRATION_FIELDS = [{ key: "apiKey", label: "API key", placehold
 
 interface IntegrationState { enabled: boolean; settings: Record<string, string>; lastTest: { ok: boolean; latencyMs: number; at: string } | null }
 
-export function IntegrationsAdminPanel() {
-  const [state, setState] = useState<Record<string, IntegrationState>>(() =>
-    Object.fromEntries(SYSTEM_INTEGRATIONS.map((it) => [it.name, { enabled: true, settings: {}, lastTest: null }]))
-  );
+export function IntegrationsAdminPanel({ configs }: { configs: IntegrationConfigRow[] }) {
+  // Seed each source's enabled flag + saved settings from persisted config rows
+  // (keyed by source_key === integration name). Sources with no saved row keep
+  // the default (enabled, no settings) so the panel looks unchanged in demo.
+  const [state, setState] = useState<Record<string, IntegrationState>>(() => {
+    const byKey = new Map(configs.map((c) => [c.sourceKey, c]));
+    return Object.fromEntries(SYSTEM_INTEGRATIONS.map((it) => {
+      const row = byKey.get(it.name);
+      const settings: Record<string, string> = {};
+      if (row) for (const [k, v] of Object.entries(row.settings)) settings[k] = String(v);
+      return [it.name, { enabled: row ? row.enabled : true, settings, lastTest: null }];
+    }));
+  });
   const [configuring, setConfiguring] = useState<SysIntegration | null>(null);
   const [draftFields, setDraftFields] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState<string | null>(null);
@@ -443,12 +453,35 @@ const DEFAULT_WF_TEMPLATES: WfTemplate[] = [
   { id: "wf-3", name: "Kiwanis — 1-level", steps: [{ label: "Provider Admin", approverRole: "Provider Admin" }], thresholdReach: 0 },
 ];
 
-export function ApprovalWorkflowPanel() {
+// Map a persisted approval_queue row → the panel's ApprovalItem shape. The row
+// stores the decision-relevant fields; provider/recipients/schedule aren't
+// persisted, so we render neutral defaults. status "pending" → "submitted".
+function queueRowToItem(r: ApprovalQueueRow): ApprovalItem {
+  return {
+    id: r.id,
+    title: r.title,
+    provider: r.submittedBy ?? "—",
+    status: r.status === "pending" ? "submitted" : r.status,
+    category: r.category ?? "general-maintenance",
+    createdBy: r.submittedBy ?? "—",
+    createdAt: r.createdAt,
+    scheduledFor: null,
+    recipients: 0,
+    rejectionNote: r.status === "rejected" ? (r.note ?? undefined) : undefined,
+  };
+}
+
+// Map a persisted approval_workflows row → the builder's WfTemplate shape.
+function workflowRowToTemplate(r: ApprovalWorkflowRow): WfTemplate {
+  return { id: r.id, name: r.name, steps: r.steps.map((s) => ({ ...s })), thresholdReach: r.threshold ?? 0 };
+}
+
+export function ApprovalWorkflowPanel({ workflows, queueRows }: { workflows: ApprovalWorkflowRow[]; queueRows: ApprovalQueueRow[] }) {
   const tierOf = (catKey: string) => CATEGORY_TIERS.find((c) => c.key === catKey);
   const tierNum = (catKey: string) => tierOf(catKey)?.tier ?? 3;
 
-  // ---- Queue working state (optimistic over the reference data) ----
-  const [queue, setQueue] = useState<ApprovalItem[]>(() => APPROVAL_QUEUE.map((q) => ({ ...q })));
+  // ---- Queue working state (seeded from real rows when present, else demo) ----
+  const [queue, setQueue] = useState<ApprovalItem[]>(() => queueRows.length ? queueRows.map(queueRowToItem) : APPROVAL_QUEUE.map((q) => ({ ...q })));
   const [provFilter, setProvFilter] = useState("All");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [viewing, setViewing] = useState<ApprovalItem | null>(null);
@@ -457,8 +490,8 @@ export function ApprovalWorkflowPanel() {
   const [toast, setToast] = useState<{ msg: string; tone: "ok" | "info" } | null>(null);
   const [, start] = useTransition();
 
-  // ---- Workflow templates ----
-  const [wfTemplates, setWfTemplates] = useState<WfTemplate[]>(() => DEFAULT_WF_TEMPLATES);
+  // ---- Workflow templates (seeded from real rows when present, else demo) ----
+  const [wfTemplates, setWfTemplates] = useState<WfTemplate[]>(() => workflows.length ? workflows.map(workflowRowToTemplate) : DEFAULT_WF_TEMPLATES);
   const [wfDraft, setWfDraft] = useState<WfTemplate | null>(null);
   const [wfIsNew, setWfIsNew] = useState(false);
   const [wfFlash, setWfFlash] = useState<{ saved?: boolean; error?: string | null; persisted?: boolean }>({});
