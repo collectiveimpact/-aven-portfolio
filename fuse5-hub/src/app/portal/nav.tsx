@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/portal/requests", label: "Requests", icon: "✚" },
   { href: "/portal/surveys", label: "Surveys", icon: "✓" },
   { href: "/portal/ask", label: "Ask", icon: "?" },
+  { href: "/portal/notifications", label: "Alerts", icon: "🔔" },
 ];
 
 export function PortalNav() {

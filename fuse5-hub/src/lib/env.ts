@@ -55,6 +55,15 @@ export const YARDI_INTERFACE_ENTITY = process.env.YARDI_INTERFACE_ENTITY ?? "";
 export const YARDI_INTERFACE_LICENSE = process.env.YARDI_INTERFACE_LICENSE ?? "";
 export const hasYardiApi = Boolean(YARDI_BASE_URL && YARDI_USERNAME && YARDI_PASSWORD && YARDI_DATABASE);
 
+// Yardi Virtuoso Connectors (the newer MCP surface — RFM / vn_mcpframework tools).
+// Distinct from the SOAP interface above: this is an HTTP MCP endpoint (provided by
+// Fuse5/TechTAP) that exposes work-order CRUD + autocomplete. When both are set, the
+// agents and the staff WO-create path read/write live Yardi work orders; otherwise
+// they fall back to a deterministic stub so the demo keeps working.
+export const YARDI_MCP_URL = process.env.YARDI_MCP_URL ?? "";        // e.g. https://mcp.fuse5.ca/yardi-virtuoso
+export const YARDI_MCP_TOKEN = process.env.YARDI_MCP_TOKEN ?? "";    // bearer token for the MCP endpoint
+export const hasYardiMcp = Boolean(YARDI_MCP_URL && YARDI_MCP_TOKEN);
+
 export interface YardiCreds {
   baseUrl: string; username: string; password: string; database: string;
   server: string; platform: string; interfaceEntity: string; interfaceLicense: string;

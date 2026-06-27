@@ -2,6 +2,7 @@ import { getChannelsConfig } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canAdmin } from "@/lib/rbac";
 import { ChannelsConsole } from "./channels-console";
+import { getGoLiveState } from "./actions";
 
 // Channels — Delivery Configuration (IT / back-end).
 // This is an admin/IT surface: it wires up the delivery providers (Resend,
@@ -10,6 +11,7 @@ import { ChannelsConsole } from "./channels-console";
 export default async function ChannelsPage() {
   const [channels, me] = await Promise.all([getChannelsConfig(), getCurrentUser()]);
   const isAdmin = me?.role ? canAdmin(me.role) : false;
+  const goLive = isAdmin ? await getGoLiveState() : null;
 
   return (
     <main className="f5-content">
@@ -36,7 +38,7 @@ export default async function ChannelsPage() {
           </div>
         </div>
       ) : (
-        <ChannelsConsole channels={channels} />
+        <ChannelsConsole channels={channels} goLive={goLive!} />
       )}
     </main>
   );

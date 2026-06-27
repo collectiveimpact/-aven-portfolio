@@ -7,7 +7,13 @@ import {
   verifyResident,
   createRequest as createRequestData,
   submitSurvey as submitSurveyData,
+  savePushSubscription as savePushSubscriptionData,
+  uploadRequestPhoto as uploadRequestPhotoData,
+  postRequestMessage as postRequestMessageData,
+  getRequestMessages as getRequestMessagesData,
+  type RequestMessageRow,
 } from "@/lib/portal/data";
+import { sendPortalPush } from "@/lib/portal/push";
 import { generateText } from "@/lib/ai";
 import { hasAI } from "@/lib/env";
 
@@ -44,11 +50,71 @@ export async function submitRequest(_prev: RequestState, formData: FormData): Pr
 
   const category = String(formData.get("category") ?? "general");
   const description = String(formData.get("description") ?? "");
+  // photoUrl is the public URL of an already-uploaded Storage object (the form
+  // uploads the file via uploadPhoto() first, then submits the returned URL).
   const photoUrl = String(formData.get("photoUrl") ?? "");
 
   const r = await createRequestData(session, { category, description, photoUrl });
   if (!r.ok) return { error: r.error };
   revalidatePath("/portal/requests");
+  return { ok: true };
+}
+
+// ── Request photo upload (Storage) ───────────────────────────────────────────
+export type PhotoUploadState = { ok?: boolean; url?: string; error?: string };
+
+/** Upload a maintenance-request photo and return its public URL. */
+export async function uploadPhoto(_prev: PhotoUploadState, formData: FormData): Promise<PhotoUploadState> {
+  const session = await getPortalSession();
+  if (!session) return { error: "Your session has expired. Please sign in again." };
+  const file = formData.get("photo");
+  if (!(file instanceof File)) return { error: "No file selected." };
+  const r = await uploadRequestPhotoData(session, file);
+  if (!r.ok) return { error: r.error };
+  return { ok: true, url: r.url };
+}
+
+// ── Request chat thread ──────────────────────────────────────────────────────
+export type RequestMessageState = { ok?: boolean; error?: string; messages?: RequestMessageRow[] };
+
+/** Resident posts a message on one of their own requests; returns the thread. */
+export async function postRequestMessage(
+  _prev: RequestMessageState,
+  formData: FormData,
+): Promise<RequestMessageState> {
+  const session = await getPortalSession();
+  if (!session) return { error: "Your session has expired. Please sign in again." };
+  const workOrderId = String(formData.get("workOrderId") ?? "");
+  const body = String(formData.get("body") ?? "");
+  if (!workOrderId) return { error: "Request not found." };
+
+  const r = await postRequestMessageData(session, workOrderId, body);
+  if (!r.ok) return { error: r.error };
+  revalidatePath("/portal/requests");
+  const messages = await getRequestMessagesData(session, workOrderId);
+  return { ok: true, messages };
+}
+
+// ── Web-push subscription ────────────────────────────────────────────────────
+export type PushSubState = { ok?: boolean; error?: string };
+
+/** Persist a browser PushManager subscription for the signed-in resident. */
+export async function savePushSubscription(sub: {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}): Promise<PushSubState> {
+  const session = await getPortalSession();
+  if (!session) return { error: "Your session has expired. Please sign in again." };
+  const r = await savePushSubscriptionData(session, sub);
+  if (!r.ok) return { error: r.error };
+  // Fire a confirmation push (no-op stub until VAPID keys are configured).
+  await sendPortalPush(session.residentId, session.orgId, {
+    title: "Notifications on",
+    body: "You'll get updates about your building and maintenance requests here.",
+    url: "/portal",
+    tag: "portal-welcome",
+  });
   return { ok: true };
 }
 

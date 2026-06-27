@@ -1,6 +1,7 @@
 import { requireResident } from "@/lib/portal/guard";
-import { getMyRequests } from "@/lib/portal/data";
+import { getMyRequests, getRequestMessages } from "@/lib/portal/data";
 import { RequestForm } from "./request-form";
+import { RequestThread } from "./request-thread";
 
 const STATUS: Record<string, { label: string; bg: string; fg: string }> = {
   open: { label: "Open", bg: "var(--f5-teal-subtle)", fg: "var(--f5-teal)" },
@@ -19,6 +20,8 @@ function fmtDate(iso: string): string {
 export default async function PortalRequestsPage() {
   const { session } = await requireResident();
   const requests = await getMyRequests(session);
+  // Load each request's chat thread (each call re-verifies ownership server-side).
+  const threads = await Promise.all(requests.map((r) => getRequestMessages(session, r.id)));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
@@ -35,7 +38,7 @@ export default async function PortalRequestsPage() {
           <div className="f5-card"><div className="f5-portal-empty">No requests yet. Submitted requests will appear here.</div></div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {requests.map((r) => {
+            {requests.map((r, i) => {
               const s = STATUS[r.status] ?? STATUS.open;
               const desc = r.notice?.residentDescription;
               return (
@@ -62,10 +65,17 @@ export default async function PortalRequestsPage() {
                     </p>
                   )}
                   {r.notice?.photoUrl && (
-                    <a href={r.notice.photoUrl} target="_blank" rel="noreferrer" style={{ color: "var(--f5-teal)", fontSize: 12.5, marginTop: 8, display: "inline-block" }}>
-                      View attached photo
+                    <a href={r.notice.photoUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={r.notice.photoUrl}
+                        alt="Attached photo"
+                        style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid var(--f5-border)" }}
+                      />
                     </a>
                   )}
+
+                  <RequestThread workOrderId={r.id} initialMessages={threads[i]} />
                 </article>
               );
             })}

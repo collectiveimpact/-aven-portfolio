@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PortalSession } from "./session";
 
@@ -302,4 +303,183 @@ export async function submitSurvey(
   if (error) return { ok: false, error: error.message };
   await admin.from("surveys").update({ responses: (survey.responses ?? 0) + 1 }).eq("id", surveyId);
   return { ok: true };
+}
+
+// ── Web-push subscriptions ───────────────────────────────────────────────────
+// Persist the browser PushManager subscription for THIS resident so the (stubbed)
+// sender can later push to them. Scoped to the session's resident/org.
+
+export interface PushSubInput {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+export async function savePushSubscription(
+  session: PortalSession,
+  sub: PushSubInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Notifications aren't configured for this environment." };
+  const endpoint = sub.endpoint?.trim();
+  const p256dh = sub.p256dh?.trim();
+  const authKey = sub.auth?.trim();
+  if (!endpoint || !p256dh || !authKey) return { ok: false, error: "Invalid subscription." };
+
+  // Upsert on endpoint so re-enabling on the same browser refreshes the keys and
+  // re-binds them to the current signed-in resident/org.
+  const { error } = await admin
+    .from("portal_push_subscriptions")
+    .upsert(
+      {
+        resident_id: session.residentId,
+        org_id: session.orgId,
+        endpoint,
+        p256dh,
+        auth: authKey,
+      },
+      { onConflict: "endpoint" },
+    );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Has THIS resident registered at least one push subscription? (drives UI state) */
+export async function hasPushSubscription(session: PortalSession): Promise<boolean> {
+  const admin = createAdminClient();
+  if (!admin) return false;
+  const { count } = await admin
+    .from("portal_push_subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("resident_id", session.residentId)
+    .eq("org_id", session.orgId);
+  return (count ?? 0) > 0;
+}
+
+/** All push subscriptions for a resident (used by the stubbed sender). */
+export async function getPushSubscriptions(
+  residentId: string,
+  orgId: string,
+): Promise<{ endpoint: string; p256dh: string; auth: string }[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+  const { data } = await admin
+    .from("portal_push_subscriptions")
+    .select("endpoint,p256dh,auth")
+    .eq("resident_id", residentId)
+    .eq("org_id", orgId);
+  return (data ?? []) as { endpoint: string; p256dh: string; auth: string }[];
+}
+
+// ── Request chat thread ──────────────────────────────────────────────────────
+// A resident may read + post messages on THEIR OWN work orders. We re-verify
+// ownership (org + property + unit, matching getMyRequests) on every read/write
+// so a resident can never touch another unit's thread.
+
+export interface RequestMessageRow {
+  id: string;
+  work_order_id: string;
+  sender: "resident" | "staff";
+  body: string;
+  created_at: string;
+}
+
+/** Confirm a work order belongs to the signed-in resident's org + unit. */
+async function residentOwnsWorkOrder(
+  session: PortalSession,
+  workOrderId: string,
+): Promise<boolean> {
+  const admin = createAdminClient();
+  if (!admin) return false;
+  const resident = await getResident(session);
+  if (!resident) return false;
+  let q = admin
+    .from("work_orders")
+    .select("id")
+    .eq("id", workOrderId)
+    .eq("org_id", session.orgId);
+  // Same tightest-available scope as getMyRequests (work orders aren't keyed to a
+  // resident id). Both must match when present.
+  if (resident.property_id) q = q.eq("property_id", resident.property_id);
+  if (resident.unit) q = q.eq("unit", resident.unit);
+  const { data } = await q.maybeSingle();
+  return !!data;
+}
+
+export async function getRequestMessages(
+  session: PortalSession,
+  workOrderId: string,
+): Promise<RequestMessageRow[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+  // Ownership gate — never return another unit's thread.
+  if (!(await residentOwnsWorkOrder(session, workOrderId))) return [];
+  const { data } = await admin
+    .from("request_messages")
+    .select("id,work_order_id,sender,body,created_at")
+    .eq("work_order_id", workOrderId)
+    .eq("org_id", session.orgId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  return (data ?? []) as RequestMessageRow[];
+}
+
+export async function postRequestMessage(
+  session: PortalSession,
+  workOrderId: string,
+  body: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Messaging isn't configured for this environment." };
+  const text = body.trim();
+  if (!text) return { ok: false, error: "Type a message first." };
+  if (text.length > 2000) return { ok: false, error: "Message is too long." };
+  // Ownership gate — a resident may only post to their own request.
+  if (!(await residentOwnsWorkOrder(session, workOrderId))) {
+    return { ok: false, error: "Request not found." };
+  }
+  const { error } = await admin.from("request_messages").insert({
+    work_order_id: workOrderId,
+    org_id: session.orgId,
+    resident_id: session.residentId, // attribute to the signed-in resident
+    sender: "resident",
+    body: text,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// ── Request photo upload (Storage) ───────────────────────────────────────────
+// Uploads a resident-supplied photo to the public `request-photos` bucket via
+// the service role and returns its public URL. The caller stores that URL on the
+// work order's `notice` jsonb (matching how requests already persist photoUrl).
+
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic"];
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB
+
+export async function uploadRequestPhoto(
+  session: PortalSession,
+  file: File,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Photo upload isn't configured for this environment." };
+  if (!file || file.size === 0) return { ok: false, error: "No file selected." };
+  if (file.size > MAX_PHOTO_BYTES) return { ok: false, error: "Photo is too large (max 8 MB)." };
+  if (file.type && !ALLOWED_PHOTO_TYPES.includes(file.type)) {
+    return { ok: false, error: "Unsupported file type. Use JPG, PNG, WEBP, GIF, or HEIC." };
+  }
+
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+  // Path is org/resident-scoped + a random id → unguessable, and grouped for ops.
+  const rand = crypto.randomUUID();
+  const path = `${session.orgId}/${session.residentId}/${rand}.${ext}`;
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error } = await admin.storage
+    .from("request-photos")
+    .upload(path, bytes, { contentType: file.type || "image/jpeg", upsert: false });
+  if (error) return { ok: false, error: error.message };
+
+  const { data } = admin.storage.from("request-photos").getPublicUrl(path);
+  return { ok: true, url: data.publicUrl };
 }
