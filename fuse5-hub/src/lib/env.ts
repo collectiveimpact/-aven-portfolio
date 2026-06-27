@@ -10,6 +10,18 @@ export const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? "";
 export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN ?? "";
 export const TWILIO_FROM = process.env.TWILIO_FROM ?? "";
+// WhatsApp + Voice reuse the Twilio account creds above; they only add a sender.
+// WhatsApp From must be a Twilio WhatsApp-enabled number (e.g. "whatsapp:+14155238886"
+// or a bare "+1415…" which the adapter prefixes). Voice From is a voice-capable number.
+export const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM ?? "";
+export const TWILIO_VOICE_FROM = process.env.TWILIO_VOICE_FROM ?? "";
+// SendGrid is an alternate email provider to Resend (same {to,subject,html} shape).
+export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY ?? "";
+export const SENDGRID_FROM = process.env.SENDGRID_FROM ?? "";
+// A2P 10DLC registration state, surfaced read-only in the UI. This is the real
+// go-live gate for US SMS/WhatsApp throughput; carriers filter unregistered traffic.
+// Values: "unregistered" | "pending" | "registered" (free-form passthrough).
+export const A2P_10DLC_STATUS = process.env.A2P_10DLC_STATUS ?? "unregistered";
 // Service-role key + cron secret enable headless agents (e.g. the scheduled
 // compliance-score sync) to authenticate and write without a user session.
 export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -18,6 +30,9 @@ export const COMPLIANCE_SYNC_ORG_ID = process.env.COMPLIANCE_SYNC_ORG_ID ?? "";
 export const hasAI = Boolean(ANTHROPIC_API_KEY);
 export const hasEmail = Boolean(RESEND_API_KEY);
 export const hasSms = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM);
+export const hasWhatsApp = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_WHATSAPP_FROM);
+export const hasVoice = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_VOICE_FROM);
+export const hasSendgrid = Boolean(SENDGRID_API_KEY && SENDGRID_FROM);
 
 // Demo affordances (prefilled login creds, demo hints). ON for local/dev; OFF in
 // production unless NEXT_PUBLIC_DEMO=true is set explicitly. Client-safe flag.

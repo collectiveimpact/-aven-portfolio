@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PropertyOption } from "@/lib/queries";
 import { sendEmergency } from "./actions";
 import { TargetingPanel } from "./targeting-panel";
+import { EscalationPanel } from "./escalation-panel";
 import {
   buildingFor,
   describeSelection,
@@ -21,6 +22,14 @@ import {
   templatesForIncident,
   type SeverityId,
 } from "@/lib/emergency/catalog";
+import {
+  INCIDENT_PHASE_BY_ID,
+  RESPONSE_LEVEL_BY_ID,
+  meetsFanoutCriteria,
+  type FanoutCriterionId,
+  type PhaseId,
+  type ResponseLevelId,
+} from "@/lib/emergency/escalation";
 
 interface Props {
   properties: PropertyOption[];
@@ -41,10 +50,30 @@ export function EmergencyConsole({ properties, canBroadcast }: Props) {
   const [propertyId, setPropertyId] = useState<string>(properties[0]?.id ?? "");
   const [selection, setSelection] = useState<TargetSelection>(emptySelection());
 
-  const [result, setResult] = useState<{ ok: boolean; sent?: number; mode?: string; error?: string } | null>(null);
+  // Escalation state — response level, phase, and manually-flagged fan-out criteria.
+  const [responseLevel, setResponseLevel] = useState<ResponseLevelId>("L1");
+  const [phase, setPhase] = useState<PhaseId>("event");
+  const [flaggedCriteria, setFlaggedCriteria] = useState<FanoutCriterionId[]>([]);
+
+  const [result, setResult] = useState<{ ok: boolean; sent?: number; mode?: string; error?: string; reference?: string } | null>(null);
 
   const templates = useMemo(() => templatesForIncident(incidentId), [incidentId]);
   const sevDef = SEVERITY_BY_ID[severity];
+  const levelDef = RESPONSE_LEVEL_BY_ID[responseLevel];
+  const phaseDef = INCIDENT_PHASE_BY_ID[phase];
+
+  // Does the current incident + severity + flagged criteria meet fan-out?
+  const fanoutRequired = useMemo(
+    () => meetsFanoutCriteria({ incidentId, severity, flaggedCriteria }),
+    [incidentId, severity, flaggedCriteria],
+  );
+
+  function toggleCriterion(id: FanoutCriterionId) {
+    setFlaggedCriteria((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+    setResult(null);
+  }
 
   // Live recipient scope from the targeting panel.
   const property = properties.find((p) => p.id === propertyId) ?? properties[0];
@@ -90,6 +119,9 @@ export function EmergencyConsole({ properties, canBroadcast }: Props) {
         scopeLabel,
         audienceCount,
         overrideQuietHours: sevDef.overrideQuietHours,
+        responseLevel: levelDef.id,
+        phaseLabel: phaseDef.label,
+        fanoutRequired,
       });
       setResult(r);
       if (r.ok) router.refresh();
@@ -176,6 +208,18 @@ export function EmergencyConsole({ properties, canBroadcast }: Props) {
             {sevDef.overrideQuietHours && (
               <span className="f5-badge bad">Overrides quiet hours</span>
             )}
+            <span
+              className="f5-badge"
+              style={{
+                background: `color-mix(in srgb, ${levelDef.colorToken} 16%, transparent)`,
+                color: levelDef.colorToken,
+                borderColor: levelDef.colorToken,
+              }}
+            >
+              {levelDef.label}
+            </span>
+            <span className="f5-badge">Phase {phaseDef.num}</span>
+            {fanoutRequired && <span className="f5-badge bad">⚠ Fan-out required</span>}
           </div>
 
           <label className="f5-label" style={{ marginTop: 12 }} htmlFor="template">Fan-out template</label>
@@ -226,8 +270,27 @@ export function EmergencyConsole({ properties, canBroadcast }: Props) {
           </div>
 
           {result?.ok && (
-            <div className="f5-badge ok" style={{ display: "inline-block", marginTop: 12 }}>
-              ✓ Broadcast sent to {(result.sent ?? 0).toLocaleString()} recipients{result.mode === "demo" ? " (demo)" : ""}
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="f5-badge ok" style={{ display: "inline-block" }}>
+                ✓ Broadcast sent to {(result.sent ?? 0).toLocaleString()} recipients{result.mode === "demo" ? " (demo)" : ""}
+              </div>
+              {result.reference && (
+                <div style={{ fontSize: 12, color: "var(--f5-text-secondary)" }}>
+                  CRM reference:{" "}
+                  <code
+                    style={{
+                      fontWeight: 700,
+                      color: "var(--f5-text)",
+                      background: "var(--f5-surface-2, var(--f5-border))",
+                      padding: "1px 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {result.reference}
+                  </code>{" "}
+                  — keep this to track the incident in the emergency log.
+                </div>
+              )}
             </div>
           )}
           {result && !result.ok && (
@@ -268,6 +331,17 @@ export function EmergencyConsole({ properties, canBroadcast }: Props) {
           onChange={setSelection}
         />
       </div>
+
+      {/* ---- Crisis escalation: response level · phase · fan-out chain ---- */}
+      <EscalationPanel
+        responseLevel={responseLevel}
+        onResponseLevel={(id) => { setResponseLevel(id); setResult(null); }}
+        phase={phase}
+        onPhase={(id) => { setPhase(id); setResult(null); }}
+        flaggedCriteria={flaggedCriteria}
+        onToggleCriterion={toggleCriterion}
+        fanoutRequired={fanoutRequired}
+      />
     </div>
   );
 }

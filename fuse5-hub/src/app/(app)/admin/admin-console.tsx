@@ -8,6 +8,7 @@ import { BillingPanel, OrgSettingsPanel, AuditPanel, PlatformOverviewPanel, AllP
 import { TenantPortalForm } from "./tenant-portal-form";
 import { ImpersonationPanel } from "./impersonation-panel";
 import { ModulesPanel } from "./modules-panel";
+import { TierPanel } from "./tier-panel";
 import { DepartmentsPanel } from "./departments-panel";
 import type { DepartmentRow } from "./actions";
 import { FuseRolesPanel, IntegrationsAdminPanel, TemplateLibraryPanel, ApprovalWorkflowPanel, ComplianceSettingsPanel, PlatformBillingTable } from "./admin-panels-v2";
@@ -39,6 +40,7 @@ const ACCOUNT: { key: PanelKey; label: string }[] = [
   { key: "users-roles", label: "Users & Roles" },
   { key: "departments", label: "Departments" },
   { key: "modules", label: "Modules" },
+  { key: "tiers", label: "Plans & Tiers" },
   { key: "billing", label: "License & Billing" },
   { key: "org-settings", label: "Org Settings" },
   { key: "audit", label: "Audit Log" },
@@ -91,6 +93,7 @@ export function AdminConsole(p: AdminConsoleProps) {
         {active === "departments" && <DepartmentsPanel departments={p.departments} memberCounts={p.departmentCounts} canManage={p.canManage} />}
         {active === "billing" && (p.isSuper ? <PlatformBillingTable /> : <BillingPanel sub={p.sub} />)}
         {active === "modules" && <ModulesPanel initial={p.moduleConfig} canEdit={p.canManage} />}
+        {active === "tiers" && <TierPanel initial={p.moduleConfig} canEdit={p.canManage} />}
         {active === "org-settings" && <OrgSettingsPanel orgName={p.orgName} />}
         {active === "audit" && <AuditPanel audit={p.audit} />}
         {active === "platform-overview" && <PlatformOverviewPanel stats={p.stats} providers={p.providers} />}
