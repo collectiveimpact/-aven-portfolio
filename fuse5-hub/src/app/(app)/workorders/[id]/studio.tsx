@@ -6,6 +6,7 @@ import Link from "next/link";
 import { saveNotice, publishNotice, submitForReview, approveNotice, rejectNotice } from "../actions";
 import type { WorkOrderDetail, RecipientSummary, NoticeDraft } from "@/lib/queries";
 import { renderNoticeEmailHtml, themeFor } from "@/lib/notice-template";
+import { RequestChat } from "./request-chat";
 
 const STEPS: { key: string; label: string }[] = [
   { key: "draft", label: "Draft" },
@@ -203,6 +204,8 @@ export function NoticeStudio({ wo, recipients, canApprove, orgName }: { wo: Work
           </div>
         </div>
       </div>
+
+      <RequestChat woId={wo.id} />
     </main>
   );
 }

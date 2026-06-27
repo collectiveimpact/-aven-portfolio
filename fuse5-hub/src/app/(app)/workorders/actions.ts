@@ -8,6 +8,7 @@ import { sendSms } from "@/lib/sms";
 import { isSystemField } from "@/lib/wo-fields";
 import { canBroadcast, canPublish } from "@/lib/rbac";
 import { renderNoticeEmailHtml } from "@/lib/notice-template";
+import { sendPortalPush } from "@/lib/portal/push";
 
 // Operational status lifecycle (separate from the notice approval workflow):
 // open → in_progress → resolved. Settable from the work-order queue.
@@ -186,4 +187,53 @@ export async function publishNotice(woId: string): Promise<{ ok: boolean; sent?:
   await supabase.from("work_orders").update({ notice_status: "published" }).eq("id", woId);
   await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Notice Published", detail: `"${wo.title}" — ${sent} recipients (email/SMS by preference)` });
   return { ok: true, sent };
+}
+
+// ── Resident request chat (staff side) ──────────────────────────────────────
+// The resident posts on their maintenance request from /portal; staff read the
+// thread + reply here. RLS scopes request_messages to the caller's org.
+export interface ThreadMessage { id: string; sender: "resident" | "staff"; body: string; createdAt: string }
+
+export async function getRequestThread(woId: string): Promise<ThreadMessage[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const me = await getCurrentUser();
+  if (!me?.orgId) return [];
+  const { data } = await supabase
+    .from("request_messages")
+    .select("id,sender,body,created_at")
+    .eq("work_order_id", woId)
+    .eq("org_id", me.orgId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((m) => ({ id: m.id as string, sender: (m.sender as "resident" | "staff"), body: m.body as string, createdAt: m.created_at as string }));
+}
+
+export async function postStaffReply(woId: string, body: string): Promise<{ ok: boolean; error?: string }> {
+  const text = body.trim();
+  if (!text) return { ok: false, error: "Message is empty." };
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "No backend configured." };
+  const me = await getCurrentUser();
+  if (!me?.orgId) return { ok: false, error: "No organization." };
+  if (!me.role || !canPublish(me.role)) return { ok: false, error: "Your role can't reply to residents." };
+
+  // Target the resident who owns this thread (latest resident message on the WO).
+  const { data: prior } = await supabase
+    .from("request_messages")
+    .select("resident_id")
+    .eq("work_order_id", woId).eq("org_id", me.orgId).eq("sender", "resident")
+    .order("created_at", { ascending: false }).limit(1);
+  const residentId = (prior?.[0]?.resident_id as string | null) ?? null;
+
+  const { error } = await supabase.from("request_messages").insert({
+    work_order_id: woId, org_id: me.orgId, resident_id: residentId, sender: "staff", body: text,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Request Reply Sent", detail: `Work order ${woId}` });
+  // Best-effort push to the resident (no-op until VAPID keys are set).
+  if (residentId) {
+    try { await sendPortalPush(residentId, me.orgId, { title: "Update on your request", body: text.slice(0, 120), url: "/portal/requests" }); } catch { /* non-blocking */ }
+  }
+  return { ok: true };
 }
