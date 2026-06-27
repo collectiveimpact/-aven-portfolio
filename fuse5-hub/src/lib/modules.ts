@@ -16,6 +16,7 @@ export interface ModuleDef {
   group: string;
   ico: string;
   core?: boolean;       // always on, cannot be deactivated (Overview, Admin, Settings)
+  hidden?: boolean;     // kept activatable/routable but NOT shown in the sidebar (lives inside Admin)
   foundational?: boolean; // many modules depend on it — warn before deactivating
   requires: string[];   // module keys this one needs to be useful (interconnections)
   roles: F5Role[];      // roles allowed to view (permission-to-view)
@@ -62,8 +63,8 @@ export const MODULES: ModuleDef[] = [
   { key: "compliance", href: "/compliance", label: "Compliance", ico: "🛡", group: "Property Ops", requires: ["properties"], roles: STAFF, description: "RentSafeTO/standards scores per property. Optional — off until an org opts in." },
 
   // Admin — back-of-house config. Channels is IT/config, not a user-facing surface.
-  { key: "channels", href: "/channels", label: "Channels", ico: "📡", group: "Admin", foundational: true, requires: [], roles: SUPER, description: "Email/SMS/WhatsApp/voice/display delivery config (IT/back-end). Required by all messaging." },
-  { key: "integrations", href: "/integrations", label: "Integrations", ico: "🔌", group: "Admin", requires: [], roles: SUPER, description: "Yardi/HMIS and other system connectors." },
+  { key: "channels", href: "/channels", label: "Channels", ico: "📡", group: "Admin", hidden: true, foundational: true, requires: [], roles: SUPER, description: "Email/SMS/WhatsApp/voice/display delivery config (IT/back-end). Lives inside Admin → Delivery & Channels." },
+  { key: "integrations", href: "/integrations", label: "Integrations", ico: "🔌", group: "Admin", hidden: true, requires: [], roles: SUPER, description: "Yardi/HMIS and other system connectors. Lives inside Admin → Delivery & Channels." },
   { key: "ai-agents", href: "/ai-agents", label: "AI Agents", ico: "✦", group: "Admin", requires: [], roles: SUPER, description: "Configure the AI agents (compose assist, compliance sync…)." },
   { key: "admin", href: "/admin", label: "Admin", ico: "👤", group: "Admin", core: true, requires: [], roles: ADMIN, description: "Account administration, users, modules, portal." },
   { key: "settings", href: "/settings", label: "Settings", ico: "⚙", group: "Admin", core: true, requires: [], roles: ALL, description: "Personal & account settings." },
@@ -103,6 +104,6 @@ export function resolveEnabled(chosen: Iterable<string>): Set<string> {
 
 // The final visible nav for a user: enabled (org) ∩ permitted (role), grouped.
 export function visibleModules(enabled: Set<string>, role: F5Role | null): { group: string; items: ModuleDef[] }[] {
-  const items = MODULES.filter((m) => (m.core || enabled.has(m.key)) && (!role || m.roles.includes(role)));
+  const items = MODULES.filter((m) => !m.hidden && (m.core || enabled.has(m.key)) && (!role || m.roles.includes(role)));
   return MODULE_GROUPS.map((group) => ({ group, items: items.filter((m) => m.group === group) })).filter((g) => g.items.length > 0);
 }

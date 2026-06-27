@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { MemberRow, AuditRow, SubscriptionInfo, PlatformStats } from "@/lib/queries";
 import type { ProviderDemo, PlatformUserDemo, PlayerDemo, PortalConfig, ImpersonateTarget } from "@/lib/platform";
 import type {
@@ -48,56 +49,77 @@ export interface AdminConsoleProps {
 }
 
 type PanelKey = string;
-const ACCOUNT: { key: PanelKey; label: string }[] = [
-  { key: "users-roles", label: "Users & Roles" },
-  { key: "departments", label: "Departments" },
-  { key: "modules", label: "Modules" },
-  { key: "tiers", label: "Plans & Tiers" },
-  { key: "billing", label: "License & Billing" },
-  { key: "org-settings", label: "Org Settings" },
-  { key: "audit", label: "Audit Log" },
-];
-const PLATFORM: { key: PanelKey; label: string }[] = [
-  { key: "platform-overview", label: "Platform Overview" },
-  { key: "fuse5-roles", label: "Users & Permissions" },
-  { key: "all-providers", label: "All Providers" },
-  { key: "provider-roles", label: "Provider Role Templates" },
-  { key: "provider-users", label: "All Provider Users" },
-  { key: "environments", label: "Environments" },
-  { key: "impersonation", label: "Impersonation" },
-  { key: "permission-matrix", label: "Permission Matrix" },
-  { key: "tenant-portal", label: "Tenant Portal Config" },
-  { key: "location-player", label: "Location-Player Config" },
-  { key: "integrations", label: "Data Sources & Integrations" },
-  { key: "template-library", label: "Template Library" },
-  { key: "approval-workflow", label: "Approval Workflow" },
-  { key: "compliance-settings", label: "Compliance Settings" },
+// Nav item: `key` switches an in-page panel; `href` is an external link (full
+// page, e.g. Channels); `sup` gates the item to Fuse5 super-admins.
+type NavItem = { key: PanelKey; label: string; sup?: boolean; href?: string };
+// Grouped Admin navigation. Empty groups (all items gated out) are hidden.
+const SECTIONS: { title: string; items: NavItem[] }[] = [
+  { title: "People & Access", items: [
+    { key: "users-roles", label: "Users & Roles" },
+    { key: "departments", label: "Departments" },
+    { key: "fuse5-roles", label: "Users & Permissions", sup: true },
+    { key: "permission-matrix", label: "Permission Matrix", sup: true },
+    { key: "impersonation", label: "Impersonation", sup: true },
+  ] },
+  { title: "Plan & Account", items: [
+    { key: "tiers", label: "Plans & Tiers" },
+    { key: "billing", label: "License & Billing" },
+    { key: "modules", label: "Modules" },
+    { key: "org-settings", label: "Org Settings" },
+  ] },
+  { title: "Delivery & Channels", items: [
+    { key: "channels-link", label: "Channels", sup: true, href: "/channels" },
+    { key: "integrations", label: "Data Sources & Integrations", sup: true },
+    { key: "tenant-portal", label: "Tenant Portal Config", sup: true },
+    { key: "location-player", label: "Location-Player Config", sup: true },
+  ] },
+  { title: "Content & Workflows", items: [
+    { key: "template-library", label: "Template Library", sup: true },
+    { key: "approval-workflow", label: "Approval Workflow", sup: true },
+    { key: "compliance-settings", label: "Compliance Settings", sup: true },
+  ] },
+  { title: "Platform", items: [
+    { key: "platform-overview", label: "Platform Overview", sup: true },
+    { key: "all-providers", label: "All Providers", sup: true },
+    { key: "provider-roles", label: "Provider Role Templates", sup: true },
+    { key: "provider-users", label: "All Provider Users", sup: true },
+    { key: "environments", label: "Environments", sup: true },
+  ] },
+  { title: "Audit", items: [
+    { key: "audit", label: "Audit Log" },
+  ] },
 ];
 
 export function AdminConsole(p: AdminConsoleProps) {
   const [active, setActive] = useState<PanelKey>("users-roles");
 
-  const NavGroup = ({ title, items }: { title: string; items: { key: PanelKey; label: string }[] }) => (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.8, color: "var(--f5-text-dim)", padding: "0 10px 6px" }}>{title}</div>
-      {items.map((it) => (
-        <button key={it.key} type="button" onClick={() => setActive(it.key)}
-          className="f5-btn"
-          style={{ display: "block", width: "100%", textAlign: "left", marginBottom: 3, padding: "7px 10px", fontSize: 13,
-            background: active === it.key ? "var(--f5-teal-soft, rgba(0,153,153,0.15))" : "transparent",
-            border: active === it.key ? "1px solid var(--f5-teal,#009999)" : "1px solid transparent",
-            color: active === it.key ? "var(--f5-text)" : "var(--f5-text-secondary)" }}>
-          {it.label}
-        </button>
-      ))}
-    </div>
-  );
+  const itemStyle = (on: boolean) => ({
+    display: "block", width: "100%", textAlign: "left" as const, marginBottom: 3, padding: "7px 10px", fontSize: 13,
+    background: on ? "var(--f5-teal-soft, rgba(0,153,153,0.15))" : "transparent",
+    border: on ? "1px solid var(--f5-teal,#009999)" : "1px solid transparent",
+    color: on ? "var(--f5-text)" : "var(--f5-text-secondary)",
+  });
+  const NavGroup = ({ title, items }: { title: string; items: NavItem[] }) => {
+    const visible = items.filter((it) => !it.sup || p.isSuper);
+    if (visible.length === 0) return null;
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.8, color: "var(--f5-text-dim)", padding: "0 10px 6px" }}>{title}</div>
+        {visible.map((it) => it.href ? (
+          <Link key={it.key} href={it.href} className="f5-btn" style={itemStyle(false)}>{it.label} ↗</Link>
+        ) : (
+          <button key={it.key} type="button" onClick={() => setActive(it.key)} className="f5-btn" style={itemStyle(active === it.key)}>
+            {it.label}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start" }}>
       <nav className="f5-card" style={{ padding: 12, position: "sticky", top: 16 }}>
-        <NavGroup title="Account" items={ACCOUNT} />
-        {p.isSuper && <NavGroup title="Fuse5 Platform" items={PLATFORM} />}
+        {SECTIONS.map((s) => <NavGroup key={s.title} title={s.title} items={s.items} />)}
       </nav>
 
       <section style={{ minWidth: 0 }}>
