@@ -3,8 +3,8 @@
 import type { Channel } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import { sendEmail } from "@/lib/email";
-import { sendSms } from "@/lib/sms";
+import { dispatchMessage } from "@/lib/comms-dispatch";
+import type { ChannelKey } from "@/lib/queries";
 import { generateText } from "@/lib/ai";
 
 // AI authoring for the Compose door (Content Composer). Live with ANTHROPIC_API_KEY, stub otherwise.
@@ -109,25 +109,27 @@ export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroa
       .limit(200);
 
     const html = `<div>${input.body.replace(/\n/g, "<br/>")}</div>`;
-    const want = input.channels;
+    // "display" is a screen-level channel (pushed via the Wallboard feed), not a
+    // per-resident send — exclude it from the recipient loop.
+    const want = (input.channels as string[]).filter((c) => c !== "display");
+    const hasContact = (c: string, r: { email: unknown; phone: unknown }) =>
+      c === "email" ? Boolean(r.email) : (c === "sms" || c === "whatsapp" || c === "voice") ? Boolean(r.phone) : false;
     for (const r of residents ?? []) {
-      const pref = r.preferred_channel as "email" | "sms" | "whatsapp" | null;
-      let ch: "email" | "sms" | null = null;
-      if ((pref === "sms" || pref === "whatsapp") && want.includes("sms") && r.phone) ch = "sms";
-      else if (pref === "email" && want.includes("email") && r.email) ch = "email";
-      if (!ch) { // fallback by availability within selected channels
-        if (want.includes("email") && r.email) ch = "email";
-        else if (want.includes("sms") && r.phone) ch = "sms";
-      }
+      const pref = r.preferred_channel as string | null;
+      // Prefer the resident's channel when it's selected + reachable; else the
+      // first selected channel we can actually deliver on.
+      const ch = pref && want.includes(pref) && hasContact(pref, r) ? pref : want.find((c) => hasContact(c, r)) ?? null;
       if (!ch) continue;
-
-      const res = ch === "email"
-        ? await sendEmail({ to: r.email as string, subject: input.subject, html })
-        : await sendSms(r.phone as string, `${input.subject}: ${input.body}`);
-      const ok = res.ok;
-      if (ok) sent += 1;
+      const to = (ch === "email" ? r.email : r.phone) as string;
+      const res = await dispatchMessage({
+        channel: ch as ChannelKey,
+        to,
+        subject: input.subject,
+        body: ch === "email" ? html : `${input.subject}: ${input.body}`,
+      });
+      if (res.ok) sent += 1;
       await supabase.from("message_recipients").insert({
-        org_id: orgId, message_id: msg.id, resident_id: r.id, channel: ch, status: ok ? "delivered" : "bounced",
+        org_id: orgId, message_id: msg.id, resident_id: r.id, channel: ch, status: res.ok ? "delivered" : "bounced",
       });
     }
   } else {

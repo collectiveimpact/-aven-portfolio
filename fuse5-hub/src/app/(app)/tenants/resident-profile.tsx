@@ -11,6 +11,8 @@ import {
   accessibilityLabel,
   ageFromDob,
 } from "@/lib/residents/types";
+import { Timeline } from "@/components/timeline";
+import type { TimelineStatus } from "@/components/timeline";
 
 const fg = "var(--f5-text)";
 const dim = "var(--f5-text-muted)";
@@ -48,6 +50,14 @@ function YesNo({ v, alertOnYes = false }: { v: string | null; alertOnYes?: boole
 
 const prioClass = (p: string) => (p === "urgent" || p === "high" ? "warn" : p === "resolved" ? "ok" : "");
 const statusClass = (s: string) => (s === "resolved" ? "ok" : s === "open" ? "warn" : "");
+
+// Map a comm channel to a timeline status colour + glyph. Direct channels
+// (SMS / WhatsApp) read as "success" with a chat bubble; email is informational.
+function commChannel(channel: string): { status: TimelineStatus; icon: React.ReactNode } {
+  const c = channel.toLowerCase();
+  if (c.includes("sms") || c.includes("whatsapp")) return { status: "success", icon: "💬" };
+  return { status: "info", icon: "✉" };
+}
 
 export function ResidentProfile({ resident, onClose }: { resident: ResidentWithDemographics; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("Overview");
@@ -235,13 +245,21 @@ export function ResidentProfile({ resident, onClose }: { resident: ResidentWithD
           {tab === "History" && (
             <div style={{ gridColumn: "1 / -1" }}>
               <div className="f5-section-title" style={{ marginTop: 0 }}>Communication Timeline</div>
-              {comms.length === 0 && <div style={{ fontSize: 13, color: dim, padding: "6px 0" }}>No communications on file.</div>}
-              {comms.map((e, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "9px 0", borderBottom: "1px solid var(--f5-border)" }}>
-                  <div><div style={{ color: fg }}>{e.what}</div><div style={{ fontSize: 11, color: dim }}>{e.channel} · {e.when}</div></div>
-                  <span className="f5-badge ok" style={{ alignSelf: "center" }}>{e.status}</span>
-                </div>
-              ))}
+              <Timeline
+                density="compact"
+                emptyLabel="No communications on file."
+                items={comms.map((e, i) => {
+                  const ch = commChannel(e.channel);
+                  return {
+                    id: String(i),
+                    title: e.what,
+                    timestamp: e.when,
+                    description: `${e.channel} · ${e.status}`,
+                    status: ch.status,
+                    icon: ch.icon,
+                  };
+                })}
+              />
 
               <div className="f5-section-title">Work Orders</div>
               {workOrders.length === 0 && <div style={{ fontSize: 13, color: dim, padding: "6px 0" }}>No work orders against this unit.</div>}

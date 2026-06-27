@@ -9,6 +9,7 @@ import type { PlatformStats, AuditRow, SubscriptionInfo } from "@/lib/queries";
 import type { ProviderRow, RoleTemplateRow, PermissionGrantRow } from "@/lib/admin-store";
 import { recordPlatformAction } from "./providers-actions";
 import { Overlay, OverlayHeader, Saved } from "./admin-prov-ui";
+import { Timeline } from "@/components/timeline";
 
 const dim = "var(--f5-text-muted)";
 const fg = "var(--f5-text)";
@@ -55,17 +56,24 @@ export function OrgSettingsPanel({ orgName }: { orgName: string }) {
   );
 }
 
+// Actions that represent a destructive or emergency event surface as "critical"
+// on the audit timeline; everything else is informational.
+const AUDIT_CRITICAL = /emergenc|delete|remov|suspend|revok|reset|terminat|disable|breach|escalat/i;
+
 export function AuditPanel({ audit }: { audit: AuditRow[] }) {
   return (
     <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
-      <table className="f5-table">
-        <thead><tr><th>Actor</th><th>Action</th><th>Detail</th><th>Time</th></tr></thead>
-        <tbody>
-          {audit.map((e) => (
-            <tr key={e.id}><td style={{ color: fg, fontWeight: 600 }}>{e.actor}</td><td>{e.action}</td><td>{e.detail}</td><td style={{ color: "var(--f5-text-dim)" }}>{e.when}</td></tr>
-          ))}
-        </tbody>
-      </table>
+      <Timeline
+        emptyLabel="No audit activity recorded yet."
+        style={{ padding: 16 }}
+        items={audit.map((e) => ({
+          id: e.id,
+          title: e.action,
+          timestamp: e.when,
+          description: `${e.actor} · ${e.detail}`,
+          status: AUDIT_CRITICAL.test(`${e.action} ${e.detail}`) ? "critical" : "info",
+        }))}
+      />
     </div>
   );
 }

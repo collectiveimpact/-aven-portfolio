@@ -5,7 +5,7 @@ import type { Channel } from "@/lib/types";
 import type { ComposeTemplate } from "@/lib/queries";
 import { sendBroadcast, saveDraft, aiCompose } from "./actions";
 
-const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "display"]);
+const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "voice", "display"]);
 
 type Priority = "normal" | "high" | "emergency";
 type Delivery = "now" | "schedule";
@@ -15,6 +15,7 @@ const CHANNELS: ChannelOption[] = [
   { key: "email", label: "Email", ico: "✉️" },
   { key: "sms", label: "SMS", ico: "💬" },
   { key: "whatsapp", label: "WhatsApp", ico: "🟢" },
+  { key: "voice", label: "Voice", ico: "📞" },
   { key: "display", label: "Display", ico: "🖥️" },
 ];
 

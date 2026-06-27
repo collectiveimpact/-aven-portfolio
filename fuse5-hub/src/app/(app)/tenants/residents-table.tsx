@@ -6,6 +6,11 @@ import type { PropertyOption } from "@/lib/queries";
 import type { ResidentWithDemographics } from "@/lib/residents/types";
 import { saveResident, deleteResident, type ResidentInput } from "./actions";
 import { ResidentProfile } from "./resident-profile";
+import { downloadTemplateCSV } from "@/lib/export";
+
+// Header set + example row for the resident bulk-import CSV template.
+const IMPORT_HEADERS = ["name", "email", "phone", "unit", "property", "preferred_channel", "language"];
+const IMPORT_EXAMPLE = ["Amara Okafor", "amara@example.org", "416-555-0142", "204", "Cedarview Apartments", "sms", "English"];
 
 function fmtDate(v: string | null): string {
   if (!v) return "—";
@@ -69,7 +74,16 @@ export function ResidentsTable({ residents, properties, canEdit }: {
     <>
       <div className="f5-section-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>Resident Directory</span>
-        {canEdit && <button className="f5-btn primary" onClick={openAdd}>+ Add Resident</button>}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            className="f5-btn"
+            type="button"
+            onClick={() => downloadTemplateCSV(IMPORT_HEADERS, "resident-import-template", IMPORT_EXAMPLE)}
+          >
+            ↓ Download import template
+          </button>
+          {canEdit && <button className="f5-btn primary" onClick={openAdd}>+ Add Resident</button>}
+        </div>
       </div>
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
