@@ -33,7 +33,7 @@ export async function getWoFieldConfig(noticeType = "general"): Promise<Resolved
 // embedding their own data. Row types are flat + page-ready.
 
 export interface ResidentRow { id: string; unit: string; name: string; propertyName: string; propertyId: string | null; email: string; phone: string; language: string; preferredChannel: string; status: "active" | "moved_out" }
-export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved"; channels: string[]; noticeStatus: "none"|"draft"|"pending_review"|"approved"|"published" }
+export interface WorkOrderRow { id: string; title: string; propertyName: string; unit: string; category: string; priority: "low"|"medium"|"high"|"urgent"; status: "open"|"in_progress"|"resolved"; channels: string[]; noticeStatus: "none"|"draft"|"pending_review"|"approved"|"published"; source?: "portal"|"staff" }
 export interface PropertyOption { id: string; name: string }
 
 export async function getProperties(): Promise<PropertyOption[]> {
@@ -71,9 +71,13 @@ export async function getWorkOrders(): Promise<WorkOrderRow[]> {
   const s = await db();
   if (!s) return DEMO.workOrders;
   try {
-    const { data } = await s.from("work_orders").select("id,title,unit,category,priority,status,channels,notice_status,properties(name)").order("created_at", { ascending: false });
+    const { data } = await s.from("work_orders").select("id,title,unit,category,priority,status,channels,notice_status,notice_type,notice,properties(name)").order("created_at", { ascending: false });
     if (!data?.length) return fb(DEMO.workOrders, []);
-    return data.map((w) => ({ id: w.id, title: w.title, propertyName: propName(w.properties as PropRef), unit: w.unit ?? "—", category: w.category ?? "—", priority: w.priority as WorkOrderRow["priority"], status: w.status as WorkOrderRow["status"], channels: w.channels ?? [], noticeStatus: (w.notice_status ?? "none") as WorkOrderRow["noticeStatus"] }));
+    return data.map((w) => {
+      const noticeSrc = (w.notice as { source?: string } | null)?.source;
+      const source: WorkOrderRow["source"] = noticeSrc === "resident_portal" || w.notice_type === "maintenance_request" ? "portal" : "staff";
+      return { id: w.id, title: w.title, propertyName: propName(w.properties as PropRef), unit: w.unit ?? "—", category: w.category ?? "—", priority: w.priority as WorkOrderRow["priority"], status: w.status as WorkOrderRow["status"], channels: w.channels ?? [], noticeStatus: (w.notice_status ?? "none") as WorkOrderRow["noticeStatus"], source };
+    });
   } catch { return fb(DEMO.workOrders, []); }
 }
 

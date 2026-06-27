@@ -1,5 +1,6 @@
 import "server-only";
-import { getPushSubscriptions } from "./data";
+import webpush from "web-push";
+import { getPushSubscriptions, pruneSubscription } from "./data";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Web-push sender — STUBBED until VAPID keys are configured.
@@ -68,15 +69,29 @@ export async function sendPortalPush(
   }
 
   // ── REAL SEND (follow-up) ──────────────────────────────────────────────────
-  // With keys present, deliver to each subscription. Implementing the encrypted
-  // RFC 8291 payload + RFC 8292 VAPID JWT by hand (or via `web-push`) is the
-  // remaining work; until then we still no-op so nothing throws in production.
+  // With keys present, deliver a real encrypted Web Push (RFC 8291) signed with a
+  // VAPID JWT (RFC 8292) to each subscription endpoint via the `web-push` lib.
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT?.trim() || "mailto:notifications@fuse5.app",
+    process.env.VAPID_PUBLIC_KEY!.trim(),
+    process.env.VAPID_PRIVATE_KEY!.trim(),
+  );
+  const json = JSON.stringify(payload);
   let delivered = 0;
-  for (const _sub of subs) {
-    // TODO(web-push): POST encrypted payload + VAPID JWT to _sub.endpoint.
-    void _sub;
-    void payload;
-    delivered += 0;
-  }
+  await Promise.all(
+    subs.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          json,
+        );
+        delivered += 1;
+      } catch (e) {
+        // 404/410 = subscription expired/unsubscribed → prune it so we stop trying.
+        const code = (e as { statusCode?: number }).statusCode;
+        if (code === 404 || code === 410) await pruneSubscription(sub.endpoint).catch(() => {});
+      }
+    }),
+  );
   return { mode: "sent", attempted: subs.length, delivered };
 }

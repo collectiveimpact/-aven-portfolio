@@ -56,6 +56,7 @@ export function WorkOrdersList({
   const FIELDS = useMemo<FilterField[]>(
     () => [
       { key: "property", label: "Property", kind: "select", locationLevel: "property", options: propertyOptions, allLabel: "All properties" },
+      { key: "source", label: "Source", kind: "segmented", options: [{ value: "portal", label: "Resident requests" }, { value: "staff", label: "Staff" }], allLabel: "All sources" },
       { key: "status", label: "Status", kind: "segmented", options: STATUS_OPTIONS, allLabel: "All" },
       { key: "priority", label: "Priority", kind: "multiselect", options: PRIORITY_OPTIONS },
       { key: "category", label: "Category", kind: "multiselect", options: categoryOptions },
@@ -72,6 +73,7 @@ export function WorkOrdersList({
         // Exact-equality intent: property/status/priority/category accessors return
         // the canonical row value; applyFilters substring-contains is a safe superset.
         property: (r) => r.propertyName,
+        source: (r) => r.source ?? "staff",
         status: (r) => r.status,
         priority: (r) => r.priority,
         category: (r) => r.category,
@@ -115,7 +117,7 @@ export function WorkOrdersList({
             )}
             {filtered.map((w) => (
               <tr key={w.id}>
-                <td style={{ color: "var(--f5-text)" }}>{w.title}</td>
+                <td style={{ color: "var(--f5-text)" }}>{w.title}{w.source === "portal" && <span className="f5-badge ok" style={{ marginLeft: 8, fontSize: 10 }}>Resident</span>}</td>
                 <td>{w.propertyName} · {w.unit}</td>
                 <td>{w.category}</td>
                 <td style={{ fontSize: 15, letterSpacing: 2 }}>{w.channels.map((c) => CHANNEL_ICON[c] ?? "•").join(" ") || "—"}</td>

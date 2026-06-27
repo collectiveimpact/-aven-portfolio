@@ -371,6 +371,14 @@ export async function getPushSubscriptions(
   return (data ?? []) as { endpoint: string; p256dh: string; auth: string }[];
 }
 
+// Remove a dead subscription (the push service returned 404/410 — unsubscribed
+// or expired) so we stop trying to deliver to it.
+export async function pruneSubscription(endpoint: string): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin) return;
+  await admin.from("portal_push_subscriptions").delete().eq("endpoint", endpoint);
+}
+
 // ── Request chat thread ──────────────────────────────────────────────────────
 // A resident may read + post messages on THEIR OWN work orders. We re-verify
 // ownership (org + property + unit, matching getMyRequests) on every read/write
