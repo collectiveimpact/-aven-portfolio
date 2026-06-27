@@ -67,7 +67,7 @@ function usageOf(c: ContentRow, displayCount: number): { screens: number; playli
   if (c.type === "playlist") return { screens: 0, playlists: 0 };
   const h = hash(c.id || c.title);
   const screens = displayCount > 0 ? h % (displayCount + 1) : 0; // 0..displayCount
-  const playlists = (h >> 4) % 4; // 0..3
+  const playlists = (h >>> 4) % 4; // 0..3 (unsigned shift — signed >> can go negative for h > 2^31)
   return { screens, playlists };
 }
 
