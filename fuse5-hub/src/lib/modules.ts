@@ -32,32 +32,33 @@ const ADMIN: F5Role[] = ["super_admin", "org_admin"];
 // reports) does NOT see these — only the Super Admin (IT) tier does.
 const SUPER: F5Role[] = ["super_admin"];
 
-// NAV SPINE (Fuse5-native names; deliberately NOT Braze/Klaviyo terms — no
-// "Canvas/Orchestration/Flows/Sage"): Home → Audience → Create → Programs →
-// Property Ops → Admin. Reads left-to-right: land+measure → who → what →
-// when/automated → run the buildings → configure.
+// NAV SPINE. CEP-flavoured (Braze/Klaviyo feel) but using only GENERIC industry
+// category words — never their trademarked product names (Braze Canvas/Sage/
+// Decisioning Studio, Klaviyo Flows-as-brand). Spine: Insights → Audiences →
+// Messaging → Automation → Property Ops → Admin. Reads left-to-right:
+// overview+analytics → who → what → when/automated → run the buildings → configure.
 export const MODULES: ModuleDef[] = [
-  // ── Home — land + measure ──
-  { key: "overview", href: "/", label: "Overview", ico: "◎", group: "Home", core: true, requires: [], roles: ALL, description: "Home dashboard — KPIs and recent activity." },
-  { key: "dashboard", href: "/dashboard", label: "Dashboard", ico: "▦", group: "Home", requires: [], roles: STAFF, description: "Operational dashboard across the portfolio." },
-  { key: "analytics", href: "/analytics", label: "Analytics", ico: "📈", group: "Home", requires: ["compose"], roles: COMMS, description: "Delivery funnels, engagement, benchmarks. Reads from messaging activity." },
+  // ── Insights — overview + analytics ──
+  { key: "overview", href: "/", label: "Overview", ico: "◎", group: "Insights", core: true, requires: [], roles: ALL, description: "Home dashboard — KPIs and recent activity." },
+  { key: "dashboard", href: "/dashboard", label: "Dashboard", ico: "▦", group: "Insights", requires: [], roles: STAFF, description: "Operational dashboard across the portfolio." },
+  { key: "analytics", href: "/analytics", label: "Analytics", ico: "📈", group: "Insights", requires: ["compose"], roles: COMMS, description: "Delivery funnels, engagement, benchmarks. Reads from messaging activity." },
 
-  // ── Audience — who you reach ──
-  { key: "tenants", href: "/tenants", label: "Residents", ico: "👥", group: "Audience", foundational: true, requires: [], roles: STAFF, description: "The resident directory — the audience everything else targets." },
-  { key: "contacts", href: "/contacts", label: "Contacts", ico: "📇", group: "Audience", requires: [], roles: STAFF, description: "Non-resident contacts (board, funders, vendors)." },
-  { key: "segments", href: "/segments", label: "Segments", ico: "⊞", group: "Audience", requires: ["tenants"], roles: COMMS, description: "Saved audience filters over Residents. Feed Programs & Compose." },
-  { key: "surveys", href: "/surveys", label: "Surveys", ico: "❔", group: "Audience", requires: ["tenants"], roles: COMMS, description: "Build, field, and report resident surveys. Fields via the public link / Compose." },
+  // ── Audiences — who you reach ──
+  { key: "tenants", href: "/tenants", label: "Residents", ico: "👥", group: "Audiences", foundational: true, requires: [], roles: STAFF, description: "The resident directory — the audience everything else targets." },
+  { key: "contacts", href: "/contacts", label: "Contacts", ico: "📇", group: "Audiences", requires: [], roles: STAFF, description: "Non-resident contacts (board, funders, vendors)." },
+  { key: "segments", href: "/segments", label: "Segments", ico: "⊞", group: "Audiences", requires: ["tenants"], roles: COMMS, description: "Saved audience filters over Residents. Feed Automation & Compose." },
+  { key: "surveys", href: "/surveys", label: "Surveys", ico: "❔", group: "Audiences", requires: ["tenants"], roles: COMMS, description: "Build, field, and report resident surveys. Fields via the public link / Compose." },
 
-  // ── Create — what you send (messages + signage content) ──
-  { key: "compose", href: "/compose", label: "Compose", ico: "✎", group: "Create", requires: ["tenants", "channels"], roles: COMMS, description: "Send broadcasts. Needs Residents (audience) and Channels (delivery)." },
-  { key: "templates", href: "/templates", label: "Templates", ico: "❏", group: "Create", requires: [], roles: COMMS, description: "Reusable message templates used by Compose & Programs." },
-  { key: "content", href: "/content", label: "Content", ico: "▶", group: "Create", requires: [], roles: STAFF, description: "The signage content library (images, videos, notices). Feeds Displays." },
+  // ── Messaging — what you send (messages + signage content) ──
+  { key: "compose", href: "/compose", label: "Compose", ico: "✎", group: "Messaging", requires: ["tenants", "channels"], roles: COMMS, description: "Send broadcasts. Needs Residents (audience) and Channels (delivery)." },
+  { key: "templates", href: "/templates", label: "Templates", ico: "❏", group: "Messaging", requires: [], roles: COMMS, description: "Reusable message templates used by Compose & Automation." },
+  { key: "content", href: "/content", label: "Content", ico: "▶", group: "Messaging", requires: [], roles: STAFF, description: "The signage content library (images, videos, notices). Feeds Displays." },
 
-  // ── Programs — automated, scheduled & two-way comms ──
-  { key: "journeys", href: "/journeys", label: "Journeys", ico: "⑂", group: "Programs", requires: ["compose", "segments", "tenants"], roles: COMMS, description: "Automated multi-step programs. Builds on Compose, targets Segments." },
-  { key: "calendar", href: "/calendar", label: "Calendar", ico: "🗓", group: "Programs", requires: [], roles: STAFF, description: "Scheduled communications calendar." },
-  { key: "emergency", href: "/emergency", label: "Emergency", ico: "🚨", group: "Programs", requires: ["compose", "channels", "tenants"], roles: COMMS, description: "One-click emergency broadcast. Needs Compose + Channels + Residents." },
-  { key: "inbox", href: "/inbox", label: "Inbox", ico: "✉", group: "Programs", requires: ["channels"], roles: STAFF, description: "Two-way resident conversations across channels." },
+  // ── Automation — automated, scheduled & two-way comms ──
+  { key: "journeys", href: "/journeys", label: "Journeys", ico: "⑂", group: "Automation", requires: ["compose", "segments", "tenants"], roles: COMMS, description: "Automated multi-step programs. Builds on Compose, targets Segments." },
+  { key: "calendar", href: "/calendar", label: "Calendar", ico: "🗓", group: "Automation", requires: [], roles: STAFF, description: "Scheduled communications calendar." },
+  { key: "emergency", href: "/emergency", label: "Emergency", ico: "🚨", group: "Automation", requires: ["compose", "channels", "tenants"], roles: COMMS, description: "One-click emergency broadcast. Needs Compose + Channels + Residents." },
+  { key: "inbox", href: "/inbox", label: "Inbox", ico: "✉", group: "Automation", requires: ["channels"], roles: STAFF, description: "Two-way resident conversations across channels." },
 
   // ── Property Ops — run the buildings + screens ──
   { key: "displays", href: "/displays", label: "Displays", ico: "🖥", group: "Property Ops", requires: ["content"], roles: STAFF, description: "Digital-signage network + wall-board players. Shows Content." },
