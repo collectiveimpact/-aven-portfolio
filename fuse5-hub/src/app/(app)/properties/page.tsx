@@ -1,13 +1,16 @@
 import { getPropertiesFull } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { getScope } from "@/lib/view";
 import { PropertiesTable } from "./properties-table";
 import PropertyMap, { MapLegend } from "@/components/map/PropertyMap";
 import { withCoords, type MapPoint } from "@/components/map/markerColor";
 
 export default async function PropertiesPage() {
-  const [props, me] = await Promise.all([getPropertiesFull(), getCurrentUser()]);
+  const [propsAll, me, scope] = await Promise.all([getPropertiesFull(), getCurrentUser(), getScope()]);
   const canEdit = me?.role ? canPublish(me.role) : false;
+  // Honor the global top-bar property scope (narrows KPIs, map, and the table).
+  const props = scope.propertyName ? propsAll.filter((p) => p.name === scope.propertyName) : propsAll;
   const totalUnits = props.reduce((a, p) => a + p.units, 0);
   const totalOcc = props.reduce((a, p) => a + p.occupied, 0);
   const occPct = totalUnits ? Math.round((totalOcc / totalUnits) * 1000) / 10 : 0;

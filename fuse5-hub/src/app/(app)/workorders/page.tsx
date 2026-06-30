@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getWorkOrders, getProperties, getWoFieldConfig, getSegments } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { getScope } from "@/lib/view";
 import { NOTICE_TYPES } from "@/lib/wo-fields";
 import { NewWorkOrder } from "./new-work-order";
 import { YardiImport } from "./yardi-import";
@@ -20,8 +21,10 @@ export default async function WorkOrdersPage({
     ),
   ).toString();
 
-  const [workOrders, properties, segments, me] = await Promise.all([getWorkOrders(), getProperties(), getSegments(), getCurrentUser()]);
+  const [workOrdersAll, properties, segments, me, scope] = await Promise.all([getWorkOrders(), getProperties(), getSegments(), getCurrentUser(), getScope()]);
   const canEdit = me?.role ? canPublish(me.role) : false;
+  // Honor the global top-bar property scope (narrows the KPI strip + queue).
+  const workOrders = scope.propertyName ? workOrdersAll.filter((w) => w.propertyName === scope.propertyName) : workOrdersAll;
   const typeConfigs = await Promise.all(NOTICE_TYPES.map((t) => getWoFieldConfig(t.key)));
   const fieldsByType = Object.fromEntries(NOTICE_TYPES.map((t, i) => [t.key, typeConfigs[i]]));
   const segOptions = segments.map((s) => ({ id: s.id, name: s.name, size: s.size }));

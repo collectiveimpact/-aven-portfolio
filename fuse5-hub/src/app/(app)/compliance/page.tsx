@@ -1,18 +1,22 @@
 import { getCompliance, getProperties, getPropertiesFull } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { getScope } from "@/lib/view";
 import { ComplianceTable } from "./compliance-table";
 import PropertyMap, { MapLegend } from "@/components/map/PropertyMap";
 import { withCoords, type ComplianceStatus, type MapPoint } from "@/components/map/markerColor";
 
 export default async function CompliancePage() {
-  const [items, properties, propsFull, me] = await Promise.all([
+  const [itemsAll, properties, propsFull, me, scope] = await Promise.all([
     getCompliance(),
     getProperties(),
     getPropertiesFull(),
     getCurrentUser(),
+    getScope(),
   ]);
   const canEdit = me?.role ? canPublish(me.role) : false;
+  // Honor the global top-bar property scope (narrows KPIs, map, and the table).
+  const items = scope.propertyName ? itemsAll.filter((i) => i.propertyName === scope.propertyName) : itemsAll;
 
   const compliant = items.filter((i) => i.status === "compliant").length;
   const dueSoon = items.filter((i) => i.status === "due_soon").length;
