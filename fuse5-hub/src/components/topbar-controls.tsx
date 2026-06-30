@@ -4,18 +4,11 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { F5Role } from "@/lib/rbac";
 import { setScope, setViewRole } from "@/app/(app)/view-actions";
+import { VIEW_ROLE_LABELS, VIEW_ROLE_ORDER } from "@/lib/view-roles";
 
 // Top-bar view controls: a Provider filter (super-admin only), a Property filter,
 // and a "View as" role switcher (real-super-admin only). All three are cookie-
 // backed (see lib/view.ts) and refresh the whole app on change.
-
-/** Friendly labels for the role switcher (distinct from the full ROLE_LABELS). */
-export const VIEW_ROLE_LABELS: Record<"super_admin" | "org_admin" | "frontline", string> = {
-  super_admin: "Fuse5 Super Admin",
-  org_admin: "Housing Provider Admin",
-  frontline: "Frontline User",
-};
-const VIEW_ROLE_ORDER: ("super_admin" | "org_admin" | "frontline")[] = ["super_admin", "org_admin", "frontline"];
 
 export function TopbarControls({
   orgName,

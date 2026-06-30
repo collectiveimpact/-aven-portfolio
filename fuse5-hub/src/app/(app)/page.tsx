@@ -13,18 +13,21 @@ import {
   getCompliance,
   getPropertiesFull,
   getResidents,
+  getInbox,
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { hasBackend } from "@/lib/env";
-import { getScope } from "@/lib/view";
+import { getScope, getViewRole, effectiveRole } from "@/lib/view";
 import type { DashboardData, PropertyCard } from "@/lib/dashboards";
 import { CustomizableDashboard } from "./dashboard-customizable";
 import { PortfolioOverview } from "./dashboard-portfolio";
+import { FrontlineHome } from "./dashboard-frontline";
+import { PlatformStrip } from "./platform-strip";
 
 const complianceStatusToPct: Record<string, number> = { compliant: 96, due_soon: 78, overdue: 48 };
 
 export default async function OverviewPage() {
-  const [overview, stats, msg, workOrdersAll, complianceAll, propertiesAll, residentsAll, me, viewScope] = await Promise.all([
+  const [overview, stats, msg, workOrdersAll, complianceAll, propertiesAll, residentsAll, inboxAll, me, viewScope, viewRole] = await Promise.all([
     getOverview(),
     getDashboardStats(),
     getMessageStats(),
@@ -32,9 +35,12 @@ export default async function OverviewPage() {
     getCompliance(),
     getPropertiesFull(),
     getResidents(),
+    getInbox(),
     hasBackend ? getCurrentUser() : Promise.resolve(null),
     getScope(),
+    getViewRole(),
   ]);
+  const eff = effectiveRole(me?.role ?? (hasBackend ? null : "super_admin"), viewRole);
 
   // Honor the top-bar property scope: narrow every property-derived dataset to the
   // selected building so the KPIs, cards and work-order list all reflect it.
@@ -139,6 +145,22 @@ export default async function OverviewPage() {
 
   const scope = me?.id ?? me?.orgName ?? overview.orgName ?? null;
 
+  // Frontline gets an operational "My Day" home (their queue + messages), not the
+  // exec KPI dashboard. Role-aware content; route guard already keeps them here.
+  if (eff === "frontline") {
+    const queue = workOrders.filter((w) => w.status !== "resolved").slice(0, 12);
+    const requests = queue.filter((w) => w.source === "portal").length;
+    const unread = inboxAll.filter((m) => m.status === "unread").length;
+    const messages = inboxAll.filter((m) => m.status !== "resolved").slice(0, 8);
+    return (
+      <main className="f5-content">
+        <div className="f5-page-title">My Day</div>
+        <div className="f5-page-sub">{data.orgName}{viewScope.propertyName ? ` — ${viewScope.propertyName}` : ""} — your open work and resident messages.</div>
+        <FrontlineHome openWO={openWO} requests={requests} unread={unread} overdue={overdueWorkOrders} queue={queue} messages={messages} />
+      </main>
+    );
+  }
+
   return (
     <main className="f5-content">
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -148,6 +170,9 @@ export default async function OverviewPage() {
         </div>
         <span className="f5-live" style={{ marginLeft: "auto" }}>Live</span>
       </div>
+
+      {/* Super Admin only: cross-provider platform band above the portfolio view. */}
+      {eff === "super_admin" && <PlatformStrip />}
 
       {/* Customizable, pin-to-priority dashboard */}
       <CustomizableDashboard data={data} scope={scope} />
