@@ -26,6 +26,11 @@ export interface ModuleDef {
 
 const ALL: F5Role[] = ["super_admin", "org_admin", "manager", "property_manager", "comms_manager", "publisher", "frontline", "viewer"];
 const STAFF: F5Role[] = ["super_admin", "org_admin", "manager", "property_manager", "comms_manager", "publisher", "frontline"];
+// Staff sections that a day-to-day FRONTLINE user doesn't need (portfolio admin,
+// signage, planning, contacts/board, compliance). Keeps their nav focused on the
+// operational essentials: Overview, Dashboard, Residents, Inbox, Work Orders,
+// Submit Request, Settings.
+const STAFF_NO_FL: F5Role[] = ["super_admin", "org_admin", "manager", "property_manager", "comms_manager", "publisher"];
 const COMMS: F5Role[] = ["super_admin", "org_admin", "manager", "comms_manager"];
 const ADMIN: F5Role[] = ["super_admin", "org_admin"];
 // IT-only back-of-house config. The "stripped" org_admin (onboard users + run
@@ -45,27 +50,27 @@ export const MODULES: ModuleDef[] = [
 
   // ── Audiences — who you reach ──
   { key: "tenants", href: "/tenants", label: "Residents", ico: "👥", group: "Audiences", foundational: true, requires: [], roles: STAFF, description: "The resident directory — the audience everything else targets." },
-  { key: "contacts", href: "/contacts", label: "Contacts", ico: "📇", group: "Audiences", requires: [], roles: STAFF, description: "Non-resident contacts (board, funders, vendors)." },
+  { key: "contacts", href: "/contacts", label: "Contacts", ico: "📇", group: "Audiences", requires: [], roles: STAFF_NO_FL, description: "Non-resident contacts (board, funders, vendors)." },
   { key: "segments", href: "/segments", label: "Segments", ico: "⊞", group: "Audiences", requires: ["tenants"], roles: COMMS, description: "Saved audience filters over Residents. Feed Orchestration & Compose." },
   { key: "surveys", href: "/surveys", label: "Surveys", ico: "❔", group: "Audiences", requires: ["tenants"], roles: COMMS, description: "Build, field, and report resident surveys. Fields via the public link / Compose." },
 
   // ── Messaging — what you send (messages + signage content) ──
   { key: "compose", href: "/compose", label: "Compose", ico: "✎", group: "Messaging", requires: ["tenants", "channels"], roles: COMMS, description: "Send broadcasts. Needs Residents (audience) and Channels (delivery)." },
   { key: "templates", href: "/templates", label: "Templates", ico: "❏", group: "Messaging", requires: [], roles: COMMS, description: "Reusable message templates used by Compose & Orchestration." },
-  { key: "content", href: "/content", label: "Content", ico: "▶", group: "Messaging", requires: [], roles: STAFF, description: "The signage content library (images, videos, notices). Feeds Displays." },
+  { key: "content", href: "/content", label: "Content", ico: "▶", group: "Messaging", requires: [], roles: STAFF_NO_FL, description: "The signage content library (images, videos, notices). Feeds Displays." },
 
   // ── Orchestration — automated, scheduled & two-way comms ──
   { key: "journeys", href: "/journeys", label: "Journeys", ico: "⑂", group: "Orchestration", requires: ["compose", "segments", "tenants"], roles: COMMS, description: "Automated multi-step programs. Builds on Compose, targets Segments." },
-  { key: "calendar", href: "/calendar", label: "Calendar", ico: "🗓", group: "Orchestration", requires: [], roles: STAFF, description: "Scheduled communications calendar." },
+  { key: "calendar", href: "/calendar", label: "Calendar", ico: "🗓", group: "Orchestration", requires: [], roles: STAFF_NO_FL, description: "Scheduled communications calendar." },
   { key: "emergency", href: "/emergency", label: "Emergency", ico: "🚨", group: "Orchestration", requires: ["compose", "channels", "tenants"], roles: COMMS, description: "One-click emergency broadcast. Needs Compose + Channels + Residents." },
   { key: "inbox", href: "/inbox", label: "Inbox", ico: "✉", group: "Orchestration", requires: ["channels"], roles: STAFF, description: "Two-way resident conversations across channels." },
 
   // ── Property Ops — run the buildings + screens ──
-  { key: "displays", href: "/displays", label: "Displays", ico: "🖥", group: "Property Ops", requires: ["content"], roles: STAFF, description: "Digital-signage network + wall-board players. Shows Content." },
-  { key: "properties", href: "/properties", label: "Properties", ico: "🏢", group: "Property Ops", foundational: true, requires: [], roles: STAFF, description: "The building/property portfolio. Underpins Work Orders & Compliance." },
+  { key: "displays", href: "/displays", label: "Displays", ico: "🖥", group: "Property Ops", requires: ["content"], roles: STAFF_NO_FL, description: "Digital-signage network + wall-board players. Shows Content." },
+  { key: "properties", href: "/properties", label: "Properties", ico: "🏢", group: "Property Ops", foundational: true, requires: [], roles: STAFF_NO_FL, description: "The building/property portfolio. Underpins Work Orders & Compliance." },
   { key: "workorders", href: "/workorders", label: "Work Orders", ico: "🔧", group: "Property Ops", requires: ["properties"], roles: STAFF, description: "Maintenance tickets. Scoped to Properties.", badge: "7" },
   { key: "frontline", href: "/frontline", label: "Submit Request", ico: "➕", group: "Property Ops", requires: ["workorders"], roles: ALL, description: "Frontline staff submit a maintenance request → Work Orders." },
-  { key: "compliance", href: "/compliance", label: "Compliance", ico: "🛡", group: "Property Ops", requires: ["properties"], roles: STAFF, description: "RentSafeTO/standards scores per property. Optional — off until an org opts in." },
+  { key: "compliance", href: "/compliance", label: "Compliance", ico: "🛡", group: "Property Ops", requires: ["properties"], roles: STAFF_NO_FL, description: "RentSafeTO/standards scores per property. Optional — off until an org opts in." },
 
   // ── Admin — configure (back-of-house). Channels is IT/config, not user-facing. ──
   { key: "channels", href: "/channels", label: "Channels", ico: "📡", group: "Admin", hidden: true, foundational: true, requires: [], roles: SUPER, description: "Email/SMS/WhatsApp/voice/display delivery config (IT/back-end). Lives inside Admin → Delivery & Channels." },
