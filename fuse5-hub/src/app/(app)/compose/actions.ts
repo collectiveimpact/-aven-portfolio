@@ -178,7 +178,9 @@ export interface SendBroadcastInput {
   priority: "normal" | "high" | "emergency";
   language: string;
   audienceCount: number;
-  delivery: "now" | "schedule";
+  /** "smart" = per-resident send-time optimization (queued, delivered at each
+   *  resident's most-likely-to-engage hour within quiet hours). */
+  delivery: "now" | "schedule" | "smart";
   scheduledFor: string | null;
   /** Sender override: include residents that only tripped the (overridable) frequency cap. */
   includeFrequencyCapped?: boolean;
@@ -254,7 +256,9 @@ export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroa
   const orgId = me?.orgId;
   if (!orgId) return { ok: false, sent: 0, error: "No organization for the current user." };
 
-  const status = input.delivery === "schedule" ? "scheduled" : "sent";
+  // "smart" queues like a scheduled send — each resident is delivered at their
+  // optimized local hour (see lib/send-time.ts), so nothing dispatches now.
+  const status = input.delivery === "schedule" || input.delivery === "smart" ? "scheduled" : "sent";
   const { data: msg, error: msgErr } = await supabase
     .from("messages")
     .insert({

@@ -5,11 +5,12 @@ import type { Channel } from "@/lib/types";
 import type { ComposeTemplate } from "@/lib/queries";
 import { sendBroadcast, saveDraft, aiCompose, assessBroadcastAudience, composeFromPrompt } from "./actions";
 import { SUPPRESSION_LABELS, type AudienceAssessment } from "@/lib/suppression";
+import { distribution, peakWindow, QUIET_END_HOUR, QUIET_START_HOUR } from "@/lib/send-time";
 
 const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "voice", "display"]);
 
 type Priority = "normal" | "high" | "emergency";
-type Delivery = "now" | "schedule";
+type Delivery = "now" | "schedule" | "smart";
 
 interface ChannelOption { key: Channel; label: string; ico: string }
 const CHANNELS: ChannelOption[] = [
@@ -121,6 +122,17 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
     });
   };
 
+  // Smart-timing preview: the expected per-resident send-hour distribution for the
+  // current (post-suppression) audience. Representative engagement curve until a
+  // property narrows it; the real per-resident hours are computed at send time.
+  const sendTimePreview = useMemo(() => {
+    // Illustrative curve over the reachable audience; fall back to the full
+    // audience (or 100) so the preview still renders when everyone is suppressed.
+    const total = assessment?.sending || assessment?.total || 100;
+    const buckets = distribution([], total);
+    return { buckets, peak: peakWindow(buckets), max: Math.max(1, ...buckets.map((b) => b.count)) };
+  }, [assessment]);
+
   const validate = (): boolean => {
     if (!subject.trim() || !body.trim()) {
       setWarning("Add a subject and message body before continuing.");
@@ -165,7 +177,9 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
         includeFrequencyCapped,
       });
       if (res.ok) {
-        setSentCount(res.sent);
+        // Queued sends (schedule/smart) don't dispatch now, so res.sent is 0 —
+        // show the reachable audience that will be delivered instead.
+        setSentCount(delivery === "now" ? res.sent : (assessment?.sending ?? audienceCount));
         setStage("sent");
       } else {
         setWarning(res.error ?? "Something went wrong. Try again.");
@@ -201,13 +215,18 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
     return (
       <div className="f5-card" style={{ marginTop: 18 }}>
         <div className="f5-live" style={{ marginBottom: 10 }}>
-          {delivery === "schedule" ? "Scheduled" : "Sent"}
+          {delivery === "now" ? "Sent" : delivery === "smart" ? "Smart-scheduled" : "Scheduled"}
         </div>
         <div className="f5-page-title" style={{ fontSize: 18 }}>
-          {delivery === "schedule"
-            ? `Broadcast scheduled for ${sentCount.toLocaleString()} residents`
-            : `Broadcast sent to ${sentCount.toLocaleString()} residents`}
+          {delivery === "now"
+            ? `Broadcast sent to ${sentCount.toLocaleString()} residents`
+            : delivery === "smart"
+              ? `Optimized send queued for ${sentCount.toLocaleString()} residents`
+              : `Broadcast scheduled for ${sentCount.toLocaleString()} residents`}
         </div>
+        {delivery === "smart" && (
+          <div className="f5-page-sub" style={{ marginTop: 4 }}>Each resident will receive it at their most-likely-to-engage hour (most around {sendTimePreview.peak}), within quiet hours.</div>
+        )}
         <div className="f5-page-sub">
           &ldquo;{subject}&rdquo; queued across {channels.length} channel{channels.length === 1 ? "" : "s"} in {language}.
         </div>
@@ -433,7 +452,7 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
           </label>
 
           <div className="f5-section-title">Delivery</div>
-          <div style={{ display: "flex", gap: 18 }}>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
             <label style={radio(delivery === "now")}>
               <input type="radio" name="delivery" checked={delivery === "now"} onChange={() => setDelivery("now")} />
               Send Now
@@ -441,6 +460,10 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
             <label style={radio(delivery === "schedule")}>
               <input type="radio" name="delivery" checked={delivery === "schedule"} onChange={() => setDelivery("schedule")} />
               Schedule
+            </label>
+            <label style={radio(delivery === "smart")} title="Deliver to each resident at their most-likely-to-engage hour, within quiet hours">
+              <input type="radio" name="delivery" checked={delivery === "smart"} onChange={() => setDelivery("smart")} />
+              ✨ Smart timing
             </label>
           </div>
           {delivery === "schedule" && (
@@ -451,6 +474,25 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
               value={scheduledFor}
               onChange={(e) => setScheduledFor(e.target.value)}
             />
+          )}
+          {delivery === "smart" && (
+            <div className="f5-card" style={{ marginTop: 10, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 600, color: "var(--f5-text)" }}>Send-time optimization</div>
+                <div style={{ fontSize: 12, color: "var(--f5-text-muted)" }}>most around <strong style={{ color: "var(--f5-teal,#00CCCC)" }}>{sendTimePreview.peak}</strong> · local time</div>
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--f5-text-muted)", marginTop: 3 }}>
+                Each resident is delivered at their most-likely-to-engage hour. Quiet hours respected — nothing before {QUIET_END_HOUR === 8 ? "8am" : `${QUIET_END_HOUR}:00`} or after {QUIET_START_HOUR === 21 ? "9pm" : `${QUIET_START_HOUR}:00`}.
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 84, marginTop: 12 }}>
+                {sendTimePreview.buckets.map((b) => (
+                  <div key={b.hour} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }} title={`${b.label}: ${b.pct}%`}>
+                    <div style={{ width: "100%", height: `${Math.round((b.count / sendTimePreview.max) * 64)}px`, minHeight: 3, borderRadius: 4, background: "var(--f5-teal,#00CCCC)", opacity: 0.55 + 0.45 * (b.count / sendTimePreview.max) }} />
+                    <div style={{ fontSize: 9.5, color: "var(--f5-text-muted)", whiteSpace: "nowrap" }}>{b.label.split("–")[0]}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Pre-send compliance ("Refine") — CASL guardrail on existing consent data */}
@@ -531,11 +573,9 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
           )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
-            {delivery === "now" ? (
-              <button type="button" className="f5-btn primary" onClick={onReview}>Send Now</button>
-            ) : (
-              <button type="button" className="f5-btn primary" onClick={onReview}>Schedule</button>
-            )}
+            <button type="button" className="f5-btn primary" onClick={onReview}>
+              {delivery === "now" ? "Send Now" : delivery === "smart" ? "✨ Schedule smart send" : "Schedule"}
+            </button>
             <button type="button" className="f5-btn" onClick={onSaveDraft} disabled={isPending}>Save Draft</button>
             <button type="button" className="f5-btn" onClick={() => validate() && setStage("confirm")}>Preview</button>
             {draftSaved && <span style={{ alignSelf: "center", fontSize: 12, color: "var(--f5-green,#34d399)" }}>Draft saved ✓</span>}
@@ -576,11 +616,11 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
             <div className="f5-card"><div className="f5-kpi-label">Display</div><div className="f5-kpi-value">{displayCount.toLocaleString()}</div></div>
           </div>
           <div className="f5-kpi-sub" style={{ marginTop: 12 }}>
-            {delivery === "schedule" && scheduledFor ? `Scheduled for ${scheduledFor.replace("T", " ")}` : "Sending immediately"} · {priority} priority · {language}
+            {delivery === "smart" ? `Smart-timed — most around ${sendTimePreview.peak} local` : delivery === "schedule" && scheduledFor ? `Scheduled for ${scheduledFor.replace("T", " ")}` : "Sending immediately"} · {priority} priority · {language}
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
             <button type="button" className="f5-btn primary" onClick={onConfirmSend} disabled={isPending}>
-              {isPending ? "Sending…" : delivery === "schedule" ? "Confirm schedule" : "Confirm send"}
+              {isPending ? "Sending…" : delivery === "smart" ? "Confirm smart send" : delivery === "schedule" ? "Confirm schedule" : "Confirm send"}
             </button>
             <button type="button" className="f5-btn" onClick={() => setStage("compose")} disabled={isPending}>
               Back to edit
