@@ -88,7 +88,7 @@ export const WIDGETS: WidgetDef[] = [
     description: "Portfolio unit count across all properties.",
     category: "kpi",
     size: 1,
-    render: (d) => <Kpi label="Total Units" value={d.kpis.units.toLocaleString()} sub={<><span className="f5-up">▲ 3.2%</span> vs prior period</>} />,
+    render: (d) => <Kpi label="Total Units" value={d.kpis.units.toLocaleString()} sub={d.scoped ? "in this property" : <><span className="f5-up">▲ 3.2%</span> vs prior period</>} />,
   },
   {
     id: "kpi-occupancy",
@@ -96,7 +96,7 @@ export const WIDGETS: WidgetDef[] = [
     description: "Occupied units as a share of total.",
     category: "kpi",
     size: 1,
-    render: (d) => <Kpi label="Occupancy Rate" value={`${d.kpis.occupancyPct}%`} sub={<><span className="f5-up">▲ 1.1%</span> target: 95%</>} />,
+    render: (d) => <Kpi label="Occupancy Rate" value={`${d.kpis.occupancyPct}%`} sub={d.scoped ? "target: 95%" : <><span className="f5-up">▲ 1.1%</span> target: 95%</>} />,
   },
   {
     id: "kpi-open-wos",
@@ -112,7 +112,7 @@ export const WIDGETS: WidgetDef[] = [
     description: "Digital-display fleet availability.",
     category: "kpi",
     size: 1,
-    render: (d) => <Kpi label="Signage Uptime" value={`${d.kpis.signageUptimePct}%`} sub={<><span className="f5-up">▲ 0.8%</span> {d.kpis.displaysOnline}/{d.kpis.displaysTotal} online</>} />,
+    render: (d) => <Kpi label="Signage Uptime" value={`${d.kpis.signageUptimePct}%`} sub={<>{!d.scoped && <><span className="f5-up">▲ 0.8%</span> </>}{d.kpis.displaysOnline}/{d.kpis.displaysTotal} online</>} />,
   },
   {
     id: "kpi-messages",
@@ -120,7 +120,7 @@ export const WIDGETS: WidgetDef[] = [
     description: "Resident messages sent today.",
     category: "kpi",
     size: 1,
-    render: (d) => <Kpi label="Messages Today" value={d.kpis.messagesToday.toLocaleString()} sub={<><span className="f5-up">▲ 12%</span> vs yesterday</>} />,
+    render: (d) => <Kpi label="Messages Today" value={d.kpis.messagesToday.toLocaleString()} sub={d.scoped ? "sent today" : <><span className="f5-up">▲ 12%</span> vs yesterday</>} />,
   },
   {
     id: "kpi-broadcasts",
@@ -136,7 +136,7 @@ export const WIDGETS: WidgetDef[] = [
     description: "Share of messages successfully delivered.",
     category: "kpi",
     size: 1,
-    render: (d) => <Kpi label="Delivery Rate" value={`${d.kpis.deliveryRatePct}%`} sub={<><span className="f5-up">▲ 0.3%</span> 7-day avg</>} />,
+    render: (d) => <Kpi label="Delivery Rate" value={`${d.kpis.deliveryRatePct}%`} sub={d.scoped ? "7-day avg" : <><span className="f5-up">▲ 0.3%</span> 7-day avg</>} />,
   },
   {
     id: "kpi-residents",

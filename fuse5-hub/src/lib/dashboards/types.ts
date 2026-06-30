@@ -37,6 +37,9 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
 export interface DashboardData {
   orgName: string;
   source: "live" | "demo";
+  /** True when filtered to one property — KPI widgets then hide portfolio-level
+   *  period-over-period deltas (those figures are org-wide, wrong at one building). */
+  scoped?: boolean;
   kpis: {
     units: number;
     occupancyPct: number;

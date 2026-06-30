@@ -114,6 +114,7 @@ export default async function OverviewPage() {
   const data: DashboardData = {
     orgName: overview.orgName,
     source: stats.source,
+    scoped: propScoped,
     kpis: {
       units: propScoped ? scopedUnits : (overview.kpis.units || properties.reduce((s, p) => s + p.units, 0)),
       occupancyPct: propScoped ? scopedOccupancyPct : overview.kpis.occupancy,
