@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { visibleModules } from "@/lib/modules";
 import type { F5Role } from "@/lib/rbac";
+import { ROLE_LABELS } from "@/lib/rbac";
 
 // The nav is driven by the module registry: only modules the org has activated AND
 // the user's role may view are rendered. Activation is managed in Admin → Modules.
@@ -20,6 +21,16 @@ export function Sidebar({ enabled, role }: { enabled: string[]; role: F5Role | n
         <Image src="/fuse5-logo.png" alt="Fuse5" width={150} height={114} priority style={{ width: "100%", maxWidth: 150, height: "auto" }} />
       </div>
       <div className="f5-brand-sub" style={{ textAlign: "center" }}>Tenant Communications</div>
+      {role && (
+        <div
+          title="Your current role determines which sections you can see"
+          style={{ margin: "4px 6px 8px", padding: "6px 10px", borderRadius: 8, border: "1px solid var(--f5-border)", background: "var(--f5-surface-2, rgba(255,255,255,0.03))", display: "flex", alignItems: "center", gap: 7, fontSize: 11.5 }}
+        >
+          <span aria-hidden style={{ color: "var(--f5-teal, #00CCCC)" }}>●</span>
+          <span style={{ color: "var(--f5-text-muted)" }}>Role</span>
+          <span style={{ marginLeft: "auto", fontWeight: 600, color: "var(--f5-text)" }}>{ROLE_LABELS[role]}</span>
+        </div>
+      )}
       {groups.map((g) => (
         <div key={g.group}>
           <div className="f5-navgroup">{g.group}</div>

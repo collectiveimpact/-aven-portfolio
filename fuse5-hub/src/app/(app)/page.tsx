@@ -16,6 +16,7 @@ import {
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { hasBackend } from "@/lib/env";
+import { getScope } from "@/lib/view";
 import type { DashboardData, PropertyCard } from "@/lib/dashboards";
 import { CustomizableDashboard } from "./dashboard-customizable";
 import { PortfolioOverview } from "./dashboard-portfolio";
@@ -23,7 +24,7 @@ import { PortfolioOverview } from "./dashboard-portfolio";
 const complianceStatusToPct: Record<string, number> = { compliant: 96, due_soon: 78, overdue: 48 };
 
 export default async function OverviewPage() {
-  const [overview, stats, msg, workOrders, compliance, properties, residents, me] = await Promise.all([
+  const [overview, stats, msg, workOrdersAll, complianceAll, propertiesAll, residentsAll, me, viewScope] = await Promise.all([
     getOverview(),
     getDashboardStats(),
     getMessageStats(),
@@ -32,7 +33,16 @@ export default async function OverviewPage() {
     getPropertiesFull(),
     getResidents(),
     hasBackend ? getCurrentUser() : Promise.resolve(null),
+    getScope(),
   ]);
+
+  // Honor the top-bar property scope: narrow every property-derived dataset to the
+  // selected building so the KPIs, cards and work-order list all reflect it.
+  const propScoped = !!viewScope.propertyName;
+  const properties = propScoped ? propertiesAll.filter((p) => p.name === viewScope.propertyName) : propertiesAll;
+  const residents = propScoped ? residentsAll.filter((r) => r.propertyName === viewScope.propertyName) : residentsAll;
+  const workOrders = propScoped ? workOrdersAll.filter((w) => w.propertyName === viewScope.propertyName) : workOrdersAll;
+  const compliance = propScoped ? complianceAll.filter((c) => c.propertyName === viewScope.propertyName) : complianceAll;
 
   // --- derive per-property rollups -----------------------------------------
   const woByProperty = new Map<string, number>();
@@ -82,7 +92,16 @@ export default async function OverviewPage() {
   const avgCompliancePct = propertyCards.length
     ? Math.round(propertyCards.reduce((s, p) => s + p.compliancePct, 0) / propertyCards.length)
     : 92;
-  const overdueWorkOrders = Math.min(stats.openWorkOrders, Math.max(0, Math.round(stats.openWorkOrders * 0.15)) + 1);
+
+  // Property-scoped rollups (used in place of the org-wide aggregates when the
+  // top-bar property filter is active, so the KPI strip reflects the selection).
+  const scopedUnits = properties.reduce((s, p) => s + p.units, 0);
+  const scopedOccupied = properties.reduce((s, p) => s + p.occupied, 0);
+  const scopedOccupancyPct = scopedUnits > 0 ? Math.round((scopedOccupied / scopedUnits) * 100) : 0;
+  const scopedOpenWO = workOrders.filter((w) => w.status !== "resolved").length;
+
+  const openWO = propScoped ? scopedOpenWO : stats.openWorkOrders;
+  const overdueWorkOrders = Math.min(openWO, Math.max(0, Math.round(openWO * 0.15)) + (openWO > 0 ? 1 : 0));
   const displaysTotal = Math.max(stats.displaysOnline + 2, stats.displaysOnline);
 
   // --- assemble the shared data bundle the widgets render from --------------
@@ -90,14 +109,14 @@ export default async function OverviewPage() {
     orgName: overview.orgName,
     source: stats.source,
     kpis: {
-      units: overview.kpis.units || properties.reduce((s, p) => s + p.units, 0),
-      occupancyPct: overview.kpis.occupancy,
-      openWorkOrders: stats.openWorkOrders,
+      units: propScoped ? scopedUnits : (overview.kpis.units || properties.reduce((s, p) => s + p.units, 0)),
+      occupancyPct: propScoped ? scopedOccupancyPct : overview.kpis.occupancy,
+      openWorkOrders: openWO,
       overdueWorkOrders,
       signageUptimePct: overview.kpis.signageUptime,
       displaysOnline: stats.displaysOnline,
       displaysTotal,
-      residents: stats.residents,
+      residents: propScoped ? residents.length : stats.residents,
       messagesToday: stats.messagesSent,
       activeBroadcasts: stats.activeBroadcasts,
       deliveryRatePct: msg.deliveryRatePct,
@@ -125,7 +144,7 @@ export default async function OverviewPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div>
           <div className="f5-page-title">Dashboard</div>
-          <div className="f5-page-sub">{data.orgName} — live across all properties.</div>
+          <div className="f5-page-sub">{data.orgName} — {viewScope.propertyName ? `scoped to ${viewScope.propertyName}` : "live across all properties"}.</div>
         </div>
         <span className="f5-live" style={{ marginLeft: "auto" }}>Live</span>
       </div>
