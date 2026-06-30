@@ -1,4 +1,5 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileNavToggle } from "@/components/mobile-nav-toggle";
@@ -9,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getEnabledModules, getProperties } from "@/lib/queries";
 import { MODULES, resolveEnabled } from "@/lib/modules";
 import { getViewRole, getScope, effectiveRole } from "@/lib/view";
+import { canViewPath, landingFor } from "@/lib/route-guard";
 import { PROVIDER_COMPLIANCE } from "@/lib/platform-admin";
 import { signOut } from "@/app/(auth)/login/actions";
 import { ImpersonationBanner } from "./admin/impersonation-banner";
@@ -47,6 +49,13 @@ export default async function AppLayout({
 
   // No backend → show everything; otherwise the org's activated + role-permitted set.
   const enabled = hasBackend ? await getEnabledModules() : [...resolveEnabled(MODULES.map((m) => m.key))];
+
+  // Role-based route guard: if the effective role can't view the requested route
+  // (e.g. a previewed Frontline user URL-hopping to /admin), bounce to its landing.
+  const pathname = (await headers()).get("x-pathname") ?? "/";
+  if (!canViewPath(pathname, eff, new Set(enabled))) {
+    redirect(landingFor(eff));
+  }
 
   return (
     <ToastProvider>
