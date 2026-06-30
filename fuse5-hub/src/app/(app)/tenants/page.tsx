@@ -30,7 +30,7 @@ export default async function ResidentsPage() {
 
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(6,1fr)", marginTop: 18 }}>
         <div className="f5-card"><div className="f5-kpi-label">Total Residents</div><div className="f5-kpi-value">{total}</div><div className="f5-kpi-sub">across {properties.length || 3} properties</div></div>
-        <div className="f5-card"><div className="f5-kpi-label">Active</div><div className="f5-kpi-value">{active}</div><div className="f5-kpi-sub"><span className="f5-up">▲ 2.4%</span> vs prior period</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Active</div><div className="f5-kpi-value">{active}</div><div className="f5-kpi-sub">{scope.propertyName ? "active residents" : <><span className="f5-up">▲ 2.4%</span> vs prior period</>}</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Moved Out</div><div className="f5-kpi-value f5-warn">{movedOut}</div><div className="f5-kpi-sub">last 90 days</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Languages</div><div className="f5-kpi-value">{languages}</div><div className="f5-kpi-sub">spoken across portfolio</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Accessibility</div><div className="f5-kpi-value">{accessibility}</div><div className="f5-kpi-sub">residents with needs on file</div></div>

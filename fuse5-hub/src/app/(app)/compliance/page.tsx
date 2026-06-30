@@ -57,7 +57,7 @@ export default async function CompliancePage() {
   return (
     <main className="f5-content">
       <div className="f5-page-title">Compliance</div>
-      <div className="f5-page-sub">RentSafeTO obligations tracked across the WoodGreen portfolio.</div>
+      <div className="f5-page-sub">RentSafeTO obligations tracked {scope.propertyName ? `· ${scope.propertyName}` : "across the WoodGreen portfolio"}.</div>
 
       {/* Scored framework health */}
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 18 }}>

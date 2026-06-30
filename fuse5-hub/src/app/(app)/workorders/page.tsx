@@ -39,7 +39,7 @@ export default async function WorkOrdersPage({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div className="f5-page-title">Work Orders &amp; Notices</div>
-          <div className="f5-page-sub">Maintenance requests and AI-generated tenant notices.</div>
+          <div className="f5-page-sub">Maintenance requests and AI-generated tenant notices{scope.propertyName ? ` · ${scope.propertyName}` : ""}.</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/workorders/fields" className="f5-btn">⚙ Configure fields</Link>

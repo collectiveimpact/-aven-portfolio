@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getDisplays, getProperties, getContent } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
+import { getScope } from "@/lib/view";
 import { hasWallboard, WALLBOARD_DATASOURCE_ID } from "@/lib/env";
 import { getWallboardSignage } from "@/lib/wallboard/signage";
 import { buildSignageFeed } from "@/lib/wallboard/feed";
@@ -11,16 +12,18 @@ import { WallboardFeed } from "./wallboard-feed";
 import { DeviceControl } from "./device-control";
 
 export default async function DisplaysPage() {
-  const [displays, properties, me, wb, h, content] = await Promise.all([getDisplays(), getProperties(), getCurrentUser(), getWallboardSignage(), headers(), getContent()]);
+  const [displays, properties, me, wb, h, content, scope] = await Promise.all([getDisplays(), getProperties(), getCurrentUser(), getWallboardSignage(), headers(), getContent(), getScope()]);
   const canEdit = me?.role ? canPublish(me.role) : false;
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost:3000"}`;
   const feed = await buildSignageFeed(origin);
   const contentOptions = content.filter((c) => c.type !== "playlist").slice(0, 60).map((c) => ({ id: c.id, title: c.title }));
 
   // Prefer live Wallboard devices when connected; otherwise the local/demo set.
-  const grid = wb.connected && wb.devices.length
+  const gridAll = wb.connected && wb.devices.length
     ? wb.devices.map((d) => ({ id: d.id, name: d.name, location: d.location ?? "—", propertyName: "Wallboard", propertyId: null, status: (d.online ? "online" : "offline") as "online" | "offline" | "warning" }))
     : displays;
+  // Honor the global top-bar property scope (narrows the device grid + uptime KPI).
+  const grid = scope.propertyName ? gridAll.filter((d) => d.propertyName === scope.propertyName) : gridAll;
 
   const online = grid.filter((d) => d.status === "online").length;
   const offline = grid.filter((d) => d.status === "offline").length;
@@ -30,7 +33,7 @@ export default async function DisplaysPage() {
   return (
     <main className="f5-content">
       <div className="f5-page-title">Digital Signage</div>
-      <div className="f5-page-sub">Network health across {grid.length} displays · powered by Wallboard.</div>
+      <div className="f5-page-sub">Network health across {grid.length} displays{scope.propertyName ? ` · ${scope.propertyName}` : ""} · powered by Wallboard.</div>
 
       {/* Wallboard connection surface */}
       <div className="f5-card" style={{ marginTop: 16, borderLeft: `3px solid ${wb.connected ? "var(--f5-green,#34d399)" : "var(--f5-teal)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
