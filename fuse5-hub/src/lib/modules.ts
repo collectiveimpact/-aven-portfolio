@@ -32,37 +32,41 @@ const ADMIN: F5Role[] = ["super_admin", "org_admin"];
 // reports) does NOT see these — only the Super Admin (IT) tier does.
 const SUPER: F5Role[] = ["super_admin"];
 
+// NAV SPINE (Fuse5-native names; deliberately NOT Braze/Klaviyo terms — no
+// "Canvas/Orchestration/Flows/Sage"): Home → Audience → Create → Programs →
+// Property Ops → Admin. Reads left-to-right: land+measure → who → what →
+// when/automated → run the buildings → configure.
 export const MODULES: ModuleDef[] = [
-  // Operations — what staff land on. Overview/Dashboard first.
-  { key: "overview", href: "/", label: "Overview", ico: "◎", group: "Operations", core: true, requires: [], roles: ALL, description: "Home dashboard — KPIs and recent activity." },
-  { key: "dashboard", href: "/dashboard", label: "Dashboard", ico: "▦", group: "Operations", requires: [], roles: STAFF, description: "Operational dashboard across the portfolio." },
-  { key: "analytics", href: "/analytics", label: "Analytics", ico: "📈", group: "Operations", requires: ["compose"], roles: COMMS, description: "Delivery funnels, engagement, benchmarks. Reads from messaging activity." },
+  // ── Home — land + measure ──
+  { key: "overview", href: "/", label: "Overview", ico: "◎", group: "Home", core: true, requires: [], roles: ALL, description: "Home dashboard — KPIs and recent activity." },
+  { key: "dashboard", href: "/dashboard", label: "Dashboard", ico: "▦", group: "Home", requires: [], roles: STAFF, description: "Operational dashboard across the portfolio." },
+  { key: "analytics", href: "/analytics", label: "Analytics", ico: "📈", group: "Home", requires: ["compose"], roles: COMMS, description: "Delivery funnels, engagement, benchmarks. Reads from messaging activity." },
 
-  // Communicate — Segments sits with Journeys (audience-building for flows).
-  { key: "compose", href: "/compose", label: "Compose", ico: "✎", group: "Communicate", requires: ["tenants", "channels"], roles: COMMS, description: "Send broadcasts. Needs Residents (audience) and Channels (delivery)." },
-  { key: "journeys", href: "/journeys", label: "Journeys", ico: "⑂", group: "Communicate", requires: ["compose", "segments", "tenants"], roles: COMMS, description: "Automated multi-step flows. Builds on Compose, targets Segments." },
-  { key: "segments", href: "/segments", label: "Segments", ico: "⊞", group: "Communicate", requires: ["tenants"], roles: COMMS, description: "Saved audience filters over Residents. Feed Journeys & Compose." },
-  { key: "inbox", href: "/inbox", label: "Inbox", ico: "✉", group: "Communicate", requires: ["channels"], roles: STAFF, description: "Two-way resident conversations across channels." },
-  { key: "templates", href: "/templates", label: "Templates", ico: "❏", group: "Communicate", requires: [], roles: COMMS, description: "Reusable message templates used by Compose & Journeys." },
-  { key: "calendar", href: "/calendar", label: "Calendar", ico: "🗓", group: "Communicate", requires: [], roles: STAFF, description: "Scheduled communications calendar." },
-  { key: "emergency", href: "/emergency", label: "Emergency", ico: "🚨", group: "Communicate", requires: ["compose", "channels", "tenants"], roles: COMMS, description: "One-click emergency broadcast. Needs Compose + Channels + Residents." },
-
-  // Engagement — resident-facing programs (surveys today; more later).
-  { key: "surveys", href: "/surveys", label: "Surveys", ico: "❔", group: "Engagement", requires: ["tenants"], roles: COMMS, description: "Build, field, and report resident surveys. Fields via the public link / Compose." },
-
-  // Audience — the directory everything targets.
+  // ── Audience — who you reach ──
   { key: "tenants", href: "/tenants", label: "Residents", ico: "👥", group: "Audience", foundational: true, requires: [], roles: STAFF, description: "The resident directory — the audience everything else targets." },
   { key: "contacts", href: "/contacts", label: "Contacts", ico: "📇", group: "Audience", requires: [], roles: STAFF, description: "Non-resident contacts (board, funders, vendors)." },
+  { key: "segments", href: "/segments", label: "Segments", ico: "⊞", group: "Audience", requires: ["tenants"], roles: COMMS, description: "Saved audience filters over Residents. Feed Programs & Compose." },
+  { key: "surveys", href: "/surveys", label: "Surveys", ico: "❔", group: "Audience", requires: ["tenants"], roles: COMMS, description: "Build, field, and report resident surveys. Fields via the public link / Compose." },
 
-  // Property Ops — Displays moved up (flagship signage surface).
+  // ── Create — what you send (messages + signage content) ──
+  { key: "compose", href: "/compose", label: "Compose", ico: "✎", group: "Create", requires: ["tenants", "channels"], roles: COMMS, description: "Send broadcasts. Needs Residents (audience) and Channels (delivery)." },
+  { key: "templates", href: "/templates", label: "Templates", ico: "❏", group: "Create", requires: [], roles: COMMS, description: "Reusable message templates used by Compose & Programs." },
+  { key: "content", href: "/content", label: "Content", ico: "▶", group: "Create", requires: [], roles: STAFF, description: "The signage content library (images, videos, notices). Feeds Displays." },
+
+  // ── Programs — automated, scheduled & two-way comms ──
+  { key: "journeys", href: "/journeys", label: "Journeys", ico: "⑂", group: "Programs", requires: ["compose", "segments", "tenants"], roles: COMMS, description: "Automated multi-step programs. Builds on Compose, targets Segments." },
+  { key: "calendar", href: "/calendar", label: "Calendar", ico: "🗓", group: "Programs", requires: [], roles: STAFF, description: "Scheduled communications calendar." },
+  { key: "emergency", href: "/emergency", label: "Emergency", ico: "🚨", group: "Programs", requires: ["compose", "channels", "tenants"], roles: COMMS, description: "One-click emergency broadcast. Needs Compose + Channels + Residents." },
+  { key: "inbox", href: "/inbox", label: "Inbox", ico: "✉", group: "Programs", requires: ["channels"], roles: STAFF, description: "Two-way resident conversations across channels." },
+
+  // ── Property Ops — run the buildings + screens ──
   { key: "displays", href: "/displays", label: "Displays", ico: "🖥", group: "Property Ops", requires: ["content"], roles: STAFF, description: "Digital-signage network + wall-board players. Shows Content." },
-  { key: "content", href: "/content", label: "Content on Demand", ico: "▶", group: "Property Ops", requires: [], roles: STAFF, description: "The signage content library (images, videos, notices)." },
   { key: "properties", href: "/properties", label: "Properties", ico: "🏢", group: "Property Ops", foundational: true, requires: [], roles: STAFF, description: "The building/property portfolio. Underpins Work Orders & Compliance." },
   { key: "workorders", href: "/workorders", label: "Work Orders", ico: "🔧", group: "Property Ops", requires: ["properties"], roles: STAFF, description: "Maintenance tickets. Scoped to Properties.", badge: "7" },
   { key: "frontline", href: "/frontline", label: "Submit Request", ico: "➕", group: "Property Ops", requires: ["workorders"], roles: ALL, description: "Frontline staff submit a maintenance request → Work Orders." },
   { key: "compliance", href: "/compliance", label: "Compliance", ico: "🛡", group: "Property Ops", requires: ["properties"], roles: STAFF, description: "RentSafeTO/standards scores per property. Optional — off until an org opts in." },
 
-  // Admin — back-of-house config. Channels is IT/config, not a user-facing surface.
+  // ── Admin — configure (back-of-house). Channels is IT/config, not user-facing. ──
   { key: "channels", href: "/channels", label: "Channels", ico: "📡", group: "Admin", hidden: true, foundational: true, requires: [], roles: SUPER, description: "Email/SMS/WhatsApp/voice/display delivery config (IT/back-end). Lives inside Admin → Delivery & Channels." },
   { key: "integrations", href: "/integrations", label: "Integrations", ico: "🔌", group: "Admin", hidden: true, requires: [], roles: SUPER, description: "Yardi/HMIS and other system connectors. Lives inside Admin → Delivery & Channels." },
   { key: "ai-agents", href: "/ai-agents", label: "AI Agents", ico: "✦", group: "Admin", requires: [], roles: SUPER, description: "Configure the AI agents (compose assist, compliance sync…)." },
