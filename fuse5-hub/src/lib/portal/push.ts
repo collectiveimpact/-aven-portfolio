@@ -3,25 +3,27 @@ import webpush from "web-push";
 import { getPushSubscriptions, pruneSubscription } from "./data";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Web-push sender — STUBBED until VAPID keys are configured.
+// Web-push sender — FULLY IMPLEMENTED; dormant only until VAPID keys are set.
 //
-// Real Web Push requires:
-//   • A VAPID key pair (public + private), surfaced as:
-//       VAPID_PUBLIC_KEY   — also handed to the browser to subscribe (PushManager
-//                            applicationServerKey); exposed via getVapidPublicKey()
-//       VAPID_PRIVATE_KEY  — server-only signing key
-//   • A signed request to each subscription's push endpoint with an encrypted
-//     payload (RFC 8291) and a VAPID JWT (RFC 8292). That crypto is non-trivial;
-//     it's normally done with the `web-push` npm package.
+// Real Web Push is delivered here via the `web-push` package (RFC 8291 payload
+// encryption + RFC 8292 VAPID JWT). The only thing standing between this and live
+// notifications is a VAPID key pair in the environment — there is no remaining
+// code to write.
 //
-// We intentionally ship NO new npm dependency here. This module:
+//   VAPID_PUBLIC_KEY   — also handed to the browser to subscribe (PushManager
+//                        applicationServerKey); exposed via getVapidPublicKey()
+//   VAPID_PRIVATE_KEY  — server-only signing key
+//   VAPID_SUBJECT      — optional mailto: contact (defaults below)
+//
+// Generate a pair once with:  npx web-push generate-vapid-keys
+//
+// This module:
 //   1. reads the keys directly from process.env (NEVER edits src/lib/env.ts),
-//   2. persists subscriptions (done in lib/portal/data.ts), and
-//   3. exposes a sendPortalPush() that is a NO-OP logger when VAPID keys are
-//      missing, and a clearly-marked TODO when they're present.
-//
-// FOLLOW-UP: add `web-push` (or a hand-rolled RFC 8291/8292 sender) and replace
-// the marked section below to actually deliver notifications.
+//   2. relies on subscriptions persisted in lib/portal/data.ts, and
+//   3. sends real encrypted pushes when keys are present (mode "sent"), or is a
+//      graceful no-op logger when they're missing (mode "stub") — so enabling
+//      keys later "just works" with zero code changes. Expired subscriptions
+//      (404/410) are pruned automatically.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** The VAPID public key, if configured — the client needs it to subscribe. */

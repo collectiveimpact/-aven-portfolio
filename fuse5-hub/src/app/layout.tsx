@@ -17,7 +17,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-theme="dark" className={figtree.variable}>
+    <html lang="en" data-theme="dark" className={figtree.variable} suppressHydrationWarning>
       <body>
         <script
           dangerouslySetInnerHTML={{

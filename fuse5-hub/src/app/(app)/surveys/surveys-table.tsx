@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { SurveyRow } from "@/lib/queries";
 import Link from "next/link";
 import { saveSurvey, deleteSurvey, createBlankSurvey, type SurveyInput } from "./actions";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 
 const statusBadge: Record<SurveyRow["status"], string> = { live: "ok", closed: "warn", draft: "bad" };
 const statusLabel: Record<SurveyRow["status"], string> = { live: "Live", closed: "Closed", draft: "Draft" };
+const STATUS_OPTIONS: FilterOption[] = [{ value: "live", label: "Live" }, { value: "draft", label: "Draft" }, { value: "closed", label: "Closed" }];
 const rate = (s: { sent: number; responses: number }) => (s.sent > 0 ? Math.round((s.responses / s.sent) * 100) : 0);
 const blank = (): SurveyInput => ({ title: "", status: "draft", sent: 0, responses: 0 });
 
@@ -16,6 +22,31 @@ export function SurveysTable({ surveys, canEdit }: { surveys: SurveyRow[]; canEd
   const [editing, setEditing] = useState<SurveyInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search survey title…" },
+      { key: "status", label: "Status", kind: "segmented", options: STATUS_OPTIONS, allLabel: "All" },
+    ],
+    [],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+
+  const filtered = useMemo(() => {
+    const matched = applyFilters(surveys, value, {
+      q: (s) => s.title,
+      status: (s) => s.status,
+    });
+    return applySort(matched, sort, {
+      title: (s) => s.title,
+      status: (s) => statusLabel[s.status],
+      sent: (s) => s.sent,
+      responses: (s) => s.responses,
+      rate: (s) => rate(s),
+    });
+  }, [surveys, value, sort]);
 
   function openAdd() { setError(null); setEditing(blank()); }
   function openEdit(s: SurveyRow) { setError(null); setEditing({ id: s.id, title: s.title, status: s.status, sent: s.sent, responses: s.responses }); }
@@ -56,13 +87,22 @@ export function SurveysTable({ surveys, canEdit }: { surveys: SurveyRow[]; canEd
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="surveys"
+      />
+
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Title</th><th>Status</th><th>Sent</th><th>Responses</th><th>Response Rate</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr><SortHeader sortKey="title" sort={sort} onSort={toggle}>Title</SortHeader><SortHeader sortKey="status" sort={sort} onSort={toggle}>Status</SortHeader><SortHeader sortKey="sent" sort={sort} onSort={toggle}>Sent</SortHeader><SortHeader sortKey="responses" sort={sort} onSort={toggle}>Responses</SortHeader><SortHeader sortKey="rate" sort={sort} onSort={toggle}>Response Rate</SortHeader>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
-            {surveys.map((s) => {
+            {filtered.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No surveys match.</td></tr>}
+            {filtered.map((s) => {
               const r = rate(s);
               return (
                 <tr key={s.id}>

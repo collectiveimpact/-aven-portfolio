@@ -18,6 +18,15 @@ import {
 } from "./workflow-actions";
 import { WfModal, WfSwitch, WfFlash, labelStyle } from "./admin-wf-ui";
 import type { SyncStatus } from "@/lib/compliance/agent";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
+
+const uniqueSorted = (xs: (string | null | undefined)[]): string[] =>
+  [...new Set(xs.filter((x): x is string => !!x && x !== "—"))].sort((a, b) => a.localeCompare(b));
+const toOptions = (xs: string[]): FilterOption[] => xs.map((x) => ({ value: x, label: x }));
 
 // Channels and the per-role permission catalog the editors draw from.
 const ALL_CHANNELS = ["signage", "sms", "email"] as const;
@@ -65,6 +74,32 @@ export function FuseRolesPanel() {
   };
   const toggleDraft = (key: string) =>
     setDraft((cur) => { const x = new Set(cur); x.has(key) ? x.delete(key) : x.add(key); return x; });
+
+  // Platform Users table — search + role/status facets + sortable columns.
+  const staffFields = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name or email…" },
+      { key: "role", label: "Role", kind: "multiselect", options: toOptions(uniqueSorted(F5_STAFF.map((u) => u.role))) },
+      { key: "status", label: "Status", kind: "segmented", options: [{ value: "Active", label: "Active" }, { value: "Suspended", label: "Suspended" }], allLabel: "All" },
+    ],
+    [],
+  );
+  const { value: staffValue, setValue: setStaffValue } = useFilterState({ fields: staffFields, urlSync: true });
+  const { sort: staffSort, toggle: staffToggle } = useSortState({ urlSync: true });
+  const staffRows = useMemo(() => {
+    const matched = applyFilters(F5_STAFF, staffValue, {
+      q: (u) => `${u.name} ${u.email}`,
+      role: (u) => u.role,
+      status: (u) => u.status,
+    });
+    return applySort(matched, staffSort, {
+      name: (u) => u.name,
+      email: (u) => u.email,
+      role: (u) => u.role,
+      lastLogin: (u) => u.lastLogin,
+      status: (u) => u.status,
+    });
+  }, [staffValue, staffSort]);
 
   const card = editing ? F5_ROLE_CARDS.find((r) => r.key === editing) : null;
   const saveGrants = () => {
@@ -135,18 +170,27 @@ export function FuseRolesPanel() {
         <div className="f5-section-title">Platform Users</div>
         <button className="f5-btn primary" type="button" style={{ padding: "5px 12px", fontSize: 12 }}>+ Add User</button>
       </div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <FilterBar fields={staffFields} value={staffValue} onChange={setStaffValue} resultCount={staffRows.length} resultLabel="users" />
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
-          <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Env Access</th><th>Last Login</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortHeader sortKey="name" sort={staffSort} onSort={staffToggle}>User</SortHeader>
+            <SortHeader sortKey="email" sort={staffSort} onSort={staffToggle}>Email</SortHeader>
+            <SortHeader sortKey="role" sort={staffSort} onSort={staffToggle}>Role</SortHeader>
+            <th>Env Access</th>
+            <SortHeader sortKey="lastLogin" sort={staffSort} onSort={staffToggle}>Last Login</SortHeader>
+            <SortHeader sortKey="status" sort={staffSort} onSort={staffToggle}>Status</SortHeader>
+          </tr></thead>
           <tbody>
-            {F5_STAFF.map((u) => (
+            {staffRows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", padding: 20, color: dim, fontSize: 13 }}>No users match.</td></tr>}
+            {staffRows.map((u) => (
               <tr key={u.email}>
                 <td style={{ color: fg, fontWeight: 600 }}>{u.name}</td>
                 <td style={{ color: dim }}>{u.email}</td>
                 <td>{u.role}</td>
                 <td style={{ fontSize: 15, letterSpacing: 2 }}>{u.envAccess.map((e) => ENV_EMOJI[e]).join("")}</td>
                 <td style={{ color: dim }}>{u.lastLogin}</td>
-                <td><span className="f5-badge ok">{u.status}</span></td>
+                <td><span className={`f5-badge ${u.status === "Active" ? "ok" : "warn"}`}>{u.status}</span></td>
               </tr>
             ))}
           </tbody>
@@ -824,13 +868,48 @@ export function ComplianceSettingsPanel() {
   // Provider rows with live overrides applied (falls back to the manual baseline).
   const liveScore = (p: ProviderCompliance, fw: "rentsafeto" | "hamilton-sab", base: number | null) =>
     live.get(`${p.provider}|${fw}`)?.score ?? base;
-  const rows: ProviderCompliance[] = PROVIDER_COMPLIANCE.map((p) => ({
+  const allRows: ProviderCompliance[] = PROVIDER_COMPLIANCE.map((p) => ({
     ...p,
     rentSafeScore: liveScore(p, "rentsafeto", p.rentSafeScore),
     hamiltonScore: liveScore(p, "hamilton-sab", p.hamiltonScore),
   }));
-  const bench = complianceBenchmark(rows);
+  const bench = complianceBenchmark(allRows);
   const statusOf = (provider: string, fw: string): SyncStatus | null => live.get(`${provider}|${fw}`)?.status ?? null;
+
+  // Filter + sort the housing-provider compliance table.
+  const cmpFields = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search provider…" },
+      { key: "tier", label: "Tier", kind: "multiselect", options: toOptions(uniqueSorted(allRows.map((p) => p.tier))) },
+      { key: "framework", label: "Framework", kind: "multiselect", options: toOptions(uniqueSorted(allRows.map((p) => fwName(p.framework)))) },
+      { key: "city", label: "City", kind: "multiselect", options: toOptions(uniqueSorted(allRows.map((p) => p.city))) },
+      { key: "status", label: "Assignment", kind: "segmented", options: [{ value: "enabled", label: "Enabled" }, { value: "disabled", label: "Disabled" }], allLabel: "All" },
+    ],
+    // fwName/allRows are derived from module-level constants + live syncs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [live],
+  );
+  const { value: cmpValue, setValue: setCmpValue } = useFilterState({ fields: cmpFields, urlSync: true });
+  const { sort: cmpSort, toggle: cmpToggle } = useSortState({ urlSync: true });
+  const rows = useMemo(() => {
+    const matched = applyFilters(allRows, cmpValue, {
+      q: (p) => p.provider,
+      tier: (p) => p.tier,
+      framework: (p) => fwName(p.framework),
+      city: (p) => p.city,
+      status: (p) => (enabled[p.provider] ? "enabled" : "disabled"),
+    });
+    return applySort(matched, cmpSort, {
+      provider: (p) => p.provider,
+      properties: (p) => p.properties,
+      tier: (p) => p.tier,
+      framework: (p) => fwName(p.framework),
+      rentSafe: (p) => p.rentSafeScore,
+      hamilton: (p) => p.hamiltonScore,
+      status: (p) => (enabled[p.provider] ? 1 : 0),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allRows, cmpValue, cmpSort, enabled]);
 
   return (
     <>
@@ -904,16 +983,26 @@ export function ComplianceSettingsPanel() {
         </div>
         <div className="f5-card">
           <div className="f5-kpi-label">Providers reporting</div>
-          <div className="f5-kpi-value">{rows.length}</div>
-          <div className="f5-kpi-sub">{rows.filter((p) => enabled[p.provider]).length} active assignments</div>
+          <div className="f5-kpi-value">{allRows.length}</div>
+          <div className="f5-kpi-sub">{allRows.filter((p) => enabled[p.provider]).length} active assignments</div>
         </div>
       </div>
 
       <div className="f5-section-title">Provider Framework Assignment &amp; Scores</div>
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <FilterBar fields={cmpFields} value={cmpValue} onChange={setCmpValue} resultCount={rows.length} resultLabel="providers" />
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
-          <thead><tr><th>Provider</th><th>Properties</th><th>Tier</th><th>Primary Framework</th><th>RentSafeTO Score</th><th>Hamilton SAB Score</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortHeader sortKey="provider" sort={cmpSort} onSort={cmpToggle}>Provider</SortHeader>
+            <SortHeader sortKey="properties" sort={cmpSort} onSort={cmpToggle}>Properties</SortHeader>
+            <SortHeader sortKey="tier" sort={cmpSort} onSort={cmpToggle}>Tier</SortHeader>
+            <SortHeader sortKey="framework" sort={cmpSort} onSort={cmpToggle}>Primary Framework</SortHeader>
+            <SortHeader sortKey="rentSafe" sort={cmpSort} onSort={cmpToggle}>RentSafeTO Score</SortHeader>
+            <SortHeader sortKey="hamilton" sort={cmpSort} onSort={cmpToggle}>Hamilton SAB Score</SortHeader>
+            <SortHeader sortKey="status" sort={cmpSort} onSort={cmpToggle}>Status</SortHeader>
+          </tr></thead>
           <tbody>
+            {rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: dim, fontSize: 13 }}>No providers match.</td></tr>}
             {rows.map((p) => { const rsStatus = statusOf(p.provider, "rentsafeto"); const hStatus = statusOf(p.provider, "hamilton-sab"); return (
               <tr key={p.provider}>
                 <td style={{ color: fg, fontWeight: 600 }}>{p.provider}</td>
@@ -957,6 +1046,32 @@ export function ComplianceSettingsPanel() {
 
 /* ---------------- Billing — platform MRR (used by enriched BillingPanel) ---------------- */
 export function PlatformBillingTable() {
+  const fields = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search provider…" },
+      { key: "tier", label: "Tier", kind: "multiselect", options: toOptions(uniqueSorted(BILLING_MRR.map((b) => b.tier))) },
+      { key: "status", label: "Status", kind: "segmented", options: toOptions(uniqueSorted(BILLING_MRR.map((b) => b.status))), allLabel: "All" },
+    ],
+    [],
+  );
+  const { value, setValue } = useFilterState({ fields, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+  const rows = useMemo(() => {
+    const matched = applyFilters(BILLING_MRR, value, {
+      q: (b) => b.provider,
+      tier: (b) => b.tier,
+      status: (b) => b.status,
+    });
+    return applySort(matched, sort, {
+      provider: (b) => b.provider,
+      tier: (b) => b.tier,
+      mrr: (b) => b.mrr,
+      properties: (b) => b.properties,
+      players: (b) => b.players,
+      renewal: (b) => b.renewal,
+      status: (b) => b.status,
+    });
+  }, [value, sort]);
   return (
     <>
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
@@ -964,11 +1079,23 @@ export function PlatformBillingTable() {
         <div className="f5-card"><div className="f5-kpi-label">Annual Run Rate</div><div className="f5-kpi-value">${BILLING_SUMMARY.arr.toLocaleString()}</div><div className="f5-kpi-sub">ARR</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Hardware Units</div><div className="f5-kpi-value">{BILLING_SUMMARY.units}</div><div className="f5-kpi-sub">players deployed</div></div>
       </div>
+      <div style={{ marginTop: 14 }}>
+        <FilterBar fields={fields} value={value} onChange={setValue} resultCount={rows.length} resultLabel="providers" />
+      </div>
       <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
-          <thead><tr><th>Provider</th><th>Tier</th><th>MRR</th><th>Properties</th><th>Players</th><th>Renewal</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortHeader sortKey="provider" sort={sort} onSort={toggle}>Provider</SortHeader>
+            <SortHeader sortKey="tier" sort={sort} onSort={toggle}>Tier</SortHeader>
+            <SortHeader sortKey="mrr" sort={sort} onSort={toggle}>MRR</SortHeader>
+            <SortHeader sortKey="properties" sort={sort} onSort={toggle}>Properties</SortHeader>
+            <SortHeader sortKey="players" sort={sort} onSort={toggle}>Players</SortHeader>
+            <SortHeader sortKey="renewal" sort={sort} onSort={toggle}>Renewal</SortHeader>
+            <SortHeader sortKey="status" sort={sort} onSort={toggle}>Status</SortHeader>
+          </tr></thead>
           <tbody>
-            {BILLING_MRR.map((b) => (
+            {rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: dim, fontSize: 13 }}>No providers match.</td></tr>}
+            {rows.map((b) => (
               <tr key={b.provider}>
                 <td style={{ color: fg, fontWeight: 600 }}>{b.provider}</td>
                 <td><span className="f5-badge">{b.tier}</span></td>

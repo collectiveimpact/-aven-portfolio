@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ROLE_TIERS, ROLE_TIER_ORDER } from "@/lib/rbac";
 import { createDepartment, type DepartmentRow } from "./actions";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 
 const dim = "var(--f5-text-muted)";
 
@@ -24,6 +29,21 @@ export function DepartmentsPanel({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [{ key: "q", label: "Search", kind: "search", placeholder: "Search department or key…" }],
+    [],
+  );
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+  const rows = useMemo(() => {
+    const matched = applyFilters(departments, value, { q: (d) => `${d.label} ${d.key}` });
+    return applySort(matched, sort, {
+      label: (d) => d.label,
+      key: (d) => d.key,
+      members: (d) => memberCounts[d.id] ?? 0,
+    });
+  }, [departments, value, sort, memberCounts]);
 
   function add() {
     const label = name.trim();
@@ -65,20 +85,26 @@ export function DepartmentsPanel({
         </div>
       )}
 
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <FilterBar fields={FIELDS} value={value} onChange={setValue} resultCount={rows.length} resultLabel="departments" />
+
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Department</th><th>Key</th><th>Members</th></tr>
+            <tr>
+              <SortHeader sortKey="label" sort={sort} onSort={toggle}>Department</SortHeader>
+              <SortHeader sortKey="key" sort={sort} onSort={toggle}>Key</SortHeader>
+              <SortHeader sortKey="members" sort={sort} onSort={toggle} align="right">Members</SortHeader>
+            </tr>
           </thead>
           <tbody>
-            {departments.length === 0 && (
-              <tr><td colSpan={3} style={{ color: dim, padding: 16 }}>No departments yet.</td></tr>
+            {rows.length === 0 && (
+              <tr><td colSpan={3} style={{ color: dim, padding: 16 }}>{departments.length === 0 ? "No departments yet." : "No departments match."}</td></tr>
             )}
-            {departments.map((d) => (
+            {rows.map((d) => (
               <tr key={d.id}>
                 <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{d.label}</td>
                 <td style={{ color: dim, fontFamily: "var(--f5-mono, monospace)", fontSize: 12 }}>{d.key}</td>
-                <td><span className="f5-badge">{memberCounts[d.id] ?? 0}</span></td>
+                <td style={{ textAlign: "right" }}><span className="f5-badge">{memberCounts[d.id] ?? 0}</span></td>
               </tr>
             ))}
           </tbody>

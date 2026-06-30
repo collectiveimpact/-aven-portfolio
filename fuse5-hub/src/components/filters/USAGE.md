@@ -107,6 +107,41 @@ export function WorkOrdersList({ rows, locationTree, initialSearch }: { rows: Wo
 > first client render matches the URL (no hydration mismatch). In the server
 > page: `const sp = await searchParams; <WorkOrdersList initialSearch={new URLSearchParams(sp as Record<string,string>).toString()} … />`.
 
+## Sorting (companion to filtering)
+
+Column sorting lives in `src/lib/sort.ts` + `src/components/filters/SortHeader.tsx`.
+Same philosophy: dependency-free, URL-synced (`?sort=<key>&dir=<asc|desc>`), and a
+generic `applySort` driven by per-column accessors. Compose it *after* `applyFilters`.
+
+```tsx
+import { SortHeader } from "@/components/filters/SortHeader";
+import { useSortState, applySort } from "@/lib/sort";
+
+const { sort, toggle } = useSortState({ urlSync: true });   // or { initial: { key: "name", dir: "asc" } }
+
+const rows = useMemo(() => {
+  const matched = applyFilters(all, value, { /* filter accessors */ });
+  return applySort(matched, sort, {
+    name:          (r) => r.name,                 // text → localeCompare (numeric-aware)
+    units:         (r) => r.units,                // number → numeric compare
+    lastContacted: (r) => r.lastAt ? new Date(r.lastAt) : null,  // Date (null sorts last)
+  });
+}, [all, value, sort]);
+
+// In <thead>: make a header sortable by wrapping it. Non-sortable cols stay plain <th>.
+<SortHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortHeader>
+<SortHeader sortKey="units" sort={sort} onSort={toggle} align="right">Units</SortHeader>
+<th style={{ textAlign: "right" }}>Actions</th>
+```
+
+- **One active sort per table.** Clicking a header flips asc↔desc; a new header
+  starts ascending. The ▲/▼ indicator marks the active column.
+- **Empties sort last** in both directions (null/`""`/`"—"` accessor results),
+  so "sort by date" never floats blank rows to the top. Sort is **stable**.
+- **One URL-synced table per route.** `?sort`/`?dir` are shared params, so if a
+  page renders two sortable tables, pass `urlSync:false` to the second one's
+  `useSortState` (and `useFilterState`).
+
 ## Notes
 
 - **AND across fields, OR within a multiselect.** A row passes only if it

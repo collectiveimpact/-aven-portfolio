@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createWorkOrder as createYardiWorkOrder } from "@/lib/yardi/mcp";
 import type { PortalSession } from "./session";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,7 +212,7 @@ export async function createRequest(
   // (work_orders has no dedicated description column). notice_type marks it as a
   // resident-submitted maintenance request so staff can triage it.
   const title = description.length > 60 ? `${description.slice(0, 57)}…` : description;
-  const { error } = await admin.from("work_orders").insert({
+  const { data: created, error } = await admin.from("work_orders").insert({
     org_id: session.orgId,
     property_id: resident.property_id,
     unit: resident.unit,
@@ -227,8 +228,38 @@ export async function createRequest(
       submittedByResidentId: resident.id,
       source: "resident_portal",
     },
-  });
-  if (error) return { ok: false, error: error.message };
+  }).select("id").single();
+  if (error || !created) return { ok: false, error: error?.message ?? "Could not submit your request." };
+
+  // Best-effort: open the matching work order in Yardi via the Virtuoso MCP and
+  // stamp the returned WONumber onto external_id, so staff resolving it later
+  // closes it in Yardi too (see setWorkOrderStatus). Non-blocking: a Yardi
+  // failure never fails the resident's submission — it stays a local WO for
+  // staff triage. No-op stub until YARDI_MCP_URL/TOKEN are configured.
+  try {
+    const { data: prop } = resident.property_id
+      ? await admin.from("properties").select("name,external_id").eq("id", resident.property_id).maybeSingle()
+      : { data: null };
+    const propertyRef = (prop?.external_id as string | null) || (prop?.name as string | null) || "";
+    if (propertyRef) {
+      const y = await createYardiWorkOrder({
+        property: propertyRef,
+        unit: resident.unit ?? undefined,
+        category: input.category || "general",
+        description,
+        priority: "medium",
+      });
+      if (y.ok && y.data?.id) {
+        await admin.from("work_orders").update({ external_id: y.data.id }).eq("id", created.id).eq("org_id", session.orgId);
+      }
+      await admin.from("audit_log").insert({
+        org_id: session.orgId, actor_id: null,
+        action: "Yardi WO Created",
+        detail: y.ok ? `Portal request → Yardi ${y.data?.id ?? "(no id)"} (${y.mode})` : `Portal request → Yardi push failed: ${y.error ?? "unknown"}`,
+      });
+    }
+  } catch { /* non-blocking — local WO already created */ }
+
   return { ok: true };
 }
 

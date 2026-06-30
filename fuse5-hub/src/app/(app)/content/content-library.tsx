@@ -3,6 +3,11 @@
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ContentRow } from "@/lib/queries";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 import { saveContent, deleteContent, type ContentInput } from "./actions";
 
 const TYPES: { k: ContentInput["type"]; l: string }[] = [
@@ -71,7 +76,12 @@ function usageOf(c: ContentRow, displayCount: number): { screens: number; playli
   return { screens, playlists };
 }
 
-type SortKey = "recent" | "title" | "duration" | "screens";
+const TYPE_OPTIONS: FilterOption[] = [
+  { value: "notice", label: "Notice" },
+  { value: "image", label: "Image" },
+  { value: "video", label: "Video" },
+  { value: "playlist", label: "Playlist" },
+];
 const blank: ContentInput = { title: "", type: "notice", durationS: 15 };
 
 type Modal =
@@ -87,32 +97,47 @@ export function ContentLibrary({ items, canEdit, displayCount }: { items: Conten
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [q, setQ] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | ContentRow["type"]>("all");
-  const [catFilter, setCatFilter] = useState<string>("all");
-  const [sort, setSort] = useState<SortKey>("recent");
   const [view, setView] = useState<"gallery" | "list">("gallery");
 
   const usage = useMemo(() => new Map(items.map((c) => [c.id, usageOf(c, displayCount)])), [items, displayCount]);
   const totalLivePlacements = useMemo(() => items.reduce((n, c) => n + (usage.get(c.id)?.screens ?? 0), 0), [items, usage]);
 
-  const catCount = (k: string) => items.filter((c) => categoryOf(c.title) === k).length;
-  const needle = q.trim().toLowerCase();
+  // Category facet derived from the creative prefix codes present in the library.
+  const categoryOptions = useMemo<FilterOption[]>(
+    () => CATS.filter((c) => c.k !== "all" && items.some((it) => categoryOf(it.title) === c.k)).map((c) => ({ value: c.k, label: c.l })),
+    [items],
+  );
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search assets…" },
+      { key: "category", label: "Category", kind: "multiselect", options: categoryOptions },
+      { key: "type", label: "Type", kind: "multiselect", options: TYPE_OPTIONS },
+    ],
+    [categoryOptions],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  // Gallery has no column headers, so the sort <select> drives this state; the
+  // list-view <SortHeader>s bind to the same state. Default = recent (updatedAt desc).
+  const { sort, toggle, setSort } = useSortState({ urlSync: true, initial: { key: "recent", dir: "desc" } });
+
   const filtered = useMemo(() => {
-    const out = items.filter((c) => {
-      if (catFilter !== "all" && categoryOf(c.title) !== catFilter) return false;
-      if (typeFilter !== "all" && c.type !== typeFilter) return false;
-      if (needle && !c.title.toLowerCase().includes(needle)) return false;
-      return true;
+    const matched = applyFilters(items, value, {
+      q: (c) => c.title,
+      category: (c) => categoryOf(c.title),
+      type: (c) => c.type,
     });
-    out.sort((a, b) => {
-      if (sort === "title") return a.title.localeCompare(b.title);
-      if (sort === "duration") return (b.durationS ?? 0) - (a.durationS ?? 0);
-      if (sort === "screens") return (usage.get(b.id)?.screens ?? 0) - (usage.get(a.id)?.screens ?? 0);
-      return (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""); // recent
+    return applySort(matched, sort, {
+      recent: (c) => c.updatedAt,
+      title: (c) => c.title,
+      category: (c) => CAT_LABEL[categoryOf(c.title)] ?? "",
+      duration: (c) => c.durationS ?? null,
+      screens: (c) => usage.get(c.id)?.screens ?? null,
+      type: (c) => c.type,
+      updated: (c) => c.updatedAt,
     });
-    return out;
-  }, [items, catFilter, typeFilter, needle, sort, usage]);
+  }, [items, value, sort, usage]);
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2600); }
   function openAdd() { setError(null); setModal({ kind: "edit", input: { ...blank } }); }
@@ -147,39 +172,34 @@ export function ContentLibrary({ items, canEdit, displayCount }: { items: Conten
 
       {error && !modal && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      {/* Category filters (derived from the creative prefix codes) */}
-      <div className="f5-chips" style={{ marginBottom: 10 }}>
-        {CATS.map((cat) => {
-          const n = cat.k === "all" ? items.length : catCount(cat.k);
-          if (cat.k !== "all" && n === 0) return null;
-          return (
-            <span key={cat.k} className={`f5-chip${catFilter === cat.k ? " active" : ""}`} onClick={() => setCatFilter(cat.k)}
-              style={catFilter === cat.k && cat.k !== "all" ? { borderColor: CAT_COLOR[cat.k], color: CAT_COLOR[cat.k] } : undefined}>
-              {cat.k !== "all" && <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 99, background: CAT_COLOR[cat.k], marginRight: 6, verticalAlign: "middle" }} />}
-              {cat.l} <span style={{ opacity: 0.6 }}>{n}</span>
-            </span>
-          );
-        })}
-      </div>
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="assets"
+        actions={
+          <select
+            className="f5-select"
+            aria-label="Sort assets"
+            value={`${sort.key ?? "recent"}:${sort.dir}`}
+            onChange={(e) => { const [k, d] = e.target.value.split(":"); setSort({ key: k, dir: d as "asc" | "desc" }); }}
+            style={{ width: "auto", minWidth: 170 }}
+          >
+            <option value="recent:desc">Sort: Recently updated</option>
+            <option value="title:asc">Sort: Title A–Z</option>
+            <option value="duration:desc">Sort: Longest first</option>
+            <option value="screens:desc">Sort: Most on screens</option>
+          </select>
+        }
+      />
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search assets…" style={{ maxWidth: 280 }} />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "12px 0", flexWrap: "wrap" }}>
         <div className="f5-chips" style={{ margin: 0 }}>
-          {(["all", "notice", "image", "video", "playlist"] as const).map((t) => (
-            <span key={t} className={`f5-chip${typeFilter === t ? " active" : ""}`} onClick={() => setTypeFilter(t)}>{t === "all" ? "All" : TYPE_LABEL[t]}</span>
-          ))}
-        </div>
-        <select className="f5-select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} style={{ width: "auto", minWidth: 150 }}>
-          <option value="recent">Sort: Recently updated</option>
-          <option value="title">Sort: Title A–Z</option>
-          <option value="duration">Sort: Longest first</option>
-          <option value="screens">Sort: Most on screens</option>
-        </select>
-        <div className="f5-chips" style={{ margin: 0, marginLeft: "auto" }}>
           <span className={`f5-chip${view === "gallery" ? " active" : ""}`} onClick={() => setView("gallery")}>▦ Gallery</span>
           <span className={`f5-chip${view === "list" ? " active" : ""}`} onClick={() => setView("list")}>☰ List</span>
         </div>
-        <span style={{ fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {items.length} · {totalLivePlacements} live placements</span>
+        <span style={{ fontSize: 12, color: "var(--f5-text-muted)", marginLeft: "auto" }}>{filtered.length} of {items.length} · {totalLivePlacements} live placements</span>
       </div>
 
       {/* Empty state */}
@@ -191,7 +211,7 @@ export function ContentLibrary({ items, canEdit, displayCount }: { items: Conten
             {items.length === 0 ? "Add a notice, image or video and it'll be ready to push to your displays." : "Try clearing the search or switching category."}
           </div>
           {items.length === 0 && canEdit && <button className="f5-btn primary" style={{ marginTop: 16 }} onClick={openAdd}>+ Add your first asset</button>}
-          {items.length > 0 && <button className="f5-btn" style={{ marginTop: 16 }} onClick={() => { setQ(""); setTypeFilter("all"); setCatFilter("all"); }}>Clear filters</button>}
+          {items.length > 0 && <button className="f5-btn" style={{ marginTop: 16 }} onClick={() => setValue({})}>Clear filters</button>}
         </div>
       )}
 
@@ -214,7 +234,17 @@ export function ContentLibrary({ items, canEdit, displayCount }: { items: Conten
         <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
           <table className="f5-table">
             <thead>
-              <tr><th style={{ width: 80 }}></th><th>Title</th><th>Category</th><th>Type</th><th>On screens</th><th>Playlists</th><th>Duration</th><th>Updated</th><th style={{ textAlign: "right" }}>Actions</th></tr>
+              <tr>
+                <th style={{ width: 80 }}></th>
+                <SortHeader sortKey="title" sort={sort} onSort={toggle}>Title</SortHeader>
+                <SortHeader sortKey="category" sort={sort} onSort={toggle}>Category</SortHeader>
+                <SortHeader sortKey="type" sort={sort} onSort={toggle}>Type</SortHeader>
+                <SortHeader sortKey="screens" sort={sort} onSort={toggle}>On screens</SortHeader>
+                <th>Playlists</th>
+                <SortHeader sortKey="duration" sort={sort} onSort={toggle}>Duration</SortHeader>
+                <SortHeader sortKey="updated" sort={sort} onSort={toggle}>Updated</SortHeader>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
             </thead>
             <tbody>
               {filtered.map((c) => {

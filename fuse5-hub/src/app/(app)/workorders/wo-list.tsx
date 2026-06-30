@@ -3,10 +3,16 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
 import type { FilterField, FilterOption, LocationNode } from "@/components/filters/types";
 import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 import type { WorkOrderRow } from "@/lib/queries";
 import { WoStatus } from "./wo-status";
+
+// Sort weights so Priority/Status order by severity/flow, not alphabetically.
+const PRIORITY_RANK: Record<WorkOrderRow["priority"], number> = { urgent: 3, high: 2, medium: 1, low: 0 };
+const STATUS_RANK: Record<WorkOrderRow["status"], number> = { open: 2, in_progress: 1, resolved: 0 };
 
 const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", whatsapp: "🟢", voice: "📞", display: "🖥" };
 const NOTICE_BADGE: Record<WorkOrderRow["noticeStatus"], string> = { none: "", draft: "f5-badge warn", pending_review: "f5-badge", approved: "f5-badge", published: "f5-badge ok" };
@@ -66,21 +72,27 @@ export function WorkOrdersList({
   );
 
   const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true, initialSearch });
+  const { sort, toggle } = useSortState({ urlSync: true });
 
-  const filtered = useMemo(
-    () =>
-      applyFilters(rows, value, {
-        // Exact-equality intent: property/status/priority/category accessors return
-        // the canonical row value; applyFilters substring-contains is a safe superset.
-        property: (r) => r.propertyName,
-        source: (r) => r.source ?? "staff",
-        status: (r) => r.status,
-        priority: (r) => r.priority,
-        category: (r) => r.category,
-        q: (r) => `${r.title} ${r.propertyName} ${r.unit} ${r.category}`,
-      }),
-    [rows, value],
-  );
+  const filtered = useMemo(() => {
+    const matched = applyFilters(rows, value, {
+      // Exact-equality intent: property/status/priority/category accessors return
+      // the canonical row value; applyFilters substring-contains is a safe superset.
+      property: (r) => r.propertyName,
+      source: (r) => r.source ?? "staff",
+      status: (r) => r.status,
+      priority: (r) => r.priority,
+      category: (r) => r.category,
+      q: (r) => `${r.title} ${r.propertyName} ${r.unit} ${r.category}`,
+    });
+    return applySort(matched, sort, {
+      title: (r) => r.title,
+      property: (r) => `${r.propertyName} ${r.unit}`,
+      category: (r) => r.category,
+      priority: (r) => PRIORITY_RANK[r.priority],
+      status: (r) => STATUS_RANK[r.status],
+    });
+  }, [rows, value, sort]);
 
   return (
     <>
@@ -97,13 +109,13 @@ export function WorkOrdersList({
         <table className="f5-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Property / Unit</th>
-              <th>Category</th>
+              <SortHeader sortKey="title" sort={sort} onSort={toggle}>Title</SortHeader>
+              <SortHeader sortKey="property" sort={sort} onSort={toggle}>Property / Unit</SortHeader>
+              <SortHeader sortKey="category" sort={sort} onSort={toggle}>Category</SortHeader>
               <th>Channels</th>
               <th>Notice</th>
-              <th>Priority</th>
-              <th>Status</th>
+              <SortHeader sortKey="priority" sort={sort} onSort={toggle}>Priority</SortHeader>
+              <SortHeader sortKey="status" sort={sort} onSort={toggle}>Status</SortHeader>
               <th></th>
             </tr>
           </thead>

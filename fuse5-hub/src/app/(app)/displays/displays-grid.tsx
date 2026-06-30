@@ -1,13 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DisplayRow, PropertyOption } from "@/lib/queries";
+import { FilterBar } from "@/components/filters/FilterBar";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 import { saveDisplay, deleteDisplay, type DisplayInput } from "./actions";
 
 const STATUS_BADGE: Record<DisplayRow["status"], string> = { online: "f5-badge ok", offline: "f5-badge bad", warning: "f5-badge warn" };
 const STATUS_DOT: Record<DisplayRow["status"], string> = { online: "var(--f5-green)", offline: "var(--f5-red)", warning: "var(--f5-amber)" };
 const STATUS_LABEL: Record<DisplayRow["status"], string> = { online: "Online", offline: "Offline", warning: "Warning" };
+const STATUS_RANK: Record<DisplayRow["status"], number> = { offline: 2, warning: 1, online: 0 };
+const STATUS_OPTIONS: FilterOption[] = [
+  { value: "online", label: "Online" },
+  { value: "warning", label: "Warning" },
+  { value: "offline", label: "Offline" },
+];
+const uniqueSorted = (xs: string[]): string[] => [...new Set(xs.filter((x) => x && x !== "—"))].sort((a, b) => a.localeCompare(b));
 const blank = (propertyId: string | null): DisplayInput => ({ name: "", location: "", propertyId, status: "online" });
 
 // Deterministic per-display telemetry (demo) — derived from the id so SSR and
@@ -40,6 +51,37 @@ export function DisplaysGrid({ displays, properties, canEdit }: { displays: Disp
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  // Facets derived from the registered displays.
+  const propertyOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(displays.map((d) => d.propertyName)).map((p) => ({ value: p, label: p })),
+    [displays],
+  );
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name, location, property…" },
+      { key: "property", label: "Property", kind: "multiselect", options: propertyOptions },
+      { key: "status", label: "Status", kind: "segmented", options: STATUS_OPTIONS, allLabel: "All" },
+    ],
+    [propertyOptions],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  // Card grid has no column headers, so a small sort <select> drives the state.
+  const { sort, setSort } = useSortState({ urlSync: true });
+
+  const filtered = useMemo(() => {
+    const matched = applyFilters(displays, value, {
+      q: (d) => `${d.name} ${d.location} ${d.propertyName}`,
+      property: (d) => d.propertyName,
+      status: (d) => d.status,
+    });
+    return applySort(matched, sort, {
+      name: (d) => d.name,
+      status: (d) => STATUS_RANK[d.status],
+    });
+  }, [displays, value, sort]);
+
   function openAdd() { setError(null); setEditing(blank(properties[0]?.id ?? null)); }
   function openEdit(d: DisplayRow) { setError(null); setEditing({ id: d.id, name: d.name, location: d.location === "—" ? "" : d.location, propertyId: d.propertyId, status: d.status }); }
   function save() {
@@ -70,8 +112,29 @@ export function DisplaysGrid({ displays, properties, canEdit }: { displays: Disp
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
-        {displays.map((d) => (
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="displays"
+        actions={
+          <select
+            className="f5-select"
+            aria-label="Sort displays"
+            value={`${sort.key ?? ""}:${sort.dir}`}
+            onChange={(e) => { const [k, dir] = e.target.value.split(":"); setSort({ key: k || null, dir: dir as "asc" | "desc" }); }}
+            style={{ width: "auto", minWidth: 150 }}
+          >
+            <option value=":asc">Sort: Default</option>
+            <option value="name:asc">Sort: Name A–Z</option>
+            <option value="status:desc">Sort: Status (issues first)</option>
+          </select>
+        }
+      />
+
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", marginTop: 14 }}>
+        {filtered.map((d) => (
           <div key={d.id} className="f5-card">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
@@ -101,17 +164,17 @@ export function DisplaysGrid({ displays, properties, canEdit }: { displays: Disp
             )}
           </div>
         ))}
-        {displays.length === 0 && <div style={{ color: "var(--f5-text-muted)", fontSize: 13 }}>No displays registered yet.</div>}
+        {filtered.length === 0 && <div style={{ color: "var(--f5-text-muted)", fontSize: 13 }}>{displays.length === 0 ? "No displays registered yet." : "No displays match."}</div>}
       </div>
 
-      {displays.length > 0 && (
+      {filtered.length > 0 && (
         <>
           <div className="f5-section-title">Proof-of-Play Log</div>
           <div className="f5-card" style={{ padding: 0 }}>
             <table className="f5-table">
               <thead><tr><th>Display</th><th>Content</th><th>Resolution</th><th>Last heartbeat</th><th>Uptime (24h)</th><th>Status</th></tr></thead>
               <tbody>
-                {displays.map((d) => { const t = telemetry(d); return (
+                {filtered.map((d) => { const t = telemetry(d); return (
                   <tr key={d.id}>
                     <td style={{ color: "var(--f5-text)" }}>{d.name}</td>
                     <td>{t.content}</td>

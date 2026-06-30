@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { IntegrationRow, IntegrationStatus } from "@/lib/queries";
 import { saveIntegration } from "./actions";
+import { FilterBar } from "@/components/filters/FilterBar";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
 
 const BADGE: Record<IntegrationStatus, { cls: string; label: string }> = {
   connected: { cls: "ok", label: "Connected" },
@@ -20,6 +23,7 @@ const FIELDS: Record<string, { key: string; label: string }[]> = {
   twilio: [{ key: "account_sid", label: "Account SID" }, { key: "from", label: "Sender number" }],
 };
 const STATUSES: IntegrationStatus[] = ["connected", "active", "available", "disconnected"];
+const STATUS_OPTIONS: FilterOption[] = STATUSES.map((s) => ({ value: s, label: BADGE[s].label }));
 
 interface Editing { provider: string; name: string; status: IntegrationStatus; settings: Record<string, string> }
 
@@ -28,6 +32,22 @@ export function IntegrationsList({ integrations, canEdit }: { integrations: Inte
   const [editing, setEditing] = useState<Editing | null>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const FILTER_FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search service name or description…" },
+      { key: "status", label: "Status", kind: "multiselect", options: STATUS_OPTIONS },
+    ],
+    [],
+  );
+  const { value, setValue } = useFilterState({ fields: FILTER_FIELDS, urlSync: true });
+  const list = useMemo(
+    () => applyFilters(integrations, value, {
+      q: (it) => `${it.name} ${it.description} ${it.provider}`,
+      status: (it) => it.status,
+    }),
+    [integrations, value],
+  );
 
   function open(it: IntegrationRow) { setError(null); setEditing({ provider: it.provider, name: it.name, status: it.status, settings: { ...it.settings } }); }
   function save() {
@@ -43,8 +63,10 @@ export function IntegrationsList({ integrations, canEdit }: { integrations: Inte
   return (
     <>
       <div className="f5-section-title">Connected Services</div>
-      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
-        {integrations.map((it) => {
+      <FilterBar fields={FILTER_FIELDS} value={value} onChange={setValue} resultCount={list.length} resultLabel="services" />
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(2,1fr)", marginTop: 14 }}>
+        {list.length === 0 && <div style={{ gridColumn: "1 / -1", color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No services match.</div>}
+        {list.map((it) => {
           const b = BADGE[it.status];
           return (
             <div key={it.provider} className="f5-card">

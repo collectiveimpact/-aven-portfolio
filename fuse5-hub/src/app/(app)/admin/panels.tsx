@@ -10,9 +10,18 @@ import type { ProviderRow, RoleTemplateRow, PermissionGrantRow } from "@/lib/adm
 import { recordPlatformAction } from "./providers-actions";
 import { Overlay, OverlayHeader, Saved } from "./admin-prov-ui";
 import { Timeline } from "@/components/timeline";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 
 const dim = "var(--f5-text-muted)";
 const fg = "var(--f5-text)";
+
+const psUniqueSorted = (xs: (string | null | undefined)[]): string[] =>
+  [...new Set(xs.filter((x): x is string => !!x && x !== "—"))].sort((a, b) => a.localeCompare(b));
+const psOptions = (xs: string[]): FilterOption[] => xs.map((x) => ({ value: x, label: x }));
 
 /* ---------------- Account panels (existing) ---------------- */
 
@@ -229,6 +238,29 @@ export function AllProvidersPanel({ providers, rows }: { providers: ProviderDemo
     const copy = cur.slice(); copy[i] = next; return copy;
   });
 
+  // Filter the housing-provider directory (search + tier + Yardi-sync facets).
+  const yardiLabel: Record<ProviderDemo["yardi"], string> = { synced: "Synced", pending: "Pending", none: "Not connected" };
+  const fields = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search provider…" },
+      { key: "tier", label: "Tier", kind: "multiselect", options: psOptions(psUniqueSorted(list.map((p) => p.tier))) },
+      { key: "yardi", label: "Yardi", kind: "multiselect", options: psOptions(psUniqueSorted(list.map((p) => yardiLabel[p.yardi]))) },
+    ],
+    // options derived from the working set; recompute as it grows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [list],
+  );
+  const { value, setValue } = useFilterState({ fields, urlSync: true });
+  const visible = useMemo(
+    () => applyFilters(list.filter((p) => p.status === "active"), value, {
+      q: (p) => `${p.name} ${p.short}`,
+      tier: (p) => p.tier,
+      yardi: (p) => yardiLabel[p.yardi],
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [list, value],
+  );
+
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -238,8 +270,12 @@ export function AllProvidersPanel({ providers, rows }: { providers: ProviderDemo
           <button className="f5-btn primary" type="button" onClick={() => setAdding(true)}>+ Add Provider</button>
         </div>
       </div>
+      <div style={{ marginTop: 14 }}>
+        <FilterBar fields={fields} value={value} onChange={setValue} resultCount={visible.length} resultLabel="providers" />
+      </div>
       <div className="f5-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(360px,1fr))", marginTop: 14 }}>
-        {list.filter((p) => p.status === "active").map((p) => (
+        {visible.length === 0 && <div style={{ gridColumn: "1 / -1", color: dim, fontSize: 13, textAlign: "center", padding: 20 }}>No providers match.</div>}
+        {visible.map((p) => (
           <div key={p.id} className="f5-card">
             <div role="button" tabIndex={0} onClick={() => setViewing(p)}
               onKeyDown={(e) => { if (e.key === "Enter") setViewing(p); }}
@@ -532,22 +568,52 @@ function RoleTemplateEditor({ role, isNew, onClose, onSave }: { role: RoleRow; i
 
 export function ProviderUsersPanel({ users }: { users: PlatformUserDemo[] }) {
   const statusBadge = (s: PlatformUserDemo["status"]) => s === "Active" ? "f5-badge ok" : s === "Invited" ? "f5-badge" : "f5-badge warn";
-  const [filter, setFilter] = useState("All Providers");
   const [open, setOpen] = useState<PlatformUserDemo | null>(null);
-  const providers = ["All Providers", ...Array.from(new Set(users.map((u) => u.provider)))];
-  const rows = users.filter((u) => filter === "All Providers" || u.provider === filter);
+
+  const fields = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name, email, role…" },
+      { key: "provider", label: "Provider", kind: "multiselect", options: psOptions(psUniqueSorted(users.map((u) => u.provider))) },
+      { key: "role", label: "Role", kind: "multiselect", options: psOptions(psUniqueSorted(users.map((u) => u.role))) },
+      { key: "status", label: "Status", kind: "segmented", options: [{ value: "Active", label: "Active" }, { value: "Invited", label: "Invited" }, { value: "Suspended", label: "Suspended" }], allLabel: "All" },
+    ],
+    [users],
+  );
+  const { value, setValue } = useFilterState({ fields, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+  const rows = useMemo(() => {
+    const matched = applyFilters(users, value, {
+      q: (u) => `${u.name} ${u.email} ${u.role} ${u.provider}`,
+      provider: (u) => u.provider,
+      role: (u) => u.role,
+      status: (u) => u.status,
+    });
+    return applySort(matched, sort, {
+      name: (u) => u.name,
+      provider: (u) => u.provider,
+      role: (u) => u.role,
+      lastLogin: (u) => u.lastLogin,
+      status: (u) => u.status,
+    });
+  }, [users, value, sort]);
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div className="f5-page-sub" style={{ marginTop: -6 }}>Cross-provider view of every user across all housing provider organizations.</div>
-        <select className="f5-select" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 180 }}>
-          {providers.map((p) => <option key={p}>{p}</option>)}
-        </select>
+      <div className="f5-page-sub" style={{ marginTop: -6 }}>Cross-provider view of every user across all housing provider organizations.</div>
+      <div style={{ marginTop: 10 }}>
+        <FilterBar fields={fields} value={value} onChange={setValue} resultCount={rows.length} resultLabel="users" />
       </div>
       <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 12 }}>
         <table className="f5-table">
-          <thead><tr><th>User</th><th>Provider</th><th>Role</th><th>Properties</th><th>Last Login</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortHeader sortKey="name" sort={sort} onSort={toggle}>User</SortHeader>
+            <SortHeader sortKey="provider" sort={sort} onSort={toggle}>Provider</SortHeader>
+            <SortHeader sortKey="role" sort={sort} onSort={toggle}>Role</SortHeader>
+            <th>Properties</th>
+            <SortHeader sortKey="lastLogin" sort={sort} onSort={toggle}>Last Login</SortHeader>
+            <SortHeader sortKey="status" sort={sort} onSort={toggle}>Status</SortHeader>
+          </tr></thead>
           <tbody>
+            {rows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", padding: 20, color: dim, fontSize: 13 }}>No users match.</td></tr>}
             {rows.map((u) => (
               <tr key={u.email} style={{ cursor: "pointer" }} onClick={() => setOpen(u)}>
                 <td><div style={{ color: fg, fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 11, color: dim }}>{u.email}</div></td>

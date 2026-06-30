@@ -4,6 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { InboundRow } from "@/lib/queries";
 import { replyToInbound, resolveInbound } from "./actions";
+import { FilterBar } from "@/components/filters/FilterBar";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
 
 const fg = "var(--f5-text)";
 const dim = "var(--f5-text-muted)";
@@ -15,7 +18,12 @@ const QUICK_REPLIES = [
   "We've received your message and escalated it to the property manager.",
 ];
 
-type Filter = "all" | "unread" | "awaiting" | "resolved" | "flagged";
+const STATUS_OPTIONS: FilterOption[] = [
+  { value: "unread", label: "Unread" }, { value: "awaiting", label: "Awaiting" }, { value: "resolved", label: "Resolved" },
+];
+const CHANNEL_OPTIONS: FilterOption[] = [
+  { value: "sms", label: "SMS" }, { value: "email", label: "Email" }, { value: "whatsapp", label: "WhatsApp" }, { value: "voice", label: "Voice" },
+];
 
 // Deterministic demo enrichment for the contact panel (the real model carries
 // only sender/unit/channel; these flesh out the conversation context).
@@ -37,8 +45,7 @@ function enrich(r: InboundRow) {
 
 export function InboxList({ replies, canEdit }: { replies: InboundRow[]; canEdit: boolean }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [q, setQ] = useState("");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [selId, setSelId] = useState<string | null>(replies[0]?.id ?? null);
   const [reply, setReply] = useState("");
   const [pending, start] = useTransition();
@@ -46,17 +53,25 @@ export function InboxList({ replies, canEdit }: { replies: InboundRow[]; canEdit
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [showQuick, setShowQuick] = useState(false);
 
-  const counts = {
-    unread: replies.filter((r) => r.status === "unread").length,
-    flagged: Object.values(flags).filter(Boolean).length,
-    awaiting: replies.filter((r) => r.status === "awaiting").length,
-  };
-  const needle = q.trim().toLowerCase();
-  const list = useMemo(() => replies.filter((r) => {
-    if (filter === "flagged" ? !flags[r.id] : filter !== "all" && r.status !== filter) return false;
-    if (!needle) return true;
-    return [r.sender, r.unit, r.snippet].some((v) => (v ?? "").toLowerCase().includes(needle));
-  }), [replies, filter, flags, needle]);
+  const flaggedCount = Object.values(flags).filter(Boolean).length;
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search sender, unit, message…" },
+      { key: "channel", label: "Channel", kind: "multiselect", options: CHANNEL_OPTIONS },
+      { key: "status", label: "Status", kind: "multiselect", options: STATUS_OPTIONS },
+    ],
+    [],
+  );
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const list = useMemo(() => {
+    const matched = applyFilters(replies, value, {
+      q: (r) => `${r.sender} ${r.unit} ${r.snippet}`,
+      channel: (r) => r.channel,
+      status: (r) => r.status,
+    });
+    return flaggedOnly ? matched.filter((r) => flags[r.id]) : matched;
+  }, [replies, value, flaggedOnly, flags]);
 
   const sel = replies.find((r) => r.id === selId) ?? list[0] ?? null;
   const ex = sel ? enrich(sel) : null;
@@ -81,11 +96,9 @@ export function InboxList({ replies, canEdit }: { replies: InboundRow[]; canEdit
       {/* LEFT — conversation list */}
       <div className="f5-card" style={{ padding: 0, overflow: "hidden", position: "sticky", top: 16 }}>
         <div style={{ padding: 12, borderBottom: "1px solid var(--f5-border)" }}>
-          <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search conversations…" style={{ fontSize: 13 }} />
+          <FilterBar fields={FIELDS} value={value} onChange={setValue} resultCount={list.length} resultLabel="conversations" />
           <div className="f5-chips" style={{ margin: "10px 0 0", gap: 5 }}>
-            {([["all", "All"], ["unread", `Unread ${counts.unread}`], ["flagged", `Flagged ${counts.flagged}`], ["awaiting", `Awaiting ${counts.awaiting}`]] as [Filter, string][]).map(([k, l]) => (
-              <span key={k} className={`f5-chip${filter === k ? " active" : ""}`} style={{ fontSize: 11 }} onClick={() => setFilter(k)}>{l}</span>
-            ))}
+            <span className={`f5-chip${flaggedOnly ? " active" : ""}`} style={{ fontSize: 11 }} onClick={() => setFlaggedOnly((v) => !v)}>★ Flagged {flaggedCount}</span>
           </div>
         </div>
         <div style={{ maxHeight: 560, overflowY: "auto" }}>

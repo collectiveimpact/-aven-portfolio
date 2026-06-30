@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { MemberRow } from "@/lib/queries";
 import { ROLE_LABELS, ROLE_TIERS, tierForRole, type F5Role } from "@/lib/rbac";
 import { setMemberRole, setMemberDepartment, type DepartmentRow } from "./actions";
 import { MemberProfileDrawer, AddUserDrawer } from "./admin-user-drawer";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 
 const statusBadge: Record<string, string> = { active: "ok", invited: "warn", suspended: "bad" };
 const statusLabel: Record<string, string> = { active: "Active", invited: "Invited", suspended: "Suspended" };
 const ROLES = Object.keys(ROLE_LABELS) as F5Role[];
+const ROLE_OPTIONS: FilterOption[] = ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
+const STATUS_OPTIONS: FilterOption[] = [
+  { value: "active", label: "Active" }, { value: "invited", label: "Invited" }, { value: "suspended", label: "Suspended" },
+];
 
 export function MemberRoles({
   members,
@@ -62,6 +71,42 @@ export function MemberRoles({
 
   const selected = profileId ? members.find((m) => m.id === profileId) : undefined;
 
+  // Facets — role enum + department catalog. Reads optimistic local state so a
+  // just-changed role/department filters consistently with what's on screen.
+  const deptLabel = (id: string | null) => departments.find((d) => d.id === id)?.label ?? "—";
+  const deptOptions = useMemo<FilterOption[]>(
+    () => departments.map((d) => ({ value: d.label, label: d.label })),
+    [departments],
+  );
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name or email…" },
+      { key: "role", label: "Role", kind: "multiselect", options: ROLE_OPTIONS },
+      ...(deptOptions.length ? [{ key: "department", label: "Department", kind: "multiselect", options: deptOptions } as FilterField] : []),
+      { key: "status", label: "Status", kind: "segmented", options: STATUS_OPTIONS, allLabel: "All" },
+    ],
+    [deptOptions],
+  );
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+
+  const rows = useMemo(() => {
+    const matched = applyFilters(members, value, {
+      q: (m) => `${m.fullName} ${m.email}`,
+      role: (m) => ROLE_LABELS[roles[m.id] ?? m.role],
+      department: (m) => deptLabel(depts[m.id] ?? null),
+      status: (m) => m.status,
+    });
+    return applySort(matched, sort, {
+      name: (m) => m.fullName,
+      email: (m) => m.email,
+      role: (m) => ROLE_LABELS[roles[m.id] ?? m.role],
+      department: (m) => deptLabel(depts[m.id] ?? null),
+      status: (m) => m.status,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, value, sort, roles, depts, departments]);
+
   return (
     <>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -84,13 +129,25 @@ export function MemberRoles({
       )}
 
       {error && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+
+      <FilterBar fields={FIELDS} value={value} onChange={setValue} resultCount={rows.length} resultLabel="users" />
+
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th><th>Tier</th><th>Department</th><th>Status</th><th></th></tr>
+            <tr>
+              <SortHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortHeader>
+              <SortHeader sortKey="email" sort={sort} onSort={toggle}>Email</SortHeader>
+              <SortHeader sortKey="role" sort={sort} onSort={toggle}>Role</SortHeader>
+              <th>Tier</th>
+              <SortHeader sortKey="department" sort={sort} onSort={toggle}>Department</SortHeader>
+              <SortHeader sortKey="status" sort={sort} onSort={toggle}>Status</SortHeader>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
-            {members.map((m) => {
+            {rows.length === 0 && <tr><td colSpan={7} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No users match.</td></tr>}
+            {rows.map((m) => {
               const role = roles[m.id] ?? m.role;
               const tier = ROLE_TIERS[tierForRole(role)];
               const deptId = depts[m.id] ?? null;

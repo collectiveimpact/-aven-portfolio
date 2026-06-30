@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { PropertyOption } from "@/lib/queries";
 import type { ResidentWithDemographics } from "@/lib/residents/types";
 import { saveResident, deleteResident, type ResidentInput } from "./actions";
 import { ResidentProfile } from "./resident-profile";
 import { downloadTemplateCSV } from "@/lib/export";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 
 // Header set + example row for the resident bulk-import CSV template.
 const IMPORT_HEADERS = ["name", "email", "phone", "unit", "property", "preferred_channel", "language"];
@@ -22,6 +27,11 @@ function fmtDate(v: string | null): string {
 const LANGS = ["English", "French", "Spanish", "Mandarin", "Portuguese", "Arabic"];
 const CHANNELS: { k: string; l: string }[] = [{ k: "email", l: "Email" }, { k: "sms", l: "SMS" }, { k: "whatsapp", l: "WhatsApp" }];
 
+const uniqueSorted = (xs: (string | null | undefined)[]): string[] =>
+  [...new Set(xs.filter((x): x is string => !!x && x !== "—"))].sort((a, b) => a.localeCompare(b));
+const STATUS_OPTIONS: FilterOption[] = [{ value: "active", label: "Active" }, { value: "moved_out", label: "Moved Out" }];
+const CHANNEL_OPTIONS: FilterOption[] = CHANNELS.map((c) => ({ value: c.k, label: c.l }));
+
 const blank = (propertyId: string | null): ResidentInput => ({
   propertyId, unit: "", name: "", email: "", phone: "", language: "English", preferredChannel: "email", status: "active",
 });
@@ -35,16 +45,50 @@ export function ResidentsTable({ residents, properties, canEdit }: {
   const [editing, setEditing] = useState<ResidentInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "moved_out">("all");
   const [viewing, setViewing] = useState<ResidentWithDemographics | null>(null);
 
-  const needle = q.trim().toLowerCase();
-  const filtered = residents.filter((r) => {
-    if (statusFilter !== "all" && r.status !== statusFilter) return false;
-    if (!needle) return true;
-    return [r.name, r.unit, r.propertyName, r.language, r.email, r.phone, r.demographics?.supportAgency ?? ""].some((v) => (v ?? "").toLowerCase().includes(needle));
-  });
+  // Facets derived from the real directory.
+  const propertyOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(residents.map((r) => r.propertyName)).map((p) => ({ value: p, label: p })),
+    [residents],
+  );
+  const languageOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(residents.map((r) => r.demographics?.primaryLanguage ?? r.language)).map((l) => ({ value: l, label: l })),
+    [residents],
+  );
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name, unit, property, language, agency…" },
+      { key: "property", label: "Property", kind: "multiselect", options: propertyOptions },
+      { key: "language", label: "Language", kind: "multiselect", options: languageOptions },
+      { key: "channel", label: "Channel", kind: "multiselect", options: CHANNEL_OPTIONS },
+      { key: "status", label: "Status", kind: "segmented", options: STATUS_OPTIONS, allLabel: "All" },
+    ],
+    [propertyOptions, languageOptions],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+
+  const filtered = useMemo(() => {
+    const matched = applyFilters(residents, value, {
+      q: (r) => `${r.name} ${r.unit} ${r.propertyName} ${r.language} ${r.email} ${r.phone} ${r.demographics?.supportAgency ?? ""}`,
+      property: (r) => r.propertyName,
+      language: (r) => r.demographics?.primaryLanguage ?? r.language,
+      channel: (r) => r.preferredChannel,
+      status: (r) => r.status,
+    });
+    return applySort(matched, sort, {
+      unit: (r) => r.unit,
+      name: (r) => r.name,
+      property: (r) => r.propertyName,
+      language: (r) => r.demographics?.primaryLanguage ?? r.language,
+      household: (r) => r.demographics?.householdSize ?? null,
+      lastContacted: (r) => (r.lastContactedAt ? new Date(r.lastContactedAt) : null),
+      status: (r) => r.status,
+    });
+  }, [residents, value, sort]);
 
   function openAdd() { setError(null); setEditing(blank(properties[0]?.id ?? null)); }
   function openEdit(r: ResidentWithDemographics) {
@@ -88,20 +132,28 @@ export function ResidentsTable({ residents, properties, canEdit }: {
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, unit, property, language, agency…" style={{ maxWidth: 340 }} />
-        <div className="f5-chips" style={{ margin: 0 }}>
-          {(["all", "active", "moved_out"] as const).map((s) => (
-            <span key={s} className={`f5-chip${statusFilter === s ? " active" : ""}`} onClick={() => setStatusFilter(s)}>{s === "all" ? "All" : s === "active" ? "Active" : "Moved Out"}</span>
-          ))}
-        </div>
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {residents.length}</span>
-      </div>
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="residents"
+      />
 
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Unit</th><th>Name</th><th>Property</th><th>Language</th><th>Household</th><th>Support Agency</th><th>Last Contacted</th><th>Status</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr>
+              <SortHeader sortKey="unit" sort={sort} onSort={toggle}>Unit</SortHeader>
+              <SortHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortHeader>
+              <SortHeader sortKey="property" sort={sort} onSort={toggle}>Property</SortHeader>
+              <SortHeader sortKey="language" sort={sort} onSort={toggle}>Language</SortHeader>
+              <SortHeader sortKey="household" sort={sort} onSort={toggle}>Household</SortHeader>
+              <th>Support Agency</th>
+              <SortHeader sortKey="lastContacted" sort={sort} onSort={toggle}>Last Contacted</SortHeader>
+              <SortHeader sortKey="status" sort={sort} onSort={toggle}>Status</SortHeader>
+              {canEdit && <th style={{ textAlign: "right" }}>Actions</th>}
+            </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && <tr><td colSpan={canEdit ? 9 : 8} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No residents match.</td></tr>}

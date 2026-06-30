@@ -4,8 +4,10 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { PropertyFull } from "@/lib/queries";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
 import type { FilterField, FilterOption } from "@/components/filters/types";
 import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 import { saveProperty, deleteProperty, type PropertyInput } from "./actions";
 
 const TYPES = ["residential", "mixed-use", "senior", "supportive", "commercial"];
@@ -53,16 +55,21 @@ export function PropertiesTable({ properties, canEdit }: { properties: PropertyF
   );
 
   const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
 
-  const filtered = useMemo(
-    () =>
-      applyFilters(properties, value, {
-        q: (p) => `${p.name} ${p.address} ${p.type} ${p.managerName} ${p.managerEmail}`,
-        type: (p) => p.type,
-        occupancy: (p) => occBand(p),
-      }),
-    [properties, value],
-  );
+  const filtered = useMemo(() => {
+    const matched = applyFilters(properties, value, {
+      q: (p) => `${p.name} ${p.address} ${p.type} ${p.managerName} ${p.managerEmail}`,
+      type: (p) => p.type,
+      occupancy: (p) => occBand(p),
+    });
+    return applySort(matched, sort, {
+      name: (p) => p.name,
+      type: (p) => p.type,
+      occupancy: (p) => (p.units ? p.occupied / p.units : 0),
+      manager: (p) => p.managerName,
+    });
+  }, [properties, value, sort]);
 
   function openAdd() { setError(null); setEditing(blank()); }
   function openEdit(p: PropertyFull) {
@@ -108,7 +115,13 @@ export function PropertiesTable({ properties, canEdit }: { properties: PropertyF
       <div className="f5-card" style={{ padding: 0, marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Property</th><th>Type</th><th>Occupancy</th><th>Manager</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr>
+              <SortHeader sortKey="name" sort={sort} onSort={toggle}>Property</SortHeader>
+              <SortHeader sortKey="type" sort={sort} onSort={toggle}>Type</SortHeader>
+              <SortHeader sortKey="occupancy" sort={sort} onSort={toggle}>Occupancy</SortHeader>
+              <SortHeader sortKey="manager" sort={sort} onSort={toggle}>Manager</SortHeader>
+              {canEdit && <th style={{ textAlign: "right" }}>Actions</th>}
+            </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && <tr><td colSpan={canEdit ? 5 : 4} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No properties match.</td></tr>}

@@ -9,18 +9,43 @@ import { isSystemField } from "@/lib/wo-fields";
 import { canBroadcast, canPublish } from "@/lib/rbac";
 import { renderNoticeEmailHtml } from "@/lib/notice-template";
 import { sendPortalPush } from "@/lib/portal/push";
+import { markWorkOrderComplete } from "@/lib/yardi/mcp";
 
 // Operational status lifecycle (separate from the notice approval workflow):
 // open → in_progress → resolved. Settable from the work-order queue.
-export async function setWorkOrderStatus(woId: string, status: "open" | "in_progress" | "resolved"): Promise<{ ok: boolean; error?: string }> {
+//
+// When a WO is resolved AND it carries a Yardi WONumber (external_id, set by the
+// Yardi import / connector sync), we also close it in Yardi via the Virtuoso MCP
+// (rfm_workorder_mark_work_order_as_complete). Best-effort + non-blocking: a
+// Yardi failure never blocks the local status change; both outcomes are audited
+// with their live/stub mode so the trail shows whether Yardi was actually hit.
+export async function setWorkOrderStatus(woId: string, status: "open" | "in_progress" | "resolved"): Promise<{ ok: boolean; error?: string; yardi?: "live" | "stub" | "failed" | "skipped" }> {
   if (!["open", "in_progress", "resolved"].includes(status)) return { ok: false, error: "Invalid status." };
   const supabase = await createClient(); if (!supabase) return { ok: false, error: "No backend." };
   const me = await getCurrentUser(); if (!me?.orgId) return { ok: false, error: "No organization." };
   if (!me.role || !canPublish(me.role)) return { ok: false, error: "Your role cannot update work orders." };
+
+  // Read the Yardi linkage before mutating (scoped to this WO).
+  const { data: row } = await supabase.from("work_orders").select("external_id").eq("id", woId).single();
+  const externalId = (row?.external_id as string | null) ?? null;
+
   const { error } = await supabase.from("work_orders").update({ status }).eq("id", woId);
   if (error) return { ok: false, error: error.message };
   await supabase.from("audit_log").insert({ org_id: me.orgId, actor_id: me.id, action: "Work Order Status", detail: `${woId} → ${status}` });
-  return { ok: true };
+
+  // Mirror "resolved" to Yardi when this WO is Yardi-linked.
+  let yardi: "live" | "stub" | "failed" | "skipped" = "skipped";
+  if (status === "resolved" && externalId) {
+    try {
+      const r = await markWorkOrderComplete(externalId);
+      yardi = r.ok ? r.mode : "failed";
+      await supabase.from("audit_log").insert({
+        org_id: me.orgId, actor_id: me.id, action: "Yardi WO Complete",
+        detail: r.ok ? `${externalId} marked complete in Yardi (${r.mode})` : `${externalId} — Yardi close failed: ${r.error ?? "unknown"}`,
+      });
+    } catch { yardi = "failed"; }
+  }
+  return { ok: true, yardi };
 }
 
 // Approval workflow: Draft → Review → Approved → Sent.

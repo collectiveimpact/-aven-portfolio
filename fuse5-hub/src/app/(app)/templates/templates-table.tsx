@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { TemplateRow } from "@/lib/queries";
 import { saveTemplate, deleteTemplate, type TemplateInput } from "./actions";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
 
 const channelLabel: Record<string, string> = { email: "Email", sms: "SMS", whatsapp: "WhatsApp", voice: "Voice", display: "Display" };
 const CHANNELS = ["email", "sms", "display", "whatsapp", "voice"];
+const CHANNEL_OPTIONS: FilterOption[] = CHANNELS.map((c) => ({ value: c, label: channelLabel[c] ?? c }));
+const TYPE_OPTIONS: FilterOption[] = [{ value: "master", label: "Master" }, { value: "org", label: "Org" }];
+const uniqueSorted = (xs: (string | null | undefined)[]): string[] =>
+  [...new Set(xs.filter((x): x is string => !!x && x !== "—"))].sort((a, b) => a.localeCompare(b));
 const blank = (): TemplateInput => ({ name: "", category: "General", channels: ["email"], version: "1.0", body: "" });
 
 export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[]; canEdit: boolean }) {
@@ -14,6 +23,40 @@ export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[
   const [editing, setEditing] = useState<TemplateInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Facets derived from the real template set.
+  const categoryOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(templates.map((t) => t.category)).map((c) => ({ value: c, label: c })),
+    [templates],
+  );
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name, category, channel, body…" },
+      { key: "category", label: "Category", kind: "multiselect", options: categoryOptions },
+      { key: "channel", label: "Channel", kind: "multiselect", options: CHANNEL_OPTIONS },
+      { key: "type", label: "Type", kind: "segmented", options: TYPE_OPTIONS, allLabel: "All" },
+    ],
+    [categoryOptions],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+
+  const filtered = useMemo(() => {
+    const matched = applyFilters(templates, value, {
+      q: (t) => `${t.name} ${t.category} ${t.channels.map((c) => channelLabel[c] ?? c).join(" ")} ${t.body}`,
+      category: (t) => t.category,
+      channel: (t) => t.channels,
+      type: (t) => (t.mandatory ? "master" : "org"),
+    });
+    return applySort(matched, sort, {
+      name: (t) => t.name,
+      category: (t) => t.category,
+      version: (t) => t.version,
+      type: (t) => (t.mandatory ? "Master" : "Org"),
+    });
+  }, [templates, value, sort]);
 
   function openAdd() { setError(null); setEditing(blank()); }
   function openEdit(t: TemplateRow) {
@@ -49,13 +92,22 @@ export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="templates"
+      />
+
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Name</th><th>Category</th><th>Channels</th><th>Version</th><th>Type</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr><SortHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortHeader><SortHeader sortKey="category" sort={sort} onSort={toggle}>Category</SortHeader><th>Channels</th><SortHeader sortKey="version" sort={sort} onSort={toggle}>Version</SortHeader><SortHeader sortKey="type" sort={sort} onSort={toggle}>Type</SortHeader>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
-            {templates.map((t) => (
+            {filtered.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No templates match.</td></tr>}
+            {filtered.map((t) => (
               <tr key={t.id}>
                 <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{t.name}</td>
                 <td>{t.category}</td>

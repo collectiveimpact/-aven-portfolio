@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ContactRow } from "@/lib/queries";
 import { saveContact, deleteContact, type ContactInput } from "./actions";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { SortHeader } from "@/components/filters/SortHeader";
+import type { FilterField, FilterOption } from "@/components/filters/types";
+import { useFilterState, applyFilters } from "@/lib/filters";
+import { useSortState, applySort } from "@/lib/sort";
+
+const uniqueSorted = (xs: (string | null | undefined)[]): string[] =>
+  [...new Set(xs.filter((x): x is string => !!x && x !== "—"))].sort((a, b) => a.localeCompare(b));
 
 const blank = (): ContactInput => ({ name: "", role: "", email: "", phone: "", property: "" });
 
@@ -12,10 +20,43 @@ export function ContactsTable({ contacts, canEdit }: { contacts: ContactRow[]; c
   const [editing, setEditing] = useState<ContactInput | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState("");
 
-  const needle = q.trim().toLowerCase();
-  const filtered = contacts.filter((c) => !needle || [c.name, c.role, c.email, c.phone, c.property].some((v) => (v ?? "").toLowerCase().includes(needle)));
+  // Facets derived from the real directory.
+  const roleOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(contacts.map((c) => c.role)).map((r) => ({ value: r, label: r })),
+    [contacts],
+  );
+  const propertyOptions = useMemo<FilterOption[]>(
+    () => uniqueSorted(contacts.map((c) => c.property)).map((p) => ({ value: p, label: p })),
+    [contacts],
+  );
+
+  const FIELDS = useMemo<FilterField[]>(
+    () => [
+      { key: "q", label: "Search", kind: "search", placeholder: "Search name, role, email, phone, property…" },
+      { key: "role", label: "Role", kind: "multiselect", options: roleOptions },
+      { key: "property", label: "Property", kind: "multiselect", options: propertyOptions },
+    ],
+    [roleOptions, propertyOptions],
+  );
+
+  const { value, setValue } = useFilterState({ fields: FIELDS, urlSync: true });
+  const { sort, toggle } = useSortState({ urlSync: true });
+
+  const filtered = useMemo(() => {
+    const matched = applyFilters(contacts, value, {
+      q: (c) => `${c.name} ${c.role} ${c.email} ${c.phone} ${c.property}`,
+      role: (c) => c.role,
+      property: (c) => c.property,
+    });
+    return applySort(matched, sort, {
+      name: (c) => c.name,
+      role: (c) => c.role,
+      email: (c) => c.email,
+      phone: (c) => c.phone,
+      property: (c) => c.property,
+    });
+  }, [contacts, value, sort]);
 
   const clean = (v: string) => (v === "—" ? "" : v);
   function openAdd() { setError(null); setEditing(blank()); }
@@ -51,15 +92,18 @@ export function ContactsTable({ contacts, canEdit }: { contacts: ContactRow[]; c
 
       {error && !editing && <div style={{ color: "var(--f5-red)", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
-        <input className="f5-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, role, email, property…" style={{ maxWidth: 320 }} />
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--f5-text-muted)" }}>{filtered.length} of {contacts.length}</span>
-      </div>
+      <FilterBar
+        fields={FIELDS}
+        value={value}
+        onChange={setValue}
+        resultCount={filtered.length}
+        resultLabel="contacts"
+      />
 
-      <div className="f5-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="f5-card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
         <table className="f5-table">
           <thead>
-            <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Property</th>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
+            <tr><SortHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortHeader><SortHeader sortKey="role" sort={sort} onSort={toggle}>Role</SortHeader><SortHeader sortKey="email" sort={sort} onSort={toggle}>Email</SortHeader><SortHeader sortKey="phone" sort={sort} onSort={toggle}>Phone</SortHeader><SortHeader sortKey="property" sort={sort} onSort={toggle}>Property</SortHeader>{canEdit && <th style={{ textAlign: "right" }}>Actions</th>}</tr>
           </thead>
           <tbody>
             {filtered.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No contacts match.</td></tr>}
