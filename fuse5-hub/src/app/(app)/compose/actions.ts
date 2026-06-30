@@ -6,6 +6,71 @@ import { getCurrentUser } from "@/lib/auth";
 import { dispatchMessage } from "@/lib/comms-dispatch";
 import type { ChannelKey } from "@/lib/queries";
 import { generateText } from "@/lib/ai";
+import {
+  decideSuppression,
+  resolveChannel,
+  emptyAssessment,
+  EMPTY_BREAKDOWN,
+  DEFAULT_SUPPRESSION_OPTIONS,
+  type AudienceAssessment,
+  type ResidentConsent,
+  type SuppressionBreakdown,
+  type SuppressionOptions,
+  type ReachableResident,
+} from "@/lib/suppression";
+
+// Server-side audience assessor (lives here, not in the client-imported
+// suppression.ts, so Supabase never reaches the client bundle). Reads the org's
+// active residents (optionally one property), consent demographics, and a
+// trailing-window send count; resolves each channel like sendBroadcast; runs
+// decideSuppression. Degrades to zero suppression when there's no backend.
+async function assessAudience(
+  propertyId: string | null,
+  channels: Channel[],
+  isEmergency: boolean,
+  opts: SuppressionOptions = DEFAULT_SUPPRESSION_OPTIONS,
+): Promise<AudienceAssessment> {
+  const supabase = await createClient();
+  if (!supabase) return emptyAssessment();
+  const me = await getCurrentUser();
+  const orgId = me?.orgId;
+  if (!orgId) return emptyAssessment();
+  try {
+    let q = supabase.from("residents").select("id,email,phone,preferred_channel").eq("org_id", orgId).eq("status", "active").limit(2000);
+    if (propertyId) q = q.eq("property_id", propertyId);
+    const { data: residents, error } = await q;
+    if (error) return emptyAssessment();
+    const list = (residents ?? []) as ReachableResident[];
+    const total = list.length;
+    if (total === 0) return { total: 0, sending: 0, suppressedCount: 0, breakdown: { ...EMPTY_BREAKDOWN }, suppressedIds: [], degraded: false };
+    const ids = list.map((r) => r.id);
+
+    // Consent demographics — missing row = NO marketing consent (conservative, CASL opt-out default).
+    const consent = new Map<string, ResidentConsent>();
+    const { data: demo } = await supabase.from("resident_demographics").select("resident_id,consent_casl,consent_sms,consent_emergency_only").in("resident_id", ids);
+    for (const d of demo ?? []) {
+      consent.set(d.resident_id as string, { consent_casl: !!d.consent_casl, consent_sms: !!d.consent_sms, consent_emergency_only: d.consent_emergency_only === undefined ? true : !!d.consent_emergency_only });
+    }
+
+    // Trailing-window send counts (message_recipients has no timestamp → join messages.created_at). Skipped for emergencies.
+    const recent = new Map<string, number>();
+    if (!isEmergency) {
+      const since = new Date(Date.now() - opts.windowDays * 24 * 60 * 60 * 1000).toISOString();
+      const { data: recips } = await supabase.from("message_recipients").select("resident_id,messages!inner(created_at)").in("resident_id", ids).gte("messages.created_at", since);
+      for (const row of recips ?? []) { const rid = row.resident_id as string; recent.set(rid, (recent.get(rid) ?? 0) + 1); }
+    }
+
+    const breakdown: SuppressionBreakdown = { ...EMPTY_BREAKDOWN };
+    const suppressedIds: string[] = [];
+    for (const r of list) {
+      const c = consent.get(r.id) ?? { consent_casl: false, consent_sms: false, consent_emergency_only: true };
+      const decision = decideSuppression(c, { channelResolved: resolveChannel(channels, r), isEmergency, recentSends: recent.get(r.id) ?? 0 }, opts);
+      if (decision.suppress && decision.reason) { breakdown[decision.reason] += 1; suppressedIds.push(r.id); }
+    }
+    const suppressedCount = suppressedIds.length;
+    return { total, sending: total - suppressedCount, suppressedCount, breakdown, suppressedIds, degraded: false };
+  } catch { return emptyAssessment(); }
+}
 
 // AI authoring for the Compose door (Content Composer). Live with ANTHROPIC_API_KEY, stub otherwise.
 export async function aiCompose(prompt: string): Promise<{ ok: boolean; text?: string; mode?: "live" | "stub"; error?: string }> {
@@ -24,13 +89,32 @@ export interface SendBroadcastInput {
   audienceCount: number;
   delivery: "now" | "schedule";
   scheduledFor: string | null;
+  /** Sender override: include residents that only tripped the (overridable) frequency cap. */
+  includeFrequencyCapped?: boolean;
 }
 
 export interface SendBroadcastResult {
   ok: boolean;
   sent: number;
+  /** Non-emergency only: residents auto-suppressed by the CASL guardrail. */
+  suppressed?: number;
   mode?: "live" | "demo";
   error?: string;
+}
+
+// Pre-send compliance assessment for the composer's "Compliance check" card.
+// Non-emergency sends predict opt-out / complaint risk and report what gets held
+// back; emergency sends report zero suppression (the guardrail is bypassed).
+export async function assessBroadcastAudience(
+  propertyId: string | null,
+  channels: Channel[],
+  priority: "normal" | "high" | "emergency",
+  includeFrequencyCapped = false,
+): Promise<AudienceAssessment> {
+  return assessAudience(propertyId, channels, priority === "emergency", {
+    ...DEFAULT_SUPPRESSION_OPTIONS,
+    includeFrequencyCapped,
+  });
 }
 
 // Send a real broadcast: persist Message + MessageRecipient rows, write an audit
@@ -98,6 +182,7 @@ export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroa
   if (msgErr || !msg) return { ok: false, sent: 0, error: msgErr?.message ?? "Could not save message." };
 
   let sent = 0;
+  let suppressed = 0;
   if (status === "sent") {
     // Resolve recipients = the org's active tenants, each on their PREFERRED
     // channel (fallback to whatever selected channel they have contact for).
@@ -108,13 +193,56 @@ export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroa
       .eq("status", "active")
       .limit(200);
 
+    const list = residents ?? [];
+    const isEmergency = input.priority === "emergency";
+
+    // Pre-send suppression ("Refine"): for NON-emergency sends, build the set of
+    // residents to skip (legal CASL/SMS consent gaps + fatigue cap). Emergency
+    // sends reach everyone reachable, unchanged.
+    const opts: SuppressionOptions = { ...DEFAULT_SUPPRESSION_OPTIONS, includeFrequencyCapped: !!input.includeFrequencyCapped };
+    const suppressedSet = new Set<string>();
+    if (!isEmergency && list.length) {
+      const ids = list.map((r) => r.id);
+      const consent = new Map<string, ResidentConsent>();
+      const { data: demo } = await supabase
+        .from("resident_demographics")
+        .select("resident_id,consent_casl,consent_sms,consent_emergency_only")
+        .in("resident_id", ids);
+      for (const d of demo ?? []) {
+        consent.set(d.resident_id as string, {
+          consent_casl: !!d.consent_casl,
+          consent_sms: !!d.consent_sms,
+          consent_emergency_only: d.consent_emergency_only === undefined ? true : !!d.consent_emergency_only,
+        });
+      }
+      const since = new Date(Date.now() - opts.windowDays * 24 * 60 * 60 * 1000).toISOString();
+      const recent = new Map<string, number>();
+      const { data: recips } = await supabase
+        .from("message_recipients")
+        .select("resident_id,messages!inner(created_at)")
+        .in("resident_id", ids)
+        .gte("messages.created_at", since);
+      for (const row of recips ?? []) {
+        const rid = row.resident_id as string;
+        recent.set(rid, (recent.get(rid) ?? 0) + 1);
+      }
+      for (const r of list) {
+        const c = consent.get(r.id) ?? { consent_casl: false, consent_sms: false, consent_emergency_only: true };
+        const channelResolved = resolveChannel(input.channels, { id: r.id, email: r.email, phone: r.phone, preferred_channel: r.preferred_channel });
+        const decision = decideSuppression(c, { channelResolved, isEmergency: false, recentSends: recent.get(r.id) ?? 0 }, opts);
+        if (decision.suppress) suppressedSet.add(r.id);
+      }
+    }
+
     const html = `<div>${input.body.replace(/\n/g, "<br/>")}</div>`;
     // "display" is a screen-level channel (pushed via the Wallboard feed), not a
     // per-resident send — exclude it from the recipient loop.
     const want = (input.channels as string[]).filter((c) => c !== "display");
     const hasContact = (c: string, r: { email: unknown; phone: unknown }) =>
       c === "email" ? Boolean(r.email) : (c === "sms" || c === "whatsapp" || c === "voice") ? Boolean(r.phone) : false;
-    for (const r of residents ?? []) {
+    for (const r of list) {
+      // Skip residents the compliance guardrail held back (legal + fatigue).
+      if (suppressedSet.has(r.id)) { suppressed += 1; continue; }
       const pref = r.preferred_channel as string | null;
       // Prefer the resident's channel when it's selected + reachable; else the
       // first selected channel we can actually deliver on.
@@ -140,8 +268,8 @@ export async function sendBroadcast(input: SendBroadcastInput): Promise<SendBroa
     org_id: orgId,
     actor_id: me?.id ?? null,
     action: input.priority === "emergency" ? "Emergency Broadcast" : "Broadcast",
-    detail: `"${input.subject}" via ${input.channels.join(", ")} — ${sent} recipients`,
+    detail: `"${input.subject}" via ${input.channels.join(", ")} — ${sent} recipients${suppressed ? ` · ${suppressed} suppressed (CASL/fatigue)` : ""}`,
   });
 
-  return { ok: true, sent, mode: "live" };
+  return { ok: true, sent, suppressed, mode: "live" };
 }

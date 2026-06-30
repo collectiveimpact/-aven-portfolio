@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type { Channel } from "@/lib/types";
 import type { ComposeTemplate } from "@/lib/queries";
-import { sendBroadcast, saveDraft, aiCompose } from "./actions";
+import { sendBroadcast, saveDraft, aiCompose, assessBroadcastAudience } from "./actions";
+import { SUPPRESSION_LABELS, type AudienceAssessment } from "@/lib/suppression";
 
 const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "voice", "display"]);
 
@@ -52,6 +53,11 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
   const [draftSaved, setDraftSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Pre-send compliance ("Refine") — predicted suppression for this audience.
+  const [assessment, setAssessment] = useState<AudienceAssessment | null>(null);
+  const [assessing, setAssessing] = useState(false);
+  const [includeFrequencyCapped, setIncludeFrequencyCapped] = useState(false);
+
   const audienceCount = useMemo(
     () => segments.reduce((sum, s) => sum + (SEGMENT_REACH[s] ?? 0), 0),
     [segments],
@@ -61,6 +67,24 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
   const emailCount = channels.includes("email") ? audienceCount : 0;
   const smsCount = channels.includes("sms") ? Math.round(audienceCount * 0.62) : 0;
   const displayCount = channels.includes("display") ? 31 : 0;
+
+  const isEmergency = priority === "emergency";
+  const channelsKey = channels.join(",");
+
+  // Run the compliance assessment whenever the audience-shaping inputs change.
+  // Resolves the whole org (sendBroadcast resolves recipients by org, not segment).
+  // Emergency bypasses suppression — we still fetch so the card shows the total.
+  useEffect(() => {
+    if (channels.length === 0) { setAssessment(null); return; }
+    let cancelled = false;
+    setAssessing(true);
+    assessBroadcastAudience(null, channels, priority, includeFrequencyCapped)
+      .then((a) => { if (!cancelled) setAssessment(a); })
+      .catch(() => { if (!cancelled) setAssessment(null); })
+      .finally(() => { if (!cancelled) setAssessing(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelsKey, priority, includeFrequencyCapped]);
 
   const toggleChannel = (c: Channel) =>
     setChannels((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
@@ -114,6 +138,7 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
         audienceCount,
         delivery,
         scheduledFor: delivery === "schedule" ? scheduledFor : null,
+        includeFrequencyCapped,
       });
       if (res.ok) {
         setSentCount(res.sent);
@@ -391,6 +416,83 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
               value={scheduledFor}
               onChange={(e) => setScheduledFor(e.target.value)}
             />
+          )}
+
+          {/* Pre-send compliance ("Refine") — CASL guardrail on existing consent data */}
+          {channels.length > 0 && (
+            <div
+              className="f5-card"
+              style={{
+                marginTop: 16,
+                padding: 14,
+                background: "var(--f5-surface-2)",
+                borderColor: isEmergency
+                  ? "color-mix(in srgb, var(--f5-red,#f87171) 50%, transparent)"
+                  : "var(--f5-teal-border)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div className="f5-section-title" style={{ margin: 0 }}>🛡️ Compliance check</div>
+                {assessing && <span style={{ fontSize: 11, color: "var(--f5-text-dim)" }}>Assessing…</span>}
+              </div>
+
+              {isEmergency ? (
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 13,
+                    color: "var(--f5-text)",
+                    background: "rgba(248,113,113,0.12)",
+                    border: "1px solid color-mix(in srgb, var(--f5-red,#f87171) 40%, transparent)",
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                  }}
+                >
+                  <strong>Emergency — suppression bypassed.</strong> All reachable residents are included,
+                  including emergency-only consent. CASL and frequency holdbacks do not apply.
+                </div>
+              ) : assessment && !assessment.degraded ? (
+                <>
+                  <div style={{ marginTop: 8, fontSize: 14, color: "var(--f5-text)" }}>
+                    <strong>{assessment.sending.toLocaleString()}</strong> of{" "}
+                    <strong>{assessment.total.toLocaleString()}</strong> will receive this ·{" "}
+                    <span className="f5-warn" style={{ fontWeight: 600 }}>
+                      {assessment.suppressedCount.toLocaleString()} held back
+                    </span>
+                  </div>
+                  <div className="f5-chips" style={{ marginTop: 10 }}>
+                    <span className="f5-chip" title="Legal — not overridable">
+                      🔒 {SUPPRESSION_LABELS.no_casl_consent} · {assessment.breakdown.no_casl_consent}
+                    </span>
+                    <span className="f5-chip" title="Legal — not overridable">
+                      🔒 {SUPPRESSION_LABELS.no_sms_consent} · {assessment.breakdown.no_sms_consent}
+                    </span>
+                    <span className="f5-chip" title="Anti-fatigue — overridable">
+                      {SUPPRESSION_LABELS.frequency_cap} · {assessment.breakdown.frequency_cap}
+                    </span>
+                  </div>
+                  {(assessment.breakdown.frequency_cap > 0 || includeFrequencyCapped) && (
+                    <label style={{ ...radio(includeFrequencyCapped), marginTop: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={includeFrequencyCapped}
+                        onChange={(e) => setIncludeFrequencyCapped(e.target.checked)}
+                      />
+                      Include frequency-capped residents anyway (legal holdbacks stay suppressed)
+                    </label>
+                  )}
+                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--f5-text-dim)" }}>
+                    🔒 Legal suppressions are enforced on send and cannot be overridden.
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--f5-text-dim)" }}>
+                  {assessing
+                    ? "Checking consent and send frequency…"
+                    : "Live consent data unavailable — no residents will be suppressed (demo mode)."}
+                </div>
+              )}
+            </div>
           )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
