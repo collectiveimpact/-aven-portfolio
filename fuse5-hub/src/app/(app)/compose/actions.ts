@@ -79,6 +79,97 @@ export async function aiCompose(prompt: string): Promise<{ ok: boolean; text?: s
   return { ok: true, text: r.text, mode: r.mode };
 }
 
+// ── Composer-from-prompt ────────────────────────────────────────────────────
+// One natural-language brief → a full broadcast plan: subject + body, the right
+// channels, urgency, audience, and an emergency flag. The composer applies the
+// plan to its fields, then the existing CASL compliance check + send path take
+// over. Live via Claude (JSON), with a deterministic keyword heuristic fallback
+// when the model isn't configured or doesn't return clean JSON.
+export interface ComposePlan {
+  subject: string;
+  body: string;
+  channels: Channel[];
+  priority: "normal" | "high" | "urgent";
+  audience: string;
+  isEmergency: boolean;
+  scheduleHint: string;
+  mode: "live" | "stub";
+}
+
+const PLAN_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "voice", "display"]);
+function sanitizeChannels(v: unknown): Channel[] {
+  const arr = Array.isArray(v) ? v : [];
+  const out = arr.map((c) => String(c).toLowerCase().trim()).filter((c): c is Channel => PLAN_CHANNELS.has(c as Channel));
+  return out.length ? [...new Set(out)] : ["email"];
+}
+
+/** Heuristic plan when there's no live model / no parseable JSON. */
+function heuristicPlan(prompt: string, body: string): ComposePlan {
+  const p = prompt.toLowerCase();
+  const emergency = /\b(emergency|evacuat|fire|flood|gas leak|no heat|urgent|immediately|lockdown|boil water)\b/.test(p);
+  const urgent = emergency || /\b(asap|today|tonight|right away|outage|shut ?off|shutdown)\b/.test(p);
+  const channels: Channel[] = emergency ? ["email", "sms", "voice"] : /\btext|sms\b/.test(p) ? ["sms", "email"] : ["email"];
+  const firstLine = prompt.trim().split(/[.\n]/)[0].slice(0, 80);
+  const subject = (emergency ? "URGENT: " : "") + (firstLine.charAt(0).toUpperCase() + firstLine.slice(1));
+  return {
+    subject,
+    body: body || prompt.trim(),
+    channels,
+    priority: emergency ? "urgent" : urgent ? "high" : "normal",
+    audience: /\ball residents|everyone|whole building\b/.test(p) ? "All Residents" : "All Residents",
+    isEmergency: emergency,
+    scheduleHint: /\btomorrow|next week|monday|tuesday|wednesday|thursday|friday|on \w+day\b/.test(p) ? "scheduled" : "now",
+    mode: "stub",
+  };
+}
+
+function extractJson(text: string): Record<string, unknown> | null {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text;
+  const start = fenced.indexOf("{");
+  const end = fenced.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try { return JSON.parse(fenced.slice(start, end + 1)) as Record<string, unknown>; } catch { return null; }
+}
+
+export async function composeFromPrompt(prompt: string): Promise<{ ok: boolean; plan?: ComposePlan; error?: string }> {
+  const brief = prompt.trim();
+  if (!brief) return { ok: false, error: "Describe the broadcast you want to send." };
+
+  const instruction = `You are the broadcast planner for a social-housing tenant-communications platform.
+Turn the staff member's brief into ONE message plan. Reply with STRICT JSON only — no prose, no code fences — with EXACTLY these keys:
+{
+ "subject": "concise subject line",
+ "body": "warm, plain-language message body (2-5 short sentences). Use {{first_name}} if helpful.",
+ "channels": ["email" and/or "sms","whatsapp","voice","display"],
+ "priority": "normal" | "high" | "urgent",
+ "audience": "who it's for, e.g. All Residents or a property/building name",
+ "isEmergency": true | false,
+ "scheduleHint": "now" or a short timing note
+}
+Rules: life-safety briefs (fire, flood, gas, no heat, evacuation) → isEmergency true, priority "urgent", channels include sms+voice. Routine notices → email (+sms if time-sensitive). Keep the body respectful and accessible.
+Brief: ${brief}`;
+
+  const r = await generateText(instruction);
+  const parsed = extractJson(r.text);
+  if (!parsed) {
+    // Model returned prose (or stub) — still give a usable plan from the text + heuristics.
+    return { ok: true, plan: heuristicPlan(brief, r.mode === "live" ? r.text : "") };
+  }
+  const isEmergency = parsed.isEmergency === true;
+  const pr = String(parsed.priority ?? "").toLowerCase();
+  const plan: ComposePlan = {
+    subject: String(parsed.subject ?? "").slice(0, 140) || heuristicPlan(brief, "").subject,
+    body: String(parsed.body ?? "").trim() || brief,
+    channels: sanitizeChannels(parsed.channels),
+    priority: isEmergency ? "urgent" : pr === "urgent" || pr === "high" ? (pr as "urgent" | "high") : "normal",
+    audience: String(parsed.audience ?? "All Residents").slice(0, 80) || "All Residents",
+    isEmergency,
+    scheduleHint: String(parsed.scheduleHint ?? "now").slice(0, 40),
+    mode: r.mode,
+  };
+  return { ok: true, plan };
+}
+
 export interface SendBroadcastInput {
   subject: string;
   body: string;

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { Channel } from "@/lib/types";
 import type { ComposeTemplate } from "@/lib/queries";
-import { sendBroadcast, saveDraft, aiCompose, assessBroadcastAudience } from "./actions";
+import { sendBroadcast, saveDraft, aiCompose, assessBroadcastAudience, composeFromPrompt } from "./actions";
 import { SUPPRESSION_LABELS, type AudienceAssessment } from "@/lib/suppression";
 
 const VALID_CHANNELS = new Set<Channel>(["email", "sms", "whatsapp", "voice", "display"]);
@@ -96,6 +96,30 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
   };
 
   const availableSegments = SEGMENT_LIBRARY.filter((s) => !segments.includes(s));
+
+  // Composer-from-prompt: one brief → fill subject/body/channels/urgency/audience.
+  const buildFromPrompt = () => {
+    if (!aiBrief.trim()) { setWarning("Describe the broadcast you want to send first."); return; }
+    setAiBusy(true);
+    startTransition(async () => {
+      const r = await composeFromPrompt(aiBrief);
+      if (r.ok && r.plan) {
+        const p = r.plan;
+        setSubject(p.subject);
+        setBody(p.body);
+        if (p.channels.length) setChannels(p.channels);
+        setPriority(p.isEmergency || p.priority === "urgent" ? "emergency" : p.priority === "high" ? "high" : "normal");
+        setSegments([p.audience || "All Residents"]);
+        if (p.scheduleHint && p.scheduleHint.toLowerCase() !== "now") setDelivery("schedule");
+        setWarning(p.isEmergency
+          ? "⚠ This reads as an emergency — channels set to reach everyone and consent suppression is bypassed. Review before sending."
+          : null);
+      } else {
+        setWarning(r.error ?? "Couldn't build the message from that brief.");
+      }
+      setAiBusy(false);
+    });
+  };
 
   const validate = (): boolean => {
     if (!subject.trim() || !body.trim()) {
@@ -293,14 +317,25 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
               <input
                 className="f5-input"
                 style={{ flex: 1, minWidth: 170 }}
-                placeholder="✨ Describe the message for AI…"
+                placeholder="✨ Describe the whole broadcast — e.g. ‘water shutoff Tower B Saturday 9–noon’…"
                 value={aiBrief}
                 onChange={(e) => setAiBrief(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buildFromPrompt(); } }}
               />
               <button
                 type="button"
                 className="f5-btn primary"
                 disabled={aiBusy}
+                title="Turn your brief into a full broadcast — subject, copy, channels, urgency, and audience"
+                onClick={buildFromPrompt}
+              >
+                {aiBusy ? "Building…" : "✨ Build broadcast"}
+              </button>
+              <button
+                type="button"
+                className="f5-btn"
+                disabled={aiBusy}
+                title="Generate just the message body from your brief"
                 onClick={() => {
                   setAiBusy(true);
                   startTransition(async () => {
@@ -311,7 +346,7 @@ export default function Composer({ templates }: { templates: ComposeTemplate[] }
                   });
                 }}
               >
-                {aiBusy ? "Generating…" : "✨ Generate with AI"}
+                Body only
               </button>
             </div>
           </div>
