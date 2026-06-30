@@ -22,10 +22,23 @@ export default async function EmergencyPage() {
   ]);
   const allowBroadcast = !!me?.role && canBroadcast(me.role);
 
+  // In-context impact strip — emergency response at a glance.
+  const totalSent = log.length;
+  const activeNow = log.filter((e) => e.status === "active").length;
+  const resolved = log.filter((e) => e.status === "resolved").length;
+  const lastSent = log[0]?.date ?? "—";
+
   return (
     <main className="f5-content">
       <div className="f5-page-title">Emergency Broadcast</div>
       <div className="f5-page-sub">Reach every resident instantly across all channels.</div>
+
+      <div className="f5-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginTop: 16 }}>
+        <div className="f5-card"><div className="f5-kpi-label">Broadcasts logged</div><div className="f5-kpi-value">{totalSent}</div><div className="f5-kpi-sub">all time</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Active now</div><div className="f5-kpi-value f5-down">{activeNow}</div><div className="f5-kpi-sub">{activeNow ? "in progress" : "all clear"}</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Resolved</div><div className="f5-kpi-value f5-up">{resolved}</div><div className="f5-kpi-sub">stood down</div></div>
+        <div className="f5-card"><div className="f5-kpi-label">Last broadcast</div><div className="f5-kpi-value" style={{ fontSize: 22 }}>{lastSent}</div><div className="f5-kpi-sub">most recent</div></div>
+      </div>
 
       <EmergencyConsole properties={properties} canBroadcast={allowBroadcast} />
 
