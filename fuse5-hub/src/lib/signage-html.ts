@@ -58,7 +58,7 @@ export interface SignageInput {
   dateText?: string;
   timeText?: string;
   secondary?: string; // bilingual line
-  layout?: "fullbleed" | "split";
+  layout?: "fullbleed" | "split" | "warning";
   image?: string; // photo URL
   categoryLabel?: string; // small label on the media (e.g. "Regular maintenance / Mice")
   contactPhone?: string;
@@ -119,6 +119,15 @@ const shell = (inner: string) => `<!doctype html><html><head><meta charset="utf-
  .media{width:48%;position:relative;background-size:cover;background-position:center}
  .catlabel{position:absolute;right:3%;top:20%;text-align:right;font-family:'Oswald';font-weight:500;font-size:2vw;text-shadow:0 2px 10px rgba(0,0,0,.4)}
  .catlabel b{display:block;font-weight:700;font-size:2.6vw}
+ /* warning / safety */
+ .warn{position:absolute;inset:0;display:flex;flex-direction:column;align-items:stretch}
+ .hazard{height:4.5%;flex:0 0 auto;background:repeating-linear-gradient(-45deg,#F4C20D 0 34px,#141414 34px 68px)}
+ .warnbody{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3% 8% 1%}
+ .warnicon{font-size:8vw;line-height:1;filter:drop-shadow(0 4px 16px rgba(0,0,0,.35))}
+ .warnkick{font-family:'Oswald';font-weight:600;letter-spacing:4px;text-transform:uppercase;font-size:1.5vw;margin-top:.6vw;opacity:.95}
+ .warn h1{font-size:5.6vw;margin-top:1vw;text-shadow:0 3px 18px rgba(0,0,0,.35)}
+ .warnsub{font-size:2.1vw;font-weight:600;margin-top:1.4vw;max-width:80%;opacity:.96}
+ .warnsec{font-size:1.8vw;margin-top:.8vw;opacity:.9}
 </style></head><body><div class="screen">${inner}</div>${clockScript}</body></html>`;
 
 /** Full self-contained 16:9 signage template. */
@@ -128,6 +137,24 @@ export function renderSignageHtml(input: SignageInput): string {
   const headline = esc(input.headline || "Notice").toUpperCase();
   const layout = input.layout ?? (input.image ? "fullbleed" : "split");
   const catColor = theme.color;
+
+  if (layout === "warning") {
+    const icon = /security|lock|door|trespass/.test(`${input.category} ${input.headline}`.toLowerCase()) ? "🔒" : "⚠️";
+    const bg = darken(catColor === "#1F3A4D" ? "#C0392B" : catColor, 0.92); // saturated red-ish field
+    return shell(`${chromeBar(input)}
+      <div class="warn" style="background:${bg}">
+        <div class="hazard"></div>
+        <div class="warnbody">
+          <div class="warnicon">${icon}</div>
+          <div class="warnkick">${esc(theme.kicker)}</div>
+          <h1>${headline}</h1>
+          ${input.subhead ? `<div class="warnsub">${esc(input.subhead)}</div>` : ""}
+          ${input.secondary ? `<div class="warnsec">${esc(input.secondary)}</div>` : ""}
+        </div>
+        <div class="hazard"></div>
+      </div>
+      ${logoBadge(org)}`);
+  }
 
   if (layout === "split") {
     const media = input.image
