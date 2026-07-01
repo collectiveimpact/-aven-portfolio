@@ -1,21 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import type { TemplateRow } from "@/lib/queries";
-import { renderTemplateHtml, themeForTemplate } from "@/lib/template-html";
+import { themeForTemplate } from "@/lib/template-html";
 
-// Live HTML preview for a template: renders the branded email in a sandboxed
-// iframe (so the email's own styles never leak into the app), with a desktop/
-// mobile toggle, Copy HTML, Open in new tab, and a Use-in-Compose handoff.
-export function TemplatePreview({ template, orgName, onClose }: { template: TemplateRow; orgName?: string; onClose: () => void }) {
+// Live HTML preview for a template: renders the (already-composed) email HTML in a
+// sandboxed iframe — works for both Fuse5's Aurora-wrapped templates AND a
+// provider's own raw branded HTML — with a desktop/mobile toggle, Copy HTML,
+// Open-in-tab, and a Use-in-Compose handoff.
+export function TemplatePreview({ name, category, html, badge, onClose }: { name: string; category: string; html: string; badge?: string; onClose: () => void }) {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [copied, setCopied] = useState(false);
-  const theme = useMemo(() => themeForTemplate(template.category, template.name), [template]);
-  const html = useMemo(
-    () => renderTemplateHtml({ name: template.name, category: template.category, body: template.body, orgName }),
-    [template, orgName],
-  );
+  const theme = themeForTemplate(category, name);
 
   function copyHtml() {
     navigator.clipboard?.writeText(html).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1600); }).catch(() => {});
@@ -38,8 +34,8 @@ export function TemplatePreview({ template, orgName, onClose }: { template: Temp
           <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
             <span style={{ width: 30, height: 30, borderRadius: 8, background: theme.soft, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{theme.emoji}</span>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, color: "var(--f5-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{template.name}</div>
-              <div style={{ fontSize: 11.5, color: "var(--f5-text-muted)" }}>{template.category} · HTML email preview</div>
+              <div style={{ fontWeight: 700, color: "var(--f5-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}{badge && <span className="f5-badge" style={{ marginLeft: 8, fontSize: 10 }}>{badge}</span>}</div>
+              <div style={{ fontSize: 11.5, color: "var(--f5-text-muted)" }}>{category} · HTML email preview</div>
             </div>
           </div>
 
@@ -56,7 +52,7 @@ export function TemplatePreview({ template, orgName, onClose }: { template: Temp
         {/* rendered email */}
         <div style={{ background: "#e2e8f0", padding: "18px", display: "flex", justifyContent: "center" }}>
           <iframe
-            title={`Preview of ${template.name}`}
+            title={`Preview of ${name}`}
             srcDoc={html}
             style={{ width: frameW, maxWidth: "100%", height: 620, border: "none", borderRadius: 10, background: "#f1f5f9", boxShadow: "0 8px 24px rgba(2,6,23,0.18)" }}
           />

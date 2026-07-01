@@ -134,7 +134,15 @@ export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[
         </table>
       </div>
 
-      {previewing && <TemplatePreview template={previewing} onClose={() => setPreviewing(null)} />}
+      {previewing && (
+        <TemplatePreview
+          name={previewing.name}
+          category={previewing.category}
+          html={renderTemplateHtml({ name: previewing.name, category: previewing.category, body: previewing.body })}
+          badge={previewing.mandatory ? "Master" : undefined}
+          onClose={() => setPreviewing(null)}
+        />
+      )}
 
       {editing && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={() => setEditing(null)}>
