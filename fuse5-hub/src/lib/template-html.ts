@@ -32,6 +32,15 @@ const THEMES: TemplateTheme[] = [
   { key: "welcome", accent: "#059669", soft: "#D1FAE5", emoji: "👋", cta: "Get started", kicker: "Welcome" },
   { key: "survey", accent: "#00A3A3", soft: "#D5F5F5", emoji: "📋", cta: "Take the survey", kicker: "We want your input" },
   { key: "inspection", accent: "#0E7490", soft: "#CFF3F5", emoji: "🛡️", cta: "View details", kicker: "Compliance notice" },
+  { key: "accessib", accent: "#2563EB", soft: "#DBEAFE", emoji: "♿", cta: "Learn more", kicker: "Accessibility" },
+  { key: "security", accent: "#B91C1C", soft: "#FEE2E2", emoji: "🔒", cta: "Safety information", kicker: "Security notice" },
+  { key: "arrears", accent: "#FD5A19", soft: "#FFE9DF", emoji: "🤝", cta: "Get support", kicker: "We can help" },
+  { key: "eviction", accent: "#B45309", soft: "#FEF3C7", emoji: "⚠️", cta: "Get support", kicker: "Important notice" },
+  { key: "insurance", accent: "#0E7490", soft: "#CFF3F5", emoji: "🧾", cta: "Learn more", kicker: "Reminder" },
+  { key: "amenit", accent: "#7C3AED", soft: "#EDE9FE", emoji: "🏸", cta: "Book now", kicker: "Amenities" },
+  { key: "waste", accent: "#059669", soft: "#D1FAE5", emoji: "♻️", cta: "Learn more", kicker: "Operations" },
+  { key: "leasing", accent: "#059669", soft: "#D1FAE5", emoji: "🔑", cta: "View details", kicker: "Leasing" },
+  { key: "move", accent: "#059669", soft: "#D1FAE5", emoji: "📦", cta: "View details", kicker: "Leasing & move" },
 ];
 const DEFAULT_THEME: TemplateTheme = { key: "general", accent: "#009999", soft: "#D5F5F5", emoji: "📢", cta: "Read more", kicker: "Resident notice" };
 
@@ -57,6 +66,11 @@ export const SAMPLE_VARS: Record<string, string> = {
   due_date: "July 1",
   org: "WoodGreen Community Housing",
   contact: "416-555-0142",
+  building: "WoodGreen — Danforth",
+  office_phone: "416-645-6000",
+  features: "ramps, automatic door buttons, and grab railings",
+  deadline: "July 15",
+  program: "the Community Kitchen program",
 };
 
 /**
