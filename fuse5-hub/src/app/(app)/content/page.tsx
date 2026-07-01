@@ -3,6 +3,7 @@ import { getContent, getDisplays, type ContentRow } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublish } from "@/lib/rbac";
 import { ContentLibrary } from "./content-library";
+import { SignageGallery } from "./signage-gallery";
 
 export default async function ContentPage() {
   const [content, displays, me] = await Promise.all([getContent(), getDisplays(), getCurrentUser()]);
@@ -38,6 +39,8 @@ export default async function ContentPage() {
         <div className="f5-card"><div className="f5-kpi-label">Videos</div><div className="f5-kpi-value">{byType("video")}</div><div className="f5-kpi-sub">motion clips</div></div>
         <div className="f5-card"><div className="f5-kpi-label">Playlists</div><div className="f5-kpi-value">{byType("playlist")}</div><div className="f5-kpi-sub">sequenced loops</div></div>
       </div>
+
+      <div style={{ marginTop: 22 }}><SignageGallery /></div>
 
       <ContentLibrary items={content} canEdit={canEdit} displayCount={displays.length} />
     </main>
