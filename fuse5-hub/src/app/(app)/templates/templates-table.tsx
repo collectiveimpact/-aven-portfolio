@@ -9,6 +9,8 @@ import { SortHeader } from "@/components/filters/SortHeader";
 import type { FilterField, FilterOption } from "@/components/filters/types";
 import { useFilterState, applyFilters } from "@/lib/filters";
 import { useSortState, applySort } from "@/lib/sort";
+import { TemplatePreview } from "./template-preview";
+import { renderTemplateHtml } from "@/lib/template-html";
 
 const channelLabel: Record<string, string> = { email: "Email", sms: "SMS", whatsapp: "WhatsApp", voice: "Voice", display: "Display" };
 const CHANNELS = ["email", "sms", "display", "whatsapp", "voice"];
@@ -21,6 +23,7 @@ const blank = (): TemplateInput => ({ name: "", category: "General", channels: [
 export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[]; canEdit: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<TemplateInput | null>(null);
+  const [previewing, setPreviewing] = useState<TemplateRow | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -109,19 +112,20 @@ export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[
             {filtered.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} style={{ color: "var(--f5-text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>No templates match.</td></tr>}
             {filtered.map((t) => (
               <tr key={t.id}>
-                <td style={{ color: "var(--f5-text)", fontWeight: 600 }}>{t.name}</td>
+                <td>
+                  <button type="button" onClick={() => setPreviewing(t)} title="Preview the HTML email" style={{ background: "none", border: "none", padding: 0, color: "var(--f5-teal,#00CCCC)", fontWeight: 600, cursor: "pointer", textAlign: "left" }}>{t.name}</button>
+                </td>
                 <td>{t.category}</td>
                 <td>{t.channels.map((c) => channelLabel[c] ?? c).join(", ")}</td>
                 <td>{t.version}</td>
                 <td>{t.mandatory ? <span className="f5-badge warn">Master</span> : <span style={{ color: "var(--f5-text-dim)" }}>Org</span>}</td>
                 {canEdit && (
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    {t.mandatory
-                      ? <span style={{ color: "var(--f5-text-dim)", fontSize: 12 }}>Read-only</span>
-                      : <>
-                          <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => openEdit(t)}>Edit</button>
-                          <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12, marginLeft: 6, color: "var(--f5-red)" }} onClick={() => remove(t)} disabled={pending}>Delete</button>
-                        </>}
+                    <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setPreviewing(t)}>👁 Preview</button>
+                    {!t.mandatory && <>
+                      <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12, marginLeft: 6 }} onClick={() => openEdit(t)}>Edit</button>
+                      <button className="f5-btn" style={{ padding: "4px 10px", fontSize: 12, marginLeft: 6, color: "var(--f5-red)" }} onClick={() => remove(t)} disabled={pending}>Delete</button>
+                    </>}
                   </td>
                 )}
               </tr>
@@ -130,9 +134,12 @@ export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[
         </table>
       </div>
 
+      {previewing && <TemplatePreview template={previewing} onClose={() => setPreviewing(null)} />}
+
       {editing && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={() => setEditing(null)}>
-          <div className="f5-card" style={{ width: 600, maxWidth: "96vw" }} onClick={(e) => e.stopPropagation()}>
+          <div className="f5-card" style={{ width: 940, maxWidth: "96vw", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 20 }} onClick={(e) => e.stopPropagation()}>
+           <div style={{ minWidth: 0 }}>
             <div className="f5-section-title" style={{ margin: 0 }}>{editing.id ? "Edit Template" : "New Template"}</div>
 
             <label className="f5-label">Name <span style={{ color: "var(--f5-red)" }}>*</span></label>
@@ -165,6 +172,18 @@ export function TemplatesTable({ templates, canEdit }: { templates: TemplateRow[
               <button className="f5-btn primary" disabled={pending} onClick={save}>{pending ? "Saving…" : editing.id ? "Save Changes" : "Create Template"}</button>
               <button className="f5-btn" onClick={() => setEditing(null)}>Cancel</button>
             </div>
+           </div>
+
+           {/* Live HTML preview — updates as you type */}
+           <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+             <div className="f5-label" style={{ marginTop: 0 }}>Live preview</div>
+             <iframe
+               title="Live template preview"
+               srcDoc={renderTemplateHtml({ name: editing.name || "Template name", category: editing.category, body: editing.body })}
+               style={{ flex: 1, minHeight: 420, width: "100%", border: "1px solid var(--f5-border)", borderRadius: 10, background: "#f1f5f9" }}
+             />
+             <div style={{ fontSize: 11, color: "var(--f5-text-muted)", marginTop: 6 }}>Merge fields like <code>{"{{property}}"}</code> preview with sample data.</div>
+           </div>
           </div>
         </div>
       )}
